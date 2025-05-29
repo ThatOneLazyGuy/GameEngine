@@ -1,5 +1,7 @@
 #include "Editor.hpp"
 
+#include "ImGuiExtra.hpp"
+
 #include <algorithm>
 #include <ranges>
 
@@ -44,43 +46,6 @@ int main(int, char*[])
     return 0;
 }
 
-template <typename ItemType, typename ContainerType>
-void ApplyRequests(ImGuiMultiSelectIO* io, std::vector<ItemType>& selection, const ContainerType& items)
-{
-    for (const auto& request : io->Requests)
-    {
-        switch (request.Type)
-        {
-        case ImGuiSelectionRequestType_None:
-            break;
-
-        case ImGuiSelectionRequestType_SetAll: // Request app to clear selection (if Selected==false) or select all items (if Selected==true). We cannot set RangeFirstItem/RangeLastItem as its contents is entirely up to user (not necessarily an index)
-            selection.clear();
-            if (request.Selected) selection.insert(selection.begin(), std::begin(items), std::end(items));
-            break;
-
-        case ImGuiSelectionRequestType_SetRange: {
-            if (request.Selected)
-            {
-                for (ImGuiSelectionUserData i = request.RangeFirstItem; i <= request.RangeLastItem; i++)
-                {
-                    selection.push_back(items.at(i));
-                }
-            }
-            else
-            {
-                for (ImGuiSelectionUserData i = request.RangeFirstItem; i <= request.RangeLastItem; i++)
-                {
-                    selection.erase(std::ranges::find(selection, items.at(i)));
-                }
-            }
-        }
-        break;
-        }
-    }
-}
-
-
 void Editor::Init()
 {
     // Setup Dear ImGui context
@@ -107,6 +72,7 @@ void Editor::Update()
     ImGui::PlatformNewFrame();
 
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+    ImGui::ShowStyleEditor();
     ImGui::ShowDemoWindow();
 
 
@@ -140,7 +106,7 @@ void Editor::Update()
             ImGuiMultiSelectFlags_BoxSelect1d | ImGuiMultiSelectFlags_SelectOnClickRelease;
 
         ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, static_cast<int>(selected.size()), items.size());
-        ApplyRequests(ms_io, selected, items);
+        ImGui::ApplyRequests(ms_io, selected, items);
         for (int i = 0; i < items.size(); i++)
         {
             ImGui::PushID(i);
@@ -150,7 +116,7 @@ void Editor::Update()
             ImGui::PopID();
         }
         ms_io = ImGui::EndMultiSelect();
-        ApplyRequests(ms_io, selected, items);
+        ImGui::ApplyRequests(ms_io, selected, items);
     }
     ImGui::End();
 
