@@ -1,12 +1,15 @@
 #pragma once
 
-#include <vector>
+#include "fwd.hpp"
+
 #include <string>
+#include <vector>
 
 #include <vec2.hpp>
 #include <vec3.hpp>
 
 struct SDL_GPUBuffer;
+struct SDL_GPUGraphicsPipeline;
 
 struct Vertex
 {
@@ -17,22 +20,37 @@ struct Vertex
 
 struct Mesh
 {
-    using RenderVertices = void*;
-    using RenderIndices = void*;
-
     std::vector<Vertex> vertices;
     std::vector<std::uint32_t> indices;
 
     std::uint32_t bind{};
-    RenderVertices render_vertices{};
-    RenderIndices render_indices{};
+
+    union
+    {
+        SDL_GPUBuffer* vertices_buffer = nullptr;
+        std::uint32_t VBO;
+    };
+    union
+    {
+        SDL_GPUBuffer* indices_buffer = nullptr;
+        std::uint32_t EBO;
+    };
 };
 
 // struct Texture
 // {
-//     Texture() = default;
 //     Texture(const std::vector<std::uint32_t>& color_data);
+//
+//
+//
+//     void* handle{};
 // };
+
+union Shader
+{
+    SDL_GPUGraphicsPipeline* pipeline;
+    std::uint32_t id;
+};
 
 class Renderer
 {
@@ -59,6 +77,9 @@ class Renderer
     virtual Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices) = 0;
     virtual void ReloadMesh(Mesh& mesh) = 0;
     virtual void DeleteMesh(Mesh& mesh) = 0;
+
+    virtual Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path) = 0;
+    virtual void DeleteShader(Shader shader) = 0;
 
   protected:
     Renderer() = default;

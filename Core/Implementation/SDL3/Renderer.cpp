@@ -15,7 +15,7 @@
 namespace
 {
     SDL_GPUDevice* device = nullptr;
-    SDL_GPUGraphicsPipeline* pipeline = nullptr;
+    Shader shader;
 
     SDL_GPUColorTargetInfo color_target_info{
         .mip_level = 0,
@@ -48,6 +48,77 @@ namespace
 
         return transfer_buffer;
     }
+
+    SDL_GPUShader* LoadShader(SDL_GPUDevice*, const std::string& shader_filename)
+    {
+        // Auto-detect the shader stage from the file name for convenience
+        SDL_GPUShaderStage stage;
+        if (shader_filename.find(".vert") != std::string::npos) stage = SDL_GPU_SHADERSTAGE_VERTEX;
+        else if (shader_filename.find(".frag") != std::string::npos) stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
+        else
+        {
+            SDL_Log("Invalid shader stage!");
+            return nullptr;
+        }
+
+        SDL_GPUShaderFormat backendFormats = SDL_GetGPUShaderFormats(device);
+        SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_INVALID;
+        const char* entrypoint;
+
+        std::string fullPath = std::filesystem::absolute(shader_filename).generic_string();
+        if (backendFormats & SDL_GPU_SHADERFORMAT_SPIRV)
+        {
+            fullPath += ".spv";
+            format = SDL_GPU_SHADERFORMAT_SPIRV;
+            entrypoint = "main";
+        }
+        else if (backendFormats & SDL_GPU_SHADERFORMAT_MSL)
+        {
+            fullPath += ".msl";
+            format = SDL_GPU_SHADERFORMAT_MSL;
+            entrypoint = "main0";
+        }
+        else if (backendFormats & SDL_GPU_SHADERFORMAT_DXIL)
+        {
+            fullPath += ".dxil";
+            format = SDL_GPU_SHADERFORMAT_DXIL;
+            entrypoint = "main";
+        }
+        else
+        {
+            SDL_Log("%s", "Unrecognized backend shader format!");
+            return nullptr;
+        }
+
+        size_t codeSize;
+        void* code = SDL_LoadFile(fullPath.c_str(), &codeSize);
+        if (code == nullptr)
+        {
+            SDL_Log("Failed to load shader from disk! %s", fullPath);
+            return nullptr;
+        }
+
+        const std::uint32_t uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 1 : 0);
+
+        SDL_GPUShaderCreateInfo shaderInfo{
+            .code_size = codeSize,
+            .code = static_cast<const Uint8*>(code),
+            .entrypoint = entrypoint,
+            .format = format,
+            .stage = stage,
+            .num_uniform_buffers = uniforms
+        };
+        SDL_GPUShader* shader = SDL_CreateGPUShader(device, &shaderInfo);
+        if (shader == nullptr)
+        {
+            SDL_Log("Failed to create shader: %s", SDL_GetError());
+            SDL_free(code);
+            return nullptr;
+        }
+
+        SDL_free(code);
+        return shader;
+    }
 } // namespace
 
 Mesh SDL3GPURenderer::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices)
@@ -61,8 +132,8 @@ Mesh SDL3GPURenderer::CreateMesh(const std::vector<Vertex>& vertices, const std:
 
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
     buffer_info.size = vertices_size;
-    mesh.render_vertices = SDL_CreateGPUBuffer(device, &buffer_info);
-    if (mesh.render_vertices == nullptr)
+    mesh.vertices_buffer = SDL_CreateGPUBuffer(device, &buffer_info);
+    if (mesh.vertices_buffer == nullptr)
     {
         SDL_Log("Failed to create vertex buffer");
         return std::move(mesh);
@@ -71,8 +142,8 @@ Mesh SDL3GPURenderer::CreateMesh(const std::vector<Vertex>& vertices, const std:
 
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_INDEX;
     buffer_info.size = indices_size;
-    mesh.render_indices = SDL_CreateGPUBuffer(device, &buffer_info);
-    if (mesh.render_indices == nullptr)
+    mesh.indices_buffer = SDL_CreateGPUBuffer(device, &buffer_info);
+    if (mesh.indices_buffer == nullptr)
     {
         SDL_Log("Failed to create index buffer");
         return std::move(mesh);
@@ -87,8 +158,8 @@ void SDL3GPURenderer::DeleteMesh(Mesh& mesh)
 {
     auto* device = static_cast<SDL_GPUDevice*>(GetContext());
 
-    SDL_ReleaseGPUBuffer(device, static_cast<SDL_GPUBuffer*>(mesh.render_vertices));
-    SDL_ReleaseGPUBuffer(device, static_cast<SDL_GPUBuffer*>(mesh.render_indices));
+    SDL_ReleaseGPUBuffer(device, mesh.vertices_buffer);
+    SDL_ReleaseGPUBuffer(device, mesh.indices_buffer);
 }
 
 void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
@@ -107,12 +178,12 @@ void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
     SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(command_buffer);
 
     buffer_location.transfer_buffer = vertex_transfer_buffer;
-    buffer_region.buffer = static_cast<SDL_GPUBuffer*>(mesh.render_vertices);
+    buffer_region.buffer = mesh.vertices_buffer;
     buffer_region.size = vertices_size;
     SDL_UploadToGPUBuffer(copy_pass, &buffer_location, &buffer_region, false);
 
     buffer_location.transfer_buffer = index_transfer_buffer;
-    buffer_region.buffer = static_cast<SDL_GPUBuffer*>(mesh.render_indices);
+    buffer_region.buffer = mesh.indices_buffer;
     buffer_region.size = indices_size;
     SDL_UploadToGPUBuffer(copy_pass, &buffer_location, &buffer_region, false);
 
@@ -123,8 +194,6 @@ void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
     SDL_ReleaseGPUTransferBuffer(device, vertex_transfer_buffer);
     SDL_ReleaseGPUTransferBuffer(device, index_transfer_buffer);
 }
-
-SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const std::string& shader_filename);
 
 void SDL3GPURenderer::Init(void* const native_window)
 {
@@ -140,11 +209,107 @@ void SDL3GPURenderer::Init(void* const native_window)
 
     SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX);
 
+    shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
+
+    color_target_info.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+    color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+    color_target_info.store_op = SDL_GPU_STOREOP_STORE;
+}
+
+void SDL3GPURenderer::Exit()
+{
+    auto* window = static_cast<SDL_Window*>(Window::GetHandle());
+
+    SDL_ReleaseGPUGraphicsPipeline(device, shader.pipeline);
+
+    SDL_ReleaseWindowFromGPUDevice(device, window);
+    SDL_DestroyGPUDevice(device);
+}
+
+void SDL3GPURenderer::Update()
+{
+    //static Model loaded_model{"Assets/cube_usemtl.obj"};
+    static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
+
+    SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
+    if (command_buffer == nullptr)
+    {
+        SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
+        return;
+    }
+
+
+    if (color_target_info.texture == nullptr)
+    {
+        if (!SDL_WaitAndAcquireGPUSwapchainTexture(
+                command_buffer,
+                static_cast<SDL_Window*>(Window::GetHandle()),
+                &color_target_info.texture,
+                nullptr,
+                nullptr
+            ))
+        {
+            SDL_Log("WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
+            return;
+        }
+    }
+
+    if (color_target_info.texture == nullptr)
+    {
+        SDL_SubmitGPUCommandBuffer(command_buffer);
+        return;
+    }
+
+    auto model = glm::mat4(1.0f);
+
+    const size_t time = SDL_GetTicks();
+    model = glm::translate(model, glm::vec3{0.5f, -0.5f, 1.5f});
+    model = glm::rotate(model, static_cast<float>(time) / 600.0f, glm::vec3{0.0f, 1.0f, 0.0f});
+
+    const float width = static_cast<float>(Window::GetWidth());
+    const float height = static_cast<float>(Window::GetHeight());
+
+    const glm::vec3 cameraPos{0.0f, size_test[1], size_test[0]};
+    const glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3{0.0f, 0.0f, 1.0f}, glm::vec3{0.0f, 1.0f, 0.0f});
+    const glm::mat4 projection = glm::perspective(glm::radians(45.0f), width / height, 0.1f, 100.0f);
+
+    const glm::mat4 mvp = projection * view * model;
+
+    SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, nullptr);
+    SDL_BindGPUGraphicsPipeline(render_pass, shader.pipeline);
+
+    const SDL_GPUBufferBinding vertex_binding{.buffer = loaded_model.meshes[0]->vertices_buffer};
+    SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
+
+    const SDL_GPUBufferBinding index_binding{.buffer = loaded_model.meshes[0]->indices_buffer};
+    SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+    SDL_PushGPUVertexUniformData(command_buffer, 0, glm::value_ptr(mvp), sizeof(glm::mat4));
+    SDL_DrawGPUIndexedPrimitives(render_pass, loaded_model.meshes[0]->indices.size(), 1, 0, 0, 0);
+
+    SDL_EndGPURenderPass(render_pass);
+
+    if (!SDL_SubmitGPUCommandBuffer(command_buffer))
+    {
+        SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error submitting render texture command buffer: \n%s", SDL_GetError());
+        return;
+    }
+}
+
+void SDL3GPURenderer::SwapBuffer() { color_target_info.texture = nullptr; }
+
+void* SDL3GPURenderer::GetContext() { return device; }
+void* SDL3GPURenderer::GetTexture() { return &color_target_info.texture; }
+
+Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::string& fragment_path)
+{
+    auto* window = static_cast<SDL_Window*>(Window::GetHandle());
+
     // Create the shaders
-    SDL_GPUShader* vertex_shader = LoadShader(device, "Assets/Shaders/Shader.vert");
+    SDL_GPUShader* vertex_shader = LoadShader(device, vertex_path);
     if (vertex_shader == nullptr) SDL_Log("Failed to create vertex shader!");
 
-    SDL_GPUShader* fragment_shader = LoadShader(device, "Assets/Shaders/Shader.frag");
+    SDL_GPUShader* fragment_shader = LoadShader(device, fragment_path);
     if (fragment_shader == nullptr) SDL_Log("Failed to create fragment shader!");
 
     // Create the pipelines
@@ -193,173 +358,13 @@ void SDL3GPURenderer::Init(void* const native_window)
     };
     pipeline_create_info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
 
-    pipeline = SDL_CreateGPUGraphicsPipeline(device, &pipeline_create_info);
-    if (pipeline == nullptr) SDL_Log("Failed to create fill pipeline!");
+    Shader shader{.pipeline = SDL_CreateGPUGraphicsPipeline(device, &pipeline_create_info)};
+    if (shader.pipeline == nullptr) SDL_Log("Failed to create fill pipeline!");
 
     // Clean up shader resources
     SDL_ReleaseGPUShader(device, vertex_shader);
     SDL_ReleaseGPUShader(device, fragment_shader);
 
-    color_target_info.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
-    color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-    color_target_info.store_op = SDL_GPU_STOREOP_STORE;
-}
-
-void SDL3GPURenderer::Exit()
-{
-    auto* window = static_cast<SDL_Window*>(Window::GetHandle());
-
-    SDL_ReleaseGPUGraphicsPipeline(device, pipeline);
-
-    SDL_ReleaseWindowFromGPUDevice(device, window);
-    SDL_DestroyGPUDevice(device);
-}
-
-void SDL3GPURenderer::Update()
-{
-    static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
-
-    SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
-    if (command_buffer == nullptr)
-    {
-        SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
-        return;
-    }
-
-
-    if (color_target_info.texture == nullptr)
-    {
-        if (!SDL_WaitAndAcquireGPUSwapchainTexture(
-                command_buffer,
-                static_cast<SDL_Window*>(Window::GetHandle()),
-                &color_target_info.texture,
-                nullptr,
-                nullptr
-            ))
-        {
-            SDL_Log("WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
-            return;
-        }
-    }
-
-    if (color_target_info.texture == nullptr)
-    {
-        SDL_SubmitGPUCommandBuffer(command_buffer);
-        return;
-    }
-
-    auto model = glm::mat4(1.0f);
-
-    const size_t time = SDL_GetTicks();
-    model = glm::translate(model, glm::vec3{0.5f, -0.5f, 1.5f});
-    model = glm::rotate(model, static_cast<float>(time) / 600.0f, glm::vec3{0.0f, 1.0f, 0.0f});
-
-    const float width = static_cast<float>(Window::GetWidth());
-    const float height = static_cast<float>(Window::GetHeight());
-
-    const glm::vec3 cameraPos{0.0f, Renderer::size_test[1], Renderer::size_test[0]};
-    const glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3{0.0f, 0.0f, 1.0f}, glm::vec3{0.0f, 1.0f, 0.0f});
-    const glm::mat4 projection = glm::perspective(glm::radians(45.0f), width / height, 0.1f, 100.0f);
-
-    const glm::mat4 mvp = projection * view * model;
-
-    SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, nullptr);
-    SDL_BindGPUGraphicsPipeline(render_pass, pipeline);
-
-    const SDL_GPUBufferBinding vertex_binding{
-        .buffer = static_cast<SDL_GPUBuffer*>(loaded_model.meshes[0]->render_vertices)
-    };
-    SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
-
-    const SDL_GPUBufferBinding index_binding{
-        .buffer = static_cast<SDL_GPUBuffer*>(loaded_model.meshes[0]->render_indices)
-    };
-    SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-
-    SDL_PushGPUVertexUniformData(command_buffer, 0, glm::value_ptr(mvp), sizeof(glm::mat4));
-    SDL_DrawGPUIndexedPrimitives(render_pass, loaded_model.meshes[0]->indices.size(), 1, 0, 0, 0);
-
-    SDL_EndGPURenderPass(render_pass);
-
-    if (!SDL_SubmitGPUCommandBuffer(command_buffer))
-    {
-        SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error submitting render texture command buffer: \n%s", SDL_GetError());
-        return;
-    }
-}
-
-void SDL3GPURenderer::SwapBuffer() { color_target_info.texture = nullptr; }
-
-void* SDL3GPURenderer::GetContext() { return device; }
-void* SDL3GPURenderer::GetTexture() { return &color_target_info.texture; }
-
-SDL_GPUShader* LoadShader(SDL_GPUDevice*, const std::string& shader_filename)
-{
-    // Auto-detect the shader stage from the file name for convenience
-    SDL_GPUShaderStage stage;
-    if (shader_filename.find(".vert") != std::string::npos) stage = SDL_GPU_SHADERSTAGE_VERTEX;
-    else if (shader_filename.find(".frag") != std::string::npos) stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
-    else
-    {
-        SDL_Log("Invalid shader stage!");
-        return nullptr;
-    }
-
-    SDL_GPUShaderFormat backendFormats = SDL_GetGPUShaderFormats(device);
-    SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_INVALID;
-    const char* entrypoint;
-
-    std::string fullPath = std::filesystem::absolute(shader_filename).generic_string();
-    if (backendFormats & SDL_GPU_SHADERFORMAT_SPIRV)
-    {
-        fullPath += ".spv";
-        format = SDL_GPU_SHADERFORMAT_SPIRV;
-        entrypoint = "main";
-    }
-    else if (backendFormats & SDL_GPU_SHADERFORMAT_MSL)
-    {
-        fullPath += ".msl";
-        format = SDL_GPU_SHADERFORMAT_MSL;
-        entrypoint = "main0";
-    }
-    else if (backendFormats & SDL_GPU_SHADERFORMAT_DXIL)
-    {
-        fullPath += ".dxil";
-        format = SDL_GPU_SHADERFORMAT_DXIL;
-        entrypoint = "main";
-    }
-    else
-    {
-        SDL_Log("%s", "Unrecognized backend shader format!");
-        return nullptr;
-    }
-
-    size_t codeSize;
-    void* code = SDL_LoadFile(fullPath.c_str(), &codeSize);
-    if (code == nullptr)
-    {
-        SDL_Log("Failed to load shader from disk! %s", fullPath);
-        return nullptr;
-    }
-
-    const std::uint32_t uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 1 : 0);
-
-    SDL_GPUShaderCreateInfo shaderInfo{
-        .code_size = codeSize,
-        .code = static_cast<const Uint8*>(code),
-        .entrypoint = entrypoint,
-        .format = format,
-        .stage = stage,
-        .num_uniform_buffers = uniforms
-    };
-    SDL_GPUShader* shader = SDL_CreateGPUShader(device, &shaderInfo);
-    if (shader == nullptr)
-    {
-        SDL_Log("Failed to create shader: %s", SDL_GetError());
-        SDL_free(code);
-        return nullptr;
-    }
-
-    SDL_free(code);
     return shader;
 }
+void SDL3GPURenderer::DeleteShader(const Shader shader) { SDL_ReleaseGPUGraphicsPipeline(device, shader.pipeline); }

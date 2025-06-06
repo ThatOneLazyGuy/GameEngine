@@ -23,4 +23,7 @@ public:
     virtual Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices);
     virtual void ReloadMesh(Mesh& mesh);
     virtual void DeleteMesh(Mesh& mesh);
+
+    virtual Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path);
+    virtual void DeleteShader(Shader shader);
 };

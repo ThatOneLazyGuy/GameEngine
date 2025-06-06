@@ -26,6 +26,7 @@ namespace Editor
 int main(int, char*[])
 {
     Renderer::SetupBackend("SDL3GPU");
+    //Renderer::SetupBackend("OpenGL");
 
     Window::Init(&ImGui::PlatformProcessEvent);
     Renderer::Instance().Init(Window::GetHandle());
@@ -65,6 +66,7 @@ void Editor::Init()
 
     ImGui::StyleColorsDark();
     ImGui::PlatformInit("SDL3GPU");
+    //ImGui::PlatformInit("OpenGL");
 }
 
 void Editor::Update()
