@@ -4,7 +4,7 @@
 
 class SDL3GPURenderer final : public Renderer
 {
-public:
+  public:
     SDL3GPURenderer() = default;
     virtual ~SDL3GPURenderer() override = default;
 

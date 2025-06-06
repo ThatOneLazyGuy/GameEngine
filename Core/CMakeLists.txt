@@ -13,7 +13,7 @@ target_include_directories(Core PUBLIC "${EXTERNAL}/glad/include")
 target_include_directories(Core PUBLIC "${EXTERNAL}")
 target_include_directories(Core PUBLIC "${EXTERNAL}/SDL/include")
 target_include_directories(Core PUBLIC "${EXTERNAL}/assimp/include")
-target_include_directories(Core PUBLIC "${EXTERNAL}/glm")
+target_include_directories(Core PUBLIC "${EXTERNAL}/eigen")
 target_include_directories(Core PUBLIC "${CMAKE_SOURCE_DIR}/Core")
 
 set_target_properties(Core PROPERTIES CXX_STANDARD 23)

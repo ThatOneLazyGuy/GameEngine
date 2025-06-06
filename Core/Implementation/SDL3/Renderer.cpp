@@ -6,9 +6,6 @@
 
 #include <SDL3/SDL.h>
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #include <filesystem>
 #include <string>
 
@@ -260,20 +257,20 @@ void SDL3GPURenderer::Update()
         return;
     }
 
-    auto model = glm::mat4(1.0f);
+    Mat4 model = Mat4::Identity();
 
     const size_t time = SDL_GetTicks();
-    model = glm::translate(model, glm::vec3{0.5f, -0.5f, 1.5f});
-    model = glm::rotate(model, static_cast<float>(time) / 600.0f, glm::vec3{0.0f, 1.0f, 0.0f});
+    model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
+    model *= Translation(Vec3{0.5f, -0.5f, 1.5f});
 
-    const float width = static_cast<float>(Window::GetWidth());
-    const float height = static_cast<float>(Window::GetHeight());
+    const auto width = static_cast<float>(Window::GetWidth());
+    const auto height = static_cast<float>(Window::GetHeight());
 
-    const glm::vec3 cameraPos{0.0f, size_test[1], size_test[0]};
-    const glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3{0.0f, 0.0f, 1.0f}, glm::vec3{0.0f, 1.0f, 0.0f});
-    const glm::mat4 projection = glm::perspective(glm::radians(45.0f), width / height, 0.1f, 100.0f);
+    const Vec3 cameraPos{0.0f, size_test[1], size_test[0]};
+    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    const Mat4 projection = Perspective(ToRadians(45.0f), width / height, 0.1f, 100.0f);
 
-    const glm::mat4 mvp = projection * view * model;
+    const Mat4 mvp = model * view * projection;
 
     SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, nullptr);
     SDL_BindGPUGraphicsPipeline(render_pass, shader.pipeline);
@@ -284,7 +281,7 @@ void SDL3GPURenderer::Update()
     const SDL_GPUBufferBinding index_binding{.buffer = loaded_model.meshes[0]->indices_buffer};
     SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
-    SDL_PushGPUVertexUniformData(command_buffer, 0, glm::value_ptr(mvp), sizeof(glm::mat4));
+    SDL_PushGPUVertexUniformData(command_buffer, 0, mvp.data(), sizeof(Mat4));
     SDL_DrawGPUIndexedPrimitives(render_pass, loaded_model.meshes[0]->indices.size(), 1, 0, 0, 0);
 
     SDL_EndGPURenderPass(render_pass);

@@ -1,21 +1,19 @@
 #pragma once
 
-#include "fwd.hpp"
-
 #include <string>
 #include <vector>
+#include <cstdint>
 
-#include <vec2.hpp>
-#include <vec3.hpp>
+#include "Math.hpp"
 
 struct SDL_GPUBuffer;
 struct SDL_GPUGraphicsPipeline;
 
 struct Vertex
 {
-    glm::vec3 position{};
-    glm::vec3 color{};
-    glm::vec2 tex_coord{};
+    Vec3 position{};
+    Vec3 color{};
+    Vec2 tex_coord{};
 };
 
 struct Mesh

@@ -8,14 +8,11 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
-
 Model::Model(const std::string& path)
 {
     Assimp::Importer importer;
     const aiScene* scene =
-        importer.ReadFile(path, aiProcess_Triangulate | aiProcess_MakeLeftHanded | aiProcess_JoinIdenticalVertices);
+        importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
 
     if (scene == nullptr)
     {
@@ -38,9 +35,9 @@ Model::Model(const std::string& path)
         {
             auto& [position, color, tex_coord] = vertices[i];
 
-            position = glm::vec3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
-            if (mesh_colors != nullptr) color = glm::vec3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
-            if (mesh_tex_coords != nullptr) tex_coord = glm::vec2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
+            position = Vec3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
+            if (mesh_colors != nullptr) color = Vec3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
+            if (mesh_tex_coords != nullptr) tex_coord = Vec2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
         }
 
         const aiFace* mesh_faces = model_mesh.mFaces;

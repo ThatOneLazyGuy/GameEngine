@@ -10,10 +10,6 @@
 
 #include <stb_image.h>
 
-#include <glm/fwd.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
 #include <filesystem>
 #include <fstream>
 #include <glad/glad.h>
@@ -21,17 +17,7 @@
 #include <map>
 #include <string>
 
-class Camera
-{
-  public:
-    [[nodiscard]] glm::mat4 GetViewMatrix() const { return glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp); }
-
-    glm::vec3 cameraPos{0.0f, 0.0f, 0.0f};
-
-  private:
-    glm::vec3 cameraFront{0.0f, 0.0f, 1.0f};
-    glm::vec3 cameraUp{0.0f, 1.0f, 0.0f};
-} camera;
+#include "Core/Math.hpp"
 
 namespace
 {
@@ -96,7 +82,7 @@ namespace
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
-    template <typename> void SetUniform(const int binding, const glm::mat4& value)
+    template <typename> void SetUniform(const int binding, const Mat4& value)
     {
         const auto iterator = uniformBuffers.find(binding);
         if (iterator == uniformBuffers.end())
@@ -108,7 +94,7 @@ namespace
         const unsigned int UBO = iterator->second;
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(value));
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(Mat4), value.data());
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
@@ -170,7 +156,7 @@ void OpenGLRenderer::Init(void* window_handle)
     default_shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
 
     glUseProgram(default_shader.id);
-    CreateUniformBuffer<glm::mat4>(default_shader, 0);
+    CreateUniformBuffer<Mat4>(default_shader, 0);
 }
 
 void OpenGLRenderer::Exit() {}
@@ -183,21 +169,23 @@ void OpenGLRenderer::Update()
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto model = glm::mat4(1.0f);
+    Mat4 model = Mat4::Identity();
 
     const size_t time = SDL_GetTicks();
-    model = glm::translate(model, glm::vec3{0.5f, -0.5f, 1.5f});
-    model = glm::rotate(model, static_cast<float>(time) / 600.0f, glm::vec3{0.0f, 1.0f, 0.0f});
+    model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
+    model *= Translation(Vec3{0.5f, -0.5f, 1.5f});
 
-    const float width = static_cast<float>(Window::GetWidth());
-    const float height = static_cast<float>(Window::GetHeight());
+    const auto width = static_cast<float>(Window::GetWidth());
+    const auto height = static_cast<float>(Window::GetHeight());
 
-    camera.cameraPos = glm::vec3(0.0f, 0.0f, size_test[0]);
-    const glm::mat4 view = camera.GetViewMatrix();
-    const glm::mat4 projection = glm::perspective(glm::radians(45.0f), width / height, 0.1f, 100.0f);
+    const Vec3 cameraPos{0.0f, size_test[1], size_test[0]};
+    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    const Mat4 projection = Perspective(ToRadians(45.0f), width / height, 0.1f, 100.0f);
+
+    const Mat4 mvp = model * view * projection;
 
     glUseProgram(default_shader.id);
-    SetUniform<glm::mat4>(0, projection * view * model);
+    SetUniform<Mat4>(0, mvp);
 
     glBindVertexArray(loaded_model.meshes[0]->bind);
     glDrawElements(GL_TRIANGLES, loaded_model.meshes[0]->indices.size(), GL_UNSIGNED_INT, nullptr);
@@ -221,7 +209,7 @@ Mesh OpenGLRenderer::CreateMesh(const std::vector<Vertex>& vertices, const std::
     glGenBuffers(1, &mesh.VBO);
     glGenBuffers(1, &mesh.EBO);
 
-    this->ReloadMesh(mesh);
+    ReloadMesh(mesh);
 
     return std::move(mesh);
 }
@@ -246,15 +234,15 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     );
 
     const void* offset = nullptr;
-    glVertexAttribPointer(0, glm::vec3::length(), GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(0, Vec3::SizeAtCompileTime, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(0);
-    offset += sizeof(glm::vec3);
+    offset += sizeof(Vec3);
 
-    glVertexAttribPointer(1, glm::vec3::length(), GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(1, Vec3::SizeAtCompileTime, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(1);
-    offset += sizeof(glm::vec3);
+    offset += sizeof(Vec3);
 
-    glVertexAttribPointer(2, glm::vec2::length(), GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(2, Vec2::SizeAtCompileTime, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
