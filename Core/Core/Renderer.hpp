@@ -2,18 +2,42 @@
 
 #include <string>
 #include <vector>
-#include <cstdint>
 
 #include "Math.hpp"
 
+#include <memory>
+
 struct SDL_GPUBuffer;
 struct SDL_GPUGraphicsPipeline;
+struct SDL_GPUSampler;
+struct SDL_GPUTexture;
 
 struct Vertex
 {
     Vec3 position{};
     Vec3 color{};
     Vec2 tex_coord{};
+};
+
+struct Texture
+{
+    enum class Type
+    {
+        DIFFUSE,
+        SPECULAR
+    } type = Type::DIFFUSE;
+
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    std::vector<std::uint32_t> colors;
+
+    union
+    {
+        SDL_GPUTexture* texture = nullptr;
+        std::uint32_t id;
+    };
+
+    SDL_GPUSampler* sampler = nullptr;
 };
 
 struct Mesh
@@ -33,20 +57,13 @@ struct Mesh
         SDL_GPUBuffer* indices_buffer = nullptr;
         std::uint32_t EBO;
     };
-};
 
-// struct Texture
-// {
-//     Texture(const std::vector<std::uint32_t>& color_data);
-//
-//
-//
-//     void* handle{};
-// };
+    std::vector<std::shared_ptr<Texture>> textures;
+};
 
 union Shader
 {
-    SDL_GPUGraphicsPipeline* pipeline;
+    SDL_GPUGraphicsPipeline* pipeline = nullptr;
     std::uint32_t id;
 };
 
@@ -72,9 +89,19 @@ class Renderer
     virtual void* GetContext() = 0;
     virtual void* GetTexture() = 0;
 
-    virtual Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices) = 0;
+    virtual Mesh CreateMesh(
+        const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
+        const std::vector<std::shared_ptr<Texture>>& textures
+    ) = 0;
     virtual void ReloadMesh(Mesh& mesh) = 0;
     virtual void DeleteMesh(Mesh& mesh) = 0;
+
+    virtual Texture CreateTexture(const std::string& texture_path, Texture::Type type) = 0;
+    virtual Texture CreateTexture(
+        std::uint32_t width, std::uint32_t height, const std::vector<std::uint32_t>& colors, Texture::Type type
+    ) = 0;
+    virtual void ReloadTexture(Texture& texture) = 0;
+    virtual void DeleteTexture(Texture& texture) = 0;
 
     virtual Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path) = 0;
     virtual void DeleteShader(Shader shader) = 0;

@@ -19,9 +19,19 @@ class SDL3GPURenderer final : public Renderer
     virtual void* GetContext();
     virtual void* GetTexture();
 
-    virtual Mesh CreateMesh(const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices);
+    virtual Mesh CreateMesh(
+        const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
+        const std::vector<std::shared_ptr<Texture>>& textures
+    );
     virtual void ReloadMesh(Mesh& mesh);
     virtual void DeleteMesh(Mesh& mesh);
+
+    virtual Texture CreateTexture(const std::string& texture_path, Texture::Type type);
+    virtual Texture CreateTexture(
+        std::uint32_t width, std::uint32_t height, const std::vector<std::uint32_t>& colors, Texture::Type type
+    );
+    virtual void ReloadTexture(Texture& texture);
+    virtual void DeleteTexture(Texture& texture);
 
     virtual Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path);
     virtual void DeleteShader(Shader shader);

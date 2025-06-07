@@ -2,12 +2,12 @@
 
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_video.h>
+#include <SDL3/SDL_timer.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
-#include "SDL3/SDL_timer.h"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include <filesystem>
@@ -105,36 +105,6 @@ namespace
     }
 } // namespace
 
-unsigned int LoadTexture(const char* path)
-{
-    unsigned int textureID;
-
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    // set the texture wrapping/filtering options (on the currently bound texture object)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    stbi_set_flip_vertically_on_load(true);
-
-    // load and generate the texture
-    int width, height, nrChannels;
-    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        const GLenum format = nrChannels == 4 ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else { std::cout << "Failed to load texture" << '\n'; }
-    stbi_image_free(data);
-
-    return textureID;
-}
-
 void OpenGLRenderer::Init(void* window_handle)
 {
     auto* window = static_cast<SDL_Window*>(window_handle);
@@ -163,47 +133,54 @@ void OpenGLRenderer::Exit() {}
 
 void OpenGLRenderer::Update()
 {
+    static Model loaded_model{"Assets/Backpack/backpack.obj"};
     //static Model loaded_model{"Assets/cube_usemtl.obj"};
-    static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
+    //static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
 
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     auto model = Identity<Mat4>();
-    std::cout << "Identity" << std::endl;
-    PrintMatrix(model);
 
     const size_t time = SDL_GetTicks();
     model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
-    std::cout << "Rotation" << std::endl;
-    PrintMatrix(model);
-
-    model *= Translation(Vec3{0.5f, -0.5f, 1.5f});
-    std::cout << "Translation" << std::endl;
-    PrintMatrix(model);
+    model *= Translation(Vec3{0.5f, -0.5f, -2.5f});
 
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
     const Vec3 cameraPos{0.0f, size_test[1], size_test[0]};
-    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 0.0f});
-    std::cout << "View" << std::endl;
-    PrintMatrix(view);
-
+    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
     const Mat4 projection = Perspective(ToRadians(45.0f), width / height, 0.1f, 100.0f);
-    std::cout << "Projection" << std::endl;
-    PrintMatrix(projection);
-
     const Mat4 mvp = model * view * projection;
-    std::cout << "MVP" << std::endl;
-    PrintMatrix(mvp);
 
     glUseProgram(default_shader.id);
     SetUniform<Mat4>(0, mvp);
 
-    glBindVertexArray(loaded_model.meshes[0]->bind);
-    glDrawElements(GL_TRIANGLES, loaded_model.meshes[0]->indices.size(), GL_UNSIGNED_INT, nullptr);
-    glBindVertexArray(0);
+    for (const auto& mesh : loaded_model.meshes)
+    {
+        std::uint32_t diffuse_count = 0;
+        std::uint32_t specular_count = 0;
+        for (const auto& texture : mesh->textures)
+        {
+            switch (texture->type)
+            {
+            case Texture::Type::DIFFUSE:
+                glActiveTexture(GL_TEXTURE0 + diffuse_count++);
+                break;
+
+            case Texture::Type::SPECULAR:
+                glActiveTexture(GL_TEXTURE3 + specular_count++);
+                break;
+            }
+
+            glBindTexture(GL_TEXTURE_2D, texture->id);
+        }
+
+        glBindVertexArray(mesh->bind);
+        glDrawElements(GL_TRIANGLES, static_cast<std::int32_t>(mesh->indices.size()), GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(0);
+    }
 }
 
 void OpenGLRenderer::SwapBuffer()
@@ -215,9 +192,12 @@ void OpenGLRenderer::SwapBuffer()
 void* OpenGLRenderer::GetContext() { return &context; }
 void* OpenGLRenderer::GetTexture() { return nullptr; }
 
-Mesh OpenGLRenderer::CreateMesh(const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices)
+Mesh OpenGLRenderer::CreateMesh(
+    const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
+    const std::vector<std::shared_ptr<Texture>>& textures
+)
 {
-    Mesh mesh{.vertices = std::move(vertices), .indices = std::move(indices)};
+    Mesh mesh{.vertices = vertices, .indices = indices, .textures = textures};
 
     glGenVertexArrays(1, &mesh.bind);
     glGenBuffers(1, &mesh.VBO);
@@ -262,7 +242,63 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    for (const auto& texture : mesh.textures)
+    {
+        ReloadTexture(*texture);
+    }
 }
+
+Texture OpenGLRenderer::CreateTexture(const std::string& texture_path, const Texture::Type type)
+{
+    std::int32_t width, height, component_count;
+    void* data = stbi_load(("Assets/Backpack/" + texture_path).c_str(), &width, &height, &component_count, 4);
+
+    const std::uint32_t pixel_count = width * height;
+    if (data != nullptr)
+    {
+        const auto* pixel_data = static_cast<const std::uint32_t*>(data);
+        const std::vector colors(pixel_data, pixel_data + pixel_count);
+        stbi_image_free(data);
+
+        return std::move(CreateTexture(width, height, colors, type));
+    }
+
+    SDL_Log("Failed to load OpenGL Texture: %s", stbi_failure_reason());
+    return Texture{};
+}
+
+Texture OpenGLRenderer::CreateTexture(
+    const std::uint32_t width, const std::uint32_t height, const std::vector<std::uint32_t>& colors,
+    const Texture::Type type
+)
+{
+    Texture texture{.type = type, .width = width, .height = height, .colors = colors};
+
+    glGenTextures(1, &texture.id);
+    ReloadTexture(texture);
+
+    return std::move(texture);
+}
+
+
+void OpenGLRenderer::ReloadTexture(Texture& texture)
+{
+    glBindTexture(GL_TEXTURE_2D, texture.id);
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RGBA, texture.width, texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture.colors.data()
+    );
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void OpenGLRenderer::DeleteTexture(Texture& mesh) { glDeleteTextures(1, &mesh.id); }
 
 Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::string& fragment_path)
 {
@@ -299,7 +335,7 @@ Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::s
     const char* fShaderCode = fragmentCode.c_str();
 
     // 2. compile shaders
-    unsigned int vertex, fragment;
+    std::uint32_t vertex, fragment;
 
     // vertex shader
     vertex = glCreateShader(GL_VERTEX_SHADER);
