@@ -169,20 +169,34 @@ void OpenGLRenderer::Update()
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Mat4 model = Mat4::Identity();
+    auto model = Identity<Mat4>();
+    std::cout << "Identity" << std::endl;
+    PrintMatrix(model);
 
     const size_t time = SDL_GetTicks();
     model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
+    std::cout << "Rotation" << std::endl;
+    PrintMatrix(model);
+
     model *= Translation(Vec3{0.5f, -0.5f, 1.5f});
+    std::cout << "Translation" << std::endl;
+    PrintMatrix(model);
 
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
     const Vec3 cameraPos{0.0f, size_test[1], size_test[0]};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    std::cout << "View" << std::endl;
+    PrintMatrix(view);
+
     const Mat4 projection = Perspective(ToRadians(45.0f), width / height, 0.1f, 100.0f);
+    std::cout << "Projection" << std::endl;
+    PrintMatrix(projection);
 
     const Mat4 mvp = model * view * projection;
+    std::cout << "MVP" << std::endl;
+    PrintMatrix(mvp);
 
     glUseProgram(default_shader.id);
     SetUniform<Mat4>(0, mvp);
@@ -234,15 +248,15 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     );
 
     const void* offset = nullptr;
-    glVertexAttribPointer(0, Vec3::SizeAtCompileTime, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(0);
     offset += sizeof(Vec3);
 
-    glVertexAttribPointer(1, Vec3::SizeAtCompileTime, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(1);
     offset += sizeof(Vec3);
 
-    glVertexAttribPointer(2, Vec2::SizeAtCompileTime, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);

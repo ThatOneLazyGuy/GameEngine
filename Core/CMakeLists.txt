@@ -20,6 +20,8 @@ set_target_properties(Core PROPERTIES CXX_STANDARD 23)
 target_link_libraries(Core SDL3::SDL3)
 target_link_libraries(Core assimp::assimp)
 
+add_compile_definitions(EIGEN_INITIALIZE_MATRICES_BY_ZERO)
+
 add_custom_command(TARGET Core POST_BUILD
         COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -capability SPIRV_1_3 -target spirv -o "${SHADERS}/Shader.vert.spv" -entry "VertexMain"
 )

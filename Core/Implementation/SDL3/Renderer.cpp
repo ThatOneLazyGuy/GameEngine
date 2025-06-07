@@ -1,8 +1,8 @@
 #include "Core/Renderer.hpp"
 #include "Renderer.hpp"
 
-#include "Core/Model.hpp"
 #include "Core/Window.hpp"
+#include "Core/Model.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -257,20 +257,34 @@ void SDL3GPURenderer::Update()
         return;
     }
 
-    Mat4 model = Mat4::Identity();
+    auto model = Identity<Mat4>();
+    std::cout << "Identity" << std::endl;
+    PrintMatrix(model);
 
     const size_t time = SDL_GetTicks();
     model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
+    std::cout << "Rotation" << std::endl;
+    PrintMatrix(model);
+
     model *= Translation(Vec3{0.5f, -0.5f, 1.5f});
+    std::cout << "Translation" << std::endl;
+    PrintMatrix(model);
 
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
     const Vec3 cameraPos{0.0f, size_test[1], size_test[0]};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, 1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    std::cout << "View" << std::endl;
+    PrintMatrix(view);
+
     const Mat4 projection = Perspective(ToRadians(45.0f), width / height, 0.1f, 100.0f);
+    std::cout << "Projection" << std::endl;
+    PrintMatrix(projection);
 
     const Mat4 mvp = model * view * projection;
+    std::cout << "MVP" << std::endl;
+    PrintMatrix(mvp);
 
     SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, nullptr);
     SDL_BindGPUGraphicsPipeline(render_pass, shader.pipeline);
