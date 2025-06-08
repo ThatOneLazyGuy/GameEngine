@@ -197,7 +197,6 @@ void OpenGLRenderer::SwapBuffer()
 }
 
 void* OpenGLRenderer::GetContext() { return &context; }
-void* OpenGLRenderer::GetTexture() { return nullptr; }
 
 Mesh OpenGLRenderer::CreateMesh(
     const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,

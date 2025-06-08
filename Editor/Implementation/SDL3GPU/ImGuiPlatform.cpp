@@ -2,6 +2,7 @@
 
 #include "Core/Renderer.hpp"
 #include "Core/Window.hpp"
+#include "Implementation/SDL3/Renderer.hpp"
 
 #include "SDL3/SDL_gpu.h"
 #include "SDL3/SDL_log.h"
@@ -62,8 +63,7 @@ namespace ImGui
     {
         ImGui_ImplSDLGPU3_NewFrame();
 
-        auto*& texture = *static_cast<SDL_GPUTexture**>(Renderer::Instance().GetTexture());
-        texture = viewport_binding.texture;
+        SDL3GPURenderer::GetColorTarget().texture = viewport_binding.texture;
     }
 
     void PlatformSDL3GPU::EndFrame()
@@ -135,8 +135,8 @@ namespace ImGui
             return;
         }
 
-        auto*& texture = *static_cast<SDL_GPUTexture**>(Renderer::Instance().GetTexture());
-        texture = viewport_binding.texture;
+        SDL3GPURenderer::GetColorTarget().texture = viewport_binding.texture;
+        SDL3GPURenderer::ReloadDepthBuffer();
     }
 
     ImTextureID PlatformSDL3GPU::GetFramebuffer() { return reinterpret_cast<ImTextureID>(&viewport_binding); }

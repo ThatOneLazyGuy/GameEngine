@@ -18,7 +18,6 @@ class OpenGLRenderer final : public Renderer
     virtual void SwapBuffer();
 
     virtual void* GetContext();
-    virtual void* GetTexture();
 
     virtual Mesh CreateMesh(
         const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,

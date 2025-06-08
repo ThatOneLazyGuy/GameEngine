@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Renderer.hpp"
+#include "SDL3/SDL_gpu.h"
 
 class SDL3GPURenderer final : public Renderer
 {
@@ -17,7 +18,6 @@ class SDL3GPURenderer final : public Renderer
     virtual void SwapBuffer();
 
     virtual void* GetContext();
-    virtual void* GetTexture();
 
     virtual Mesh CreateMesh(
         const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
@@ -35,4 +35,7 @@ class SDL3GPURenderer final : public Renderer
 
     virtual Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path);
     virtual void DeleteShader(Shader shader);
+
+    static void ReloadDepthBuffer();
+    static SDL_GPUColorTargetInfo& GetColorTarget();
 };

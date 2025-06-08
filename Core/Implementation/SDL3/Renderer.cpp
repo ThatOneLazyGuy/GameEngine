@@ -126,6 +126,146 @@ namespace
     }
 } // namespace
 
+void SDL3GPURenderer::Init(void* const native_window)
+{
+    auto* window = static_cast<SDL_Window*>(native_window);
+
+    device = SDL_CreateGPUDevice(
+        SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, nullptr
+    );
+
+    if (device == nullptr) SDL_Log("GPUCreateDevice failed");
+
+    if (!SDL_ClaimWindowForGPUDevice(device, window))
+    {
+        SDL_Log("GPUClaimWindow failed: %s", SDL_GetError());
+        return;
+    }
+
+    SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX);
+
+    shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
+
+    color_target_info.clear_color = {0.75f, 0.81f, 0.4f, 1.0f};
+    color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+    color_target_info.store_op = SDL_GPU_STOREOP_STORE;
+}
+
+void SDL3GPURenderer::Exit()
+{
+    auto* window = static_cast<SDL_Window*>(Window::GetHandle());
+
+    SDL_ReleaseGPUTexture(device, depth_texture);
+    SDL_ReleaseGPUGraphicsPipeline(device, shader.pipeline);
+
+    SDL_ReleaseWindowFromGPUDevice(device, window);
+    SDL_DestroyGPUDevice(device);
+}
+
+void SDL3GPURenderer::Update()
+{
+    static Model loaded_model{"Assets/Backpack/backpack.obj"};
+    //static Model loaded_model{"Assets/cube_usemtl.obj"};
+    //static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
+
+    SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
+    if (command_buffer == nullptr)
+    {
+        SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
+        return;
+    }
+
+    if (color_target_info.texture == nullptr)
+    {
+        if (!SDL_WaitAndAcquireGPUSwapchainTexture(
+                command_buffer,
+                static_cast<SDL_Window*>(Window::GetHandle()),
+                &color_target_info.texture,
+                nullptr,
+                nullptr
+            ))
+        {
+            SDL_Log("WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
+            return;
+        }
+    }
+
+    if (color_target_info.texture == nullptr)
+    {
+        SDL_SubmitGPUCommandBuffer(command_buffer);
+        return;
+    }
+
+    auto model = Identity<Mat4>();
+
+    const size_t time = SDL_GetTicks();
+    model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
+    model *= Translation(Vec3{0.5f, -0.5f, -2.5f});
+
+    const auto width = static_cast<float>(Window::GetWidth());
+    const auto height = static_cast<float>(Window::GetHeight());
+
+    const Vec3 cameraPos{position};
+    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    const Mat4 projection = PerspectiveZO(ToRadians(fov), width / height, 0.1f, 100.0f);
+    //const Mat4 mvp = model * view * projection;
+
+    depth_stencil_target_info.texture = depth_texture;
+    SDL_GPURenderPass* render_pass =
+        SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, &depth_stencil_target_info);
+    SDL_BindGPUGraphicsPipeline(render_pass, shader.pipeline);
+
+    SDL_PushGPUVertexUniformData(command_buffer, 0, model.data(), sizeof(Mat4));
+    SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Mat4));
+    SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Mat4));
+
+    for (const auto& mesh : loaded_model.meshes)
+    {
+        const SDL_GPUBufferBinding vertex_binding{.buffer = mesh->vertices_buffer};
+        SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
+
+        const SDL_GPUBufferBinding index_binding{.buffer = mesh->indices_buffer};
+        SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+        std::uint32_t diffuse_count = 0;
+        std::uint32_t specular_count = 0;
+        for (const auto& texture : mesh->textures)
+        {
+            std::uint32_t sampler_slot = 0;
+            switch (texture->type)
+            {
+            case Texture::Type::DIFFUSE:
+                sampler_slot = diffuse_count++;
+                break;
+
+            case Texture::Type::SPECULAR:
+                sampler_slot = 3 + specular_count++;
+                break;
+            }
+
+            const SDL_GPUTextureSamplerBinding binding{
+                .texture = texture->texture,
+                .sampler = texture->sampler,
+            };
+
+            SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
+        }
+
+        SDL_DrawGPUIndexedPrimitives(render_pass, mesh->indices.size(), 1, 0, 0, 0);
+    }
+
+    SDL_EndGPURenderPass(render_pass);
+
+    if (!SDL_SubmitGPUCommandBuffer(command_buffer))
+    {
+        SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error submitting render texture command buffer: \n%s", SDL_GetError());
+    }
+}
+
+void SDL3GPURenderer::SwapBuffer() { color_target_info.texture = nullptr; }
+
+void* SDL3GPURenderer::GetContext() { return device; }
+
 Mesh SDL3GPURenderer::CreateMesh(
     const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
     const std::vector<std::shared_ptr<Texture>>& textures
@@ -306,161 +446,6 @@ void SDL3GPURenderer::DeleteTexture(Texture& texture)
     SDL_ReleaseGPUSampler(device, texture.sampler);
 }
 
-void SDL3GPURenderer::Init(void* const native_window)
-{
-    auto* window = static_cast<SDL_Window*>(native_window);
-
-    device = SDL_CreateGPUDevice(
-        SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, nullptr
-    );
-
-    if (device == nullptr) SDL_Log("GPUCreateDevice failed");
-
-    if (!SDL_ClaimWindowForGPUDevice(device, window))
-    {
-        SDL_Log("GPUClaimWindow failed: %s", SDL_GetError());
-        return;
-    }
-
-    SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX);
-
-    shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
-
-    color_target_info.clear_color = {0.75f, 0.81f, 0.4f, 1.0f};
-    color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-    color_target_info.store_op = SDL_GPU_STOREOP_STORE;
-
-    const SDL_GPUTextureCreateInfo depth_texture_info{
-        SDL_GPU_TEXTURETYPE_2D,
-        SDL_GPU_TEXTUREFORMAT_D24_UNORM,
-        SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
-        static_cast<std::uint32_t>(Window::GetWidth()),
-        static_cast<std::uint32_t>(Window::GetHeight()),
-        1,
-        1,
-        SDL_GPU_SAMPLECOUNT_1
-    };
-
-    depth_texture = SDL_CreateGPUTexture(device, &depth_texture_info);
-    if (depth_texture == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the depth texture");
-}
-
-void SDL3GPURenderer::Exit()
-{
-    auto* window = static_cast<SDL_Window*>(Window::GetHandle());
-
-    SDL_ReleaseGPUTexture(device, depth_texture);
-    SDL_ReleaseGPUGraphicsPipeline(device, shader.pipeline);
-
-    SDL_ReleaseWindowFromGPUDevice(device, window);
-    SDL_DestroyGPUDevice(device);
-}
-
-void SDL3GPURenderer::Update()
-{
-    static Model loaded_model{"Assets/Backpack/backpack.obj"};
-    //static Model loaded_model{"Assets/cube_usemtl.obj"};
-    //static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
-
-    SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
-    if (command_buffer == nullptr)
-    {
-        SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
-        return;
-    }
-
-    if (color_target_info.texture == nullptr)
-    {
-        if (!SDL_WaitAndAcquireGPUSwapchainTexture(
-                command_buffer,
-                static_cast<SDL_Window*>(Window::GetHandle()),
-                &color_target_info.texture,
-                nullptr,
-                nullptr
-            ))
-        {
-            SDL_Log("WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
-            return;
-        }
-    }
-
-    if (color_target_info.texture == nullptr)
-    {
-        SDL_SubmitGPUCommandBuffer(command_buffer);
-        return;
-    }
-
-    auto model = Identity<Mat4>();
-
-    const size_t time = SDL_GetTicks();
-    model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
-    model *= Translation(Vec3{0.5f, -0.5f, -2.5f});
-
-    const auto width = static_cast<float>(Window::GetWidth());
-    const auto height = static_cast<float>(Window::GetHeight());
-
-    const Vec3 cameraPos{position};
-    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
-    const Mat4 projection = PerspectiveZO(ToRadians(fov), width / height, 0.1f, 100.0f);
-    //const Mat4 mvp = model * view * projection;
-
-    depth_stencil_target_info.texture = depth_texture;
-    SDL_GPURenderPass* render_pass =
-        SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, &depth_stencil_target_info);
-    SDL_BindGPUGraphicsPipeline(render_pass, shader.pipeline);
-
-    SDL_PushGPUVertexUniformData(command_buffer, 0, model.data(), sizeof(Mat4));
-    SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Mat4));
-    SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Mat4));
-
-    for (const auto& mesh : loaded_model.meshes)
-    {
-        const SDL_GPUBufferBinding vertex_binding{.buffer = mesh->vertices_buffer};
-        SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
-
-        const SDL_GPUBufferBinding index_binding{.buffer = mesh->indices_buffer};
-        SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-
-        std::uint32_t diffuse_count = 0;
-        std::uint32_t specular_count = 0;
-        for (const auto& texture : mesh->textures)
-        {
-            std::uint32_t sampler_slot = 0;
-            switch (texture->type)
-            {
-            case Texture::Type::DIFFUSE:
-                sampler_slot = diffuse_count++;
-                break;
-
-            case Texture::Type::SPECULAR:
-                sampler_slot = 3 + specular_count++;
-                break;
-            }
-
-            const SDL_GPUTextureSamplerBinding binding{
-                .texture = texture->texture,
-                .sampler = texture->sampler,
-            };
-
-            SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
-        }
-
-        SDL_DrawGPUIndexedPrimitives(render_pass, mesh->indices.size(), 1, 0, 0, 0);
-    }
-
-    SDL_EndGPURenderPass(render_pass);
-
-    if (!SDL_SubmitGPUCommandBuffer(command_buffer))
-    {
-        SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error submitting render texture command buffer: \n%s", SDL_GetError());
-    }
-}
-
-void SDL3GPURenderer::SwapBuffer() { color_target_info.texture = nullptr; }
-
-void* SDL3GPURenderer::GetContext() { return device; }
-void* SDL3GPURenderer::GetTexture() { return &color_target_info.texture; }
-
 Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::string& fragment_path)
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
@@ -543,3 +528,24 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
     return shader;
 }
 void SDL3GPURenderer::DeleteShader(const Shader shader) { SDL_ReleaseGPUGraphicsPipeline(device, shader.pipeline); }
+
+void SDL3GPURenderer::ReloadDepthBuffer()
+{
+    if (depth_texture != nullptr) SDL_ReleaseGPUTexture(device, depth_texture);
+
+    const SDL_GPUTextureCreateInfo depth_texture_info{
+        SDL_GPU_TEXTURETYPE_2D,
+        SDL_GPU_TEXTUREFORMAT_D24_UNORM,
+        SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        static_cast<std::uint32_t>(Window::GetWidth()),
+        static_cast<std::uint32_t>(Window::GetHeight()),
+        1,
+        1,
+        SDL_GPU_SAMPLECOUNT_1
+    };
+
+    depth_texture = SDL_CreateGPUTexture(device, &depth_texture_info);
+    if (depth_texture == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the depth texture");
+}
+
+SDL_GPUColorTargetInfo& SDL3GPURenderer::GetColorTarget() { return color_target_info; }

@@ -55,9 +55,12 @@ namespace Window
                 return true;
 
             case SDL_EVENT_WINDOW_RESIZED:
-                width = event.display.data1;
-                height = event.display.data2;
+            {
+                const SDL_WindowEvent& window_event = event.window;
+                width = window_event.data1;
+                height = window_event.data2;
                 break;
+            }
 
             default:
                 break;

@@ -25,7 +25,7 @@ struct Texture
     {
         DIFFUSE,
         SPECULAR
-    } type = Type::DIFFUSE;
+    } type{Type::DIFFUSE};
 
     std::uint32_t width{0};
     std::uint32_t height{0};
@@ -88,7 +88,6 @@ class Renderer
     virtual void SwapBuffer() = 0;
 
     virtual void* GetContext() = 0;
-    virtual void* GetTexture() = 0;
 
     virtual Mesh CreateMesh(
         const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
