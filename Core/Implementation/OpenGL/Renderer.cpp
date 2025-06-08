@@ -56,7 +56,7 @@ namespace
     {
         unsigned int& UBO = uniformBuffers[binding];
 
-        glUniformBlockBinding(shader.program, 0, binding);
+        glUniformBlockBinding(shader.program, binding, binding);
         glGenBuffers(1, &UBO);
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
@@ -130,6 +130,8 @@ void OpenGLRenderer::Init(void* window_handle)
 
     glUseProgram(default_shader.program);
     CreateUniformBuffer<Mat4>(default_shader, 0);
+    CreateUniformBuffer<Mat4>(default_shader, 1);
+    CreateUniformBuffer<Mat4>(default_shader, 2);
 }
 
 void OpenGLRenderer::Exit() {}
@@ -155,11 +157,12 @@ void OpenGLRenderer::Update()
     const Vec3 cameraPos{position};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
     const Mat4 projection = PerspectiveNO(ToRadians(fov), width / height, 0.1f, 100.0f);
-    const Mat4 mvp = model * view * projection;
+    //const Mat4 mvp = model * view * projection;
 
     glUseProgram(default_shader.program);
-    SetUniform<Mat4>(0, mvp);
-
+    SetUniform<Mat4>(0, model);
+    SetUniform<Mat4>(1, view);
+    SetUniform<Mat4>(2, projection);
 
     for (const auto& mesh : loaded_model.meshes)
     {

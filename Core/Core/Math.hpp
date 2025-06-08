@@ -46,7 +46,7 @@ inline Mat4 Scale(const Vec3& scale)
 // Based on glm::perspective_RH_NO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
 template <typename T> Mat4 PerspectiveNO(T fovy, T aspect, T zNear, T zFar)
 {
-    T const tan_half_fovy = tan(fovy / static_cast<T>(2));
+    T const tan_half_fovy = std::tan(fovy / static_cast<T>(2));
 
     Mat4 result{};
     result(0, 0) = static_cast<T>(1) / (aspect * tan_half_fovy);
@@ -60,7 +60,7 @@ template <typename T> Mat4 PerspectiveNO(T fovy, T aspect, T zNear, T zFar)
 // Based on glm::perspective_RH_ZO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
 template <typename T> Mat4 PerspectiveZO(T fovy, T aspect, T zNear, T zFar)
 {
-    T const tan_half_fovy = tan(fovy / static_cast<T>(2));
+    T const tan_half_fovy = std::tan(fovy / static_cast<T>(2));
 
     Mat4 result{};
     result(0, 0) = static_cast<T>(1) / (aspect * tan_half_fovy);

@@ -25,6 +25,7 @@ namespace
         .store_op = SDL_GPU_STOREOP_STORE,
     };
 
+
     SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size_t data_size)
     {
         SDL_GPUTransferBufferCreateInfo transfer_buffer_info{.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD};
@@ -99,7 +100,7 @@ namespace
             return nullptr;
         }
 
-        const std::uint32_t uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 1 : 0);
+        const std::uint32_t uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 3 : 0);
         const std::uint32_t samplers = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 0 : 1);
 
         const SDL_GPUShaderCreateInfo shaderInfo{
@@ -401,14 +402,16 @@ void SDL3GPURenderer::Update()
     const Vec3 cameraPos{position};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
     const Mat4 projection = PerspectiveZO(ToRadians(fov), width / height, 0.1f, 100.0f);
-    const Mat4 mvp = model * view * projection;
+    //const Mat4 mvp = model * view * projection;
 
     depth_stencil_target_info.texture = depth_texture;
     SDL_GPURenderPass* render_pass =
         SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, &depth_stencil_target_info);
     SDL_BindGPUGraphicsPipeline(render_pass, shader.pipeline);
 
-    SDL_PushGPUVertexUniformData(command_buffer, 0, mvp.data(), sizeof(Mat4));
+    SDL_PushGPUVertexUniformData(command_buffer, 0, model.data(), sizeof(Mat4));
+    SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Mat4));
+    SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Mat4));
 
     for (const auto& mesh : loaded_model.meshes)
     {

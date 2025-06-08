@@ -23,15 +23,15 @@ target_link_libraries(Core assimp::assimp)
 add_compile_definitions(EIGEN_INITIALIZE_MATRICES_BY_ZERO)
 
 add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -capability SPIRV_1_3 -target spirv -o "${SHADERS}/Shader.vert.spv" -entry "VertexMain"
+        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D SDL3GPU -D VERTEX -matrix-layout-row-major -capability SPIRV_1_3 -target spirv -o "${SHADERS}/Shader.vert.spv" -entry "VertexMain"
 )
 add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -capability SPIRV_1_3 -target spirv -o "${SHADERS}/Shader.frag.spv" -entry "FragmentMain"
+        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D SDL3GPU -D FRAGMENT -matrix-layout-row-major -capability SPIRV_1_3 -target spirv -o "${SHADERS}/Shader.frag.spv" -entry "FragmentMain"
 )
 
 add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.vert" -entry "VertexMain"
+        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D OPENGL -D VERTEX -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.vert" -entry "VertexMain"
 )
 add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.frag" -entry "FragmentMain"
+        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D OPENGL -D FRAGMENT -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.frag" -entry "FragmentMain"
 )
