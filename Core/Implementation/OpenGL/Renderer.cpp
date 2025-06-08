@@ -1,8 +1,8 @@
 #include "Renderer.hpp"
 
 #include <SDL3/SDL_log.h>
-#include <SDL3/SDL_video.h>
 #include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_video.h>
 
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
@@ -56,7 +56,7 @@ namespace
     {
         unsigned int& UBO = uniformBuffers[binding];
 
-        glUniformBlockBinding(shader.id, 0, binding);
+        glUniformBlockBinding(shader.program, 0, binding);
         glGenBuffers(1, &UBO);
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
@@ -122,10 +122,13 @@ void OpenGLRenderer::Init(void* window_handle)
     SDL_GL_SetSwapInterval(1);
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CW);
 
     default_shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
 
-    glUseProgram(default_shader.id);
+    glUseProgram(default_shader.program);
     CreateUniformBuffer<Mat4>(default_shader, 0);
 }
 
@@ -149,13 +152,14 @@ void OpenGLRenderer::Update()
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
-    const Vec3 cameraPos{0.0f, size_test[1], size_test[0]};
+    const Vec3 cameraPos{position};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
-    const Mat4 projection = Perspective(ToRadians(45.0f), width / height, 0.1f, 100.0f);
+    const Mat4 projection = PerspectiveNO(ToRadians(fov), width / height, 0.1f, 100.0f);
     const Mat4 mvp = model * view * projection;
 
-    glUseProgram(default_shader.id);
+    glUseProgram(default_shader.program);
     SetUniform<Mat4>(0, mvp);
+
 
     for (const auto& mesh : loaded_model.meshes)
     {
@@ -362,7 +366,7 @@ Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::s
     glDeleteShader(vertex);
     glDeleteShader(fragment);
 
-    return Shader{.id = opengl_id};
+    return Shader{.program = opengl_id};
 }
 
-void OpenGLRenderer::DeleteShader(Shader shader) { glDeleteProgram(shader.id); }
+void OpenGLRenderer::DeleteShader(Shader shader) { glDeleteProgram(shader.program); }

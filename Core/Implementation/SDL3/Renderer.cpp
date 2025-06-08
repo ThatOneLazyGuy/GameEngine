@@ -16,11 +16,13 @@ namespace
     SDL_GPUDevice* device = nullptr;
     Shader shader;
 
-    SDL_GPUColorTargetInfo color_target_info{
-        .mip_level = 0,
-        .clear_color = {0.0f, 1.0f, 0.0f, 1.0f},
+    SDL_GPUColorTargetInfo color_target_info;
+
+    SDL_GPUTexture* depth_texture;
+    SDL_GPUDepthStencilTargetInfo depth_stencil_target_info{
+        .clear_depth = true,
         .load_op = SDL_GPU_LOADOP_CLEAR,
-        .store_op = SDL_GPU_STOREOP_STORE
+        .store_op = SDL_GPU_STOREOP_STORE,
     };
 
     SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size_t data_size)
@@ -100,7 +102,7 @@ namespace
         const std::uint32_t uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 1 : 0);
         const std::uint32_t samplers = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 0 : 1);
 
-        SDL_GPUShaderCreateInfo shaderInfo{
+        const SDL_GPUShaderCreateInfo shaderInfo{
             .code_size = codeSize,
             .code = static_cast<const Uint8*>(code),
             .entrypoint = entrypoint,
@@ -313,21 +315,40 @@ void SDL3GPURenderer::Init(void* const native_window)
 
     if (device == nullptr) SDL_Log("GPUCreateDevice failed");
 
-    if (!SDL_ClaimWindowForGPUDevice(device, window)) SDL_Log("GPUClaimWindow failed: %s", SDL_GetError());
+    if (!SDL_ClaimWindowForGPUDevice(device, window))
+    {
+        SDL_Log("GPUClaimWindow failed: %s", SDL_GetError());
+        return;
+    }
 
     SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX);
 
     shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
 
-    color_target_info.clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+    color_target_info.clear_color = {0.75f, 0.81f, 0.4f, 1.0f};
     color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
     color_target_info.store_op = SDL_GPU_STOREOP_STORE;
+
+    const SDL_GPUTextureCreateInfo depth_texture_info{
+        SDL_GPU_TEXTURETYPE_2D,
+        SDL_GPU_TEXTUREFORMAT_D24_UNORM,
+        SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        static_cast<std::uint32_t>(Window::GetWidth()),
+        static_cast<std::uint32_t>(Window::GetHeight()),
+        1,
+        1,
+        SDL_GPU_SAMPLECOUNT_1
+    };
+
+    depth_texture = SDL_CreateGPUTexture(device, &depth_texture_info);
+    if (depth_texture == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the depth texture");
 }
 
 void SDL3GPURenderer::Exit()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
 
+    SDL_ReleaseGPUTexture(device, depth_texture);
     SDL_ReleaseGPUGraphicsPipeline(device, shader.pipeline);
 
     SDL_ReleaseWindowFromGPUDevice(device, window);
@@ -346,7 +367,6 @@ void SDL3GPURenderer::Update()
         SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
         return;
     }
-
 
     if (color_target_info.texture == nullptr)
     {
@@ -378,12 +398,14 @@ void SDL3GPURenderer::Update()
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
-    const Vec3 cameraPos{0.0f, size_test[1], size_test[0]};
+    const Vec3 cameraPos{position};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
-    const Mat4 projection = Perspective(ToRadians(45.0f), width / height, 0.1f, 100.0f);
+    const Mat4 projection = PerspectiveZO(ToRadians(fov), width / height, 0.1f, 100.0f);
     const Mat4 mvp = model * view * projection;
 
-    SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, nullptr);
+    depth_stencil_target_info.texture = depth_texture;
+    SDL_GPURenderPass* render_pass =
+        SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, &depth_stencil_target_info);
     SDL_BindGPUGraphicsPipeline(render_pass, shader.pipeline);
 
     SDL_PushGPUVertexUniformData(command_buffer, 0, mvp.data(), sizeof(Mat4));
@@ -447,26 +469,37 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
     SDL_GPUShader* fragment_shader = LoadShader(device, fragment_path);
     if (fragment_shader == nullptr) SDL_Log("Failed to create fragment shader!");
 
+    constexpr SDL_GPUColorTargetBlendState blend_state{
+        .src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+        .dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        .color_blend_op = SDL_GPU_BLENDOP_ADD,
+        .src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+        .dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        .alpha_blend_op = SDL_GPU_BLENDOP_ADD,
+        .enable_blend = true
+    };
+
     // Create the pipelines
     const SDL_GPUColorTargetDescription color_target_description[] = {
-        {.format = SDL_GetGPUSwapchainTextureFormat(device, window)}
+        {.format = SDL_GetGPUSwapchainTextureFormat(device, window), .blend_state = blend_state}
     };
 
     const SDL_GPUGraphicsPipelineTargetInfo target_info{
         .color_target_descriptions = color_target_description,
         .num_color_targets = 1,
+        .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
+        .has_depth_stencil_target = true
     };
 
-    const SDL_GPUVertexBufferDescription vertex_buffer_descriptions[]{
+    constexpr SDL_GPUVertexBufferDescription vertex_buffer_descriptions[]{
         {.slot = 0, .pitch = sizeof(float) * 8, .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX}
     };
 
-    const SDL_GPUVertexAttribute vertex_attributes[]{
+    constexpr SDL_GPUVertexAttribute vertex_attributes[]{
         {.location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = 0                },
         {.location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = sizeof(float) * 3},
         {.location = 2, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .offset = sizeof(float) * 6}
     };
-
 
     const SDL_GPUVertexInputState vertex_input_state{
         .vertex_buffer_descriptions = vertex_buffer_descriptions,
@@ -475,14 +508,19 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
         .num_vertex_attributes = 3
     };
 
-    const SDL_GPUDepthStencilState depth_stencil_state{
-        .compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL, .enable_depth_test = true, .enable_depth_write = true
+    constexpr SDL_GPUDepthStencilState depth_stencil_state{
+        .compare_op = SDL_GPU_COMPAREOP_LESS,
+        .enable_depth_test = true,
+        .enable_depth_write = true,
     };
-    const SDL_GPURasterizerState rasterizer_state{
-        .cull_mode = SDL_GPU_CULLMODE_BACK, .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
+    constexpr SDL_GPURasterizerState rasterizer_state{
+        .fill_mode = SDL_GPU_FILLMODE_FILL,
+        .cull_mode = SDL_GPU_CULLMODE_BACK,
+        .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
+        .enable_depth_clip = true
     };
 
-    SDL_GPUGraphicsPipelineCreateInfo pipeline_create_info{
+    const SDL_GPUGraphicsPipelineCreateInfo pipeline_create_info{
         .vertex_shader = vertex_shader,
         .fragment_shader = fragment_shader,
         .vertex_input_state = vertex_input_state,
@@ -491,7 +529,6 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
         .depth_stencil_state = depth_stencil_state,
         .target_info = target_info
     };
-    pipeline_create_info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
 
     Shader shader{.pipeline = SDL_CreateGPUGraphicsPipeline(device, &pipeline_create_info)};
     if (shader.pipeline == nullptr) SDL_Log("Failed to create fill pipeline!");

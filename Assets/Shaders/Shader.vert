@@ -69,16 +69,22 @@ void main()
 #line 14
     _MatrixStorage_float4x4std140_0 _S3 = { mvp_0.data_0 };
 
-#line 14
-    gl_Position = (((unpackStorage_0(_S3)) * (vec4(position_0, 1.0))));
+    vec4 _S4 = (((unpackStorage_0(_S3)) * (vec4(position_0, 1.0))));
 
-#line 14
+#line 16
+    vec4 _S5 = _S4;
+    _S5.y = - _S4.y;
+
+#line 16
+    gl_Position = _S5;
+
+#line 16
     data_color_0 = _S2.color_1;
 
-#line 14
+#line 16
     data_texCoord_0 = _S2.texCoord_1;
 
-#line 14
+#line 16
     return;
 }
 

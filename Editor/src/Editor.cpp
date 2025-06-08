@@ -28,7 +28,6 @@ int main(int, char*[])
     Renderer::SetupBackend("SDL3GPU");
     //Renderer::SetupBackend("OpenGL");
 
-
     Window::Init(&ImGui::PlatformProcessEvent);
     Renderer::Instance().Init(Window::GetHandle());
     Editor::Init();
@@ -78,7 +77,6 @@ void Editor::Update()
     ImGui::ShowStyleEditor();
     ImGui::ShowDemoWindow();
 
-
     static bool open_window = true;
     if (ImGui::Begin(
             "Hello window", &open_window, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
@@ -102,7 +100,8 @@ void Editor::Update()
     };
     if (ImGui::Begin("Item window", nullptr, ImGuiWindowFlags_NoCollapse))
     {
-        ImGui::DragFloat2("test", Renderer::size_test, 0.1f);
+        ImGui::DragFloat3("test", Renderer::position, 0.1f);
+        ImGui::DragFloat("test", &Renderer::fov, 0.1f);
 
         constexpr ImGuiMultiSelectFlags flags =
             ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_ClearOnClickVoid |

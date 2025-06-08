@@ -30,8 +30,8 @@ add_custom_command(TARGET Core POST_BUILD
 )
 
 add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -target glsl -o "${SHADERS}/Shader.vert" -entry "VertexMain"
+        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.vert" -entry "VertexMain"
 )
 add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -target glsl -o "${SHADERS}/Shader.frag" -entry "FragmentMain"
+        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.frag" -entry "FragmentMain"
 )

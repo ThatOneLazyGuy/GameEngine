@@ -44,29 +44,55 @@ inline Mat4 Scale(const Vec3& scale)
 }
 
 // Based on glm::perspective_RH_NO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
-template <typename T> Mat4 Perspective(T fovy, T aspect, T zNear, T zFar)
+template <typename T> Mat4 PerspectiveNO(T fovy, T aspect, T zNear, T zFar)
 {
     T const tan_half_fovy = tan(fovy / static_cast<T>(2));
 
     Mat4 result{};
     result(0, 0) = static_cast<T>(1) / (aspect * tan_half_fovy);
-    result(1, 1) = static_cast<T>(1) / (tan_half_fovy);
+    result(1, 1) = static_cast<T>(1) / tan_half_fovy;
     result(2, 2) = -(zFar + zNear) / (zFar - zNear);
     result(2, 3) = -static_cast<T>(1);
     result(3, 2) = -(static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
     return result;
 }
 
+// Based on glm::perspective_RH_ZO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
+template <typename T> Mat4 PerspectiveZO(T fovy, T aspect, T zNear, T zFar)
+{
+    T const tan_half_fovy = tan(fovy / static_cast<T>(2));
+
+    Mat4 result{};
+    result(0, 0) = static_cast<T>(1) / (aspect * tan_half_fovy);
+    result(1, 1) = static_cast<T>(1) / tan_half_fovy;
+    result(2, 2) = zFar / (zNear - zFar);
+    result(2, 3) = -static_cast<T>(1);
+    result(3, 2) = -(zFar * zNear) / (zFar - zNear);
+    return result;
+}
+
 // Based on glm::lookAtRH: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_transform.inl
 inline Mat4 LookAt(const Vec3& eye, const Vec3& forward, const Vec3& up)
 {
-    const Vec3 s(Cross(forward, up).normalized());
-    const Vec3 u(Cross(s, forward));
+    const Vec3 s = Cross(forward, up).normalized();
+    const Vec3 u = Cross(s, forward);
 
-    Mat4 result = Mat4::Identity();
+    Mat4 result = Identity<Mat4>();
     result.col(0) = Vec4{s.x(), s.y(), s.z(), -Dot(s, eye)};
     result.col(1) = Vec4{u.x(), u.y(), u.z(), -Dot(u, eye)};
     result.col(2) = Vec4{-forward.x(), -forward.y(), -forward.z(), Dot(forward, eye)};
+    return result;
+}
+
+inline Mat4 LookAtLH(const Vec3& eye, const Vec3& forward, const Vec3& up)
+{
+    const Vec3 s = Cross(up, forward).normalized();
+    const Vec3 u = Cross(forward, s);
+
+    Mat4 result = Identity<Mat4>();
+    result.col(0) = Vec4{s.x(), s.y(), s.z(), -Dot(s, eye)};
+    result.col(1) = Vec4{u.x(), u.y(), u.z(), -Dot(u, eye)};
+    result.col(2) = Vec4{forward.x(), forward.y(), forward.z(), -Dot(forward, eye)};
     return result;
 }
 

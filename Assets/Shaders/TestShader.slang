@@ -16,7 +16,8 @@ float4 VertexMain(float3 position, float3 color, float2 texCoord, out SharedVert
     return mul(float4(position, 1.0), mvp);
 }
 
-#if 1
+// use vulkan binding
+#if 0
 [[vk::binding(0, 2)]]
 Sampler2D<float4> texture_diffuse0;
 [[vk::binding(1, 2)]]
@@ -27,7 +28,7 @@ Sampler2D<float4> texture_diffuse2;
 Sampler2D<float4> texture_specular0;
 [[vk::binding(4, 2)]]
 Sampler2D<float4> texture_specular1;
-#else
+#else // else OpenGL binding
 [gl_binding(0)]
 Sampler2D<float4> texture_diffuse0;
 [gl_binding(1)]
@@ -43,8 +44,5 @@ Sampler2D<float4> texture_specular1;
 [shader("fragment")]
 float4 FragmentMain(float4 position: SV_Position, in SharedVertexData data) : SV_Target
 {
-    //return lerp(texture_diffuse0.Sample(data.texCoord), lerp(texture_diffuse1.Sample(data.texCoord), lerp(texture_diffuse2.Sample(data.texCoord), lerp(texture_specular0.Sample(data.texCoord), texture_specular1.Sample(data.texCoord), 0.0), 0.0), 0.0), 0.0);
-    //return float4(data.color, 1.0);
-    //return texture_diffuse0.Sample(data.texCoord);
-    return float4(data.texCoord, 0.0, 1.0);
+    return texture_diffuse0.Sample(data.texCoord);
 }

@@ -64,7 +64,7 @@ struct Mesh
 union Shader
 {
     SDL_GPUGraphicsPipeline* pipeline = nullptr;
-    std::uint32_t id;
+    std::uint32_t program;
 };
 
 class Renderer
@@ -73,7 +73,8 @@ class Renderer
     Renderer(Renderer& other) = delete;
     void operator=(const Renderer&) = delete;
 
-    static inline float size_test[2]{0.0f, 0.0f};
+    static inline float position[3]{0.0f, 0.0f, 0.0f};
+    static inline float fov{90.0f};
 
     static void SetupBackend(const std::string& backend_name);
     static Renderer& Instance() { return *renderer; }
