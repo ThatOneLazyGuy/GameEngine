@@ -1,6 +1,5 @@
 #include "Model.hpp"
 
-#include <map>
 #include <vector>
 
 #include <SDL3/SDL_log.h>
@@ -9,14 +8,14 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-#include "Tools/Resource.hpp"
+#include "Resource.hpp"
 
 namespace
 {
-    std::vector<std::shared_ptr<Texture>> loadMaterialTextures(const aiMaterial& material, const aiTextureType type)
+    std::vector<Handle<Texture>> loadMaterialTextures(const aiMaterial& material, const aiTextureType type)
     {
-        std::vector<std::shared_ptr<Texture>> textures;
-        for (std::uint32_t i = 0; i < material.GetTextureCount(type); i++)
+        std::vector<Handle<Texture>> textures;
+        for (uint32 i = 0; i < material.GetTextureCount(type); i++)
         {
             aiString string;
             material.GetTexture(type, i, &string);
@@ -42,17 +41,17 @@ Model::Model(const std::string& path)
     }
 
 
-    for (size_t mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
+    for (size mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         const aiMesh& model_mesh = *scene->mMeshes[mesh_index];
         const aiVector3D* mesh_vertices = model_mesh.mVertices;
         const aiColor4D* mesh_colors = model_mesh.mColors[0];
         const aiVector3D* mesh_tex_coords = model_mesh.mTextureCoords[0];
 
-        const size_t vertex_count = model_mesh.mNumVertices;
+        const size vertex_count = model_mesh.mNumVertices;
         std::vector<Vertex> vertices(vertex_count);
 
-        for (size_t i = 0; i < vertex_count; i++)
+        for (size i = 0; i < vertex_count; i++)
         {
             auto& [position, color, tex_coord] = vertices[i];
 
@@ -63,15 +62,15 @@ Model::Model(const std::string& path)
 
         const aiFace* mesh_faces = model_mesh.mFaces;
 
-        const size_t face_count = static_cast<int>(model_mesh.mNumFaces);
-        std::vector<std::uint32_t> indices(face_count * 3);
+        const size face_count = static_cast<int>(model_mesh.mNumFaces);
+        std::vector<uint32> indices(face_count * 3);
 
-        for (size_t i = 0; i < face_count; i++)
+        for (size i = 0; i < face_count; i++)
         {
-            std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(std::uint32_t) * 3);
+            std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
         }
 
-        std::vector<std::shared_ptr<Texture>> textures;
+        std::vector<Handle<Texture>> textures;
 
         const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
         auto diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE);

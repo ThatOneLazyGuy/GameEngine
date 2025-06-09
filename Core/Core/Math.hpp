@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Tools/Types.hpp"
+
 inline float ToRadians(const float degrees) { return degrees * std::numbers::pi_v<float> / 180.0f; }
 
 #include <Eigen/Core>

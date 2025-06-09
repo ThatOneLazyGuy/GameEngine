@@ -32,7 +32,7 @@ namespace
     };
 
 
-    SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size_t data_size)
+    SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size data_size)
     {
         SDL_GPUTransferBufferCreateInfo transfer_buffer_info{.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD};
 
@@ -98,7 +98,7 @@ namespace
             return nullptr;
         }
 
-        size_t codeSize;
+        size codeSize;
         void* code = SDL_LoadFile(fullPath.c_str(), &codeSize);
         if (code == nullptr)
         {
@@ -106,8 +106,8 @@ namespace
             return nullptr;
         }
 
-        const std::uint32_t uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 3 : 0);
-        const std::uint32_t samplers = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 0 : 1);
+        const uint32 uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 3 : 0);
+        const uint32 samplers = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 0 : 1);
 
 
         const SDL_GPUShaderCreateInfo shaderInfo{
@@ -199,7 +199,7 @@ void SDL3GPURenderer::Update()
 
     auto model = Identity<Mat4>();
 
-    const size_t time = SDL_GetTicks();
+    const size time = SDL_GetTicks();
     model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
     model *= Translation(Vec3{0.5f, -0.5f, -2.5f});
 
@@ -227,21 +227,19 @@ void SDL3GPURenderer::Update()
         const SDL_GPUBufferBinding index_binding{.buffer = mesh->indices_buffer};
         SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
-        // std::uint32_t diffuse_count = 0;
-        // std::uint32_t specular_count = 0;
+        uint32 diffuse_count = 0;
+        uint32 specular_count = 0;
         for (const auto& texture : mesh->textures)
         {
-            std::uint32_t sampler_slot = 0;
+            uint32 sampler_slot = 0;
             switch (texture->type)
             {
             case Texture::Type::DIFFUSE:
-                //sampler_slot = diffuse_count++;
-                sampler_slot = 0;
+                sampler_slot = diffuse_count++;
                 break;
 
             case Texture::Type::SPECULAR:
-                //sampler_slot = 3 + specular_count++;
-                sampler_slot = 3;
+                sampler_slot = 3 + specular_count++;
                 break;
             }
 
@@ -269,14 +267,14 @@ void SDL3GPURenderer::SwapBuffer() { color_target_info.texture = nullptr; }
 void* SDL3GPURenderer::GetContext() { return device; }
 
 Mesh SDL3GPURenderer::CreateMesh(
-    const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
-    const std::vector<std::shared_ptr<Texture>>& textures
+    const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
+    const std::vector<Handle<Texture>>& textures
 )
 {
     Mesh mesh{.vertices = vertices, .indices = indices, .textures = textures};
 
-    const auto vertices_size = static_cast<std::uint32_t>(vertices.size() * sizeof(Vertex));
-    const auto indices_size = static_cast<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
+    const auto vertices_size = static_cast<uint32>(vertices.size() * sizeof(Vertex));
+    const auto indices_size = static_cast<uint32>(indices.size() * sizeof(uint32));
 
     SDL_GPUBufferCreateInfo buffer_info{};
 
@@ -313,8 +311,8 @@ void SDL3GPURenderer::DeleteMesh(Mesh& mesh)
 
 void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
 {
-    const auto vertices_size = static_cast<std::uint32_t>(mesh.vertices.size() * sizeof(Vertex));
-    const auto indices_size = static_cast<std::uint32_t>(mesh.indices.size() * sizeof(std::uint32_t));
+    const auto vertices_size = static_cast<uint32>(mesh.vertices.size() * sizeof(Vertex));
+    const auto indices_size = static_cast<uint32>(mesh.indices.size() * sizeof(uint32));
     auto* device = static_cast<SDL_GPUDevice*>(GetContext());
 
     SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
@@ -349,10 +347,10 @@ Texture SDL3GPURenderer::CreateTexture(const std::string& texture_path, Texture:
     std::int32_t width, height, component_count;
     void* data = stbi_load(("Assets/Backpack/" + texture_path).c_str(), &width, &height, &component_count, 4);
 
-    const std::uint32_t pixel_count = width * height;
+    const uint32 pixel_count = width * height;
     if (data != nullptr)
     {
-        const auto* pixel_data = static_cast<const std::uint32_t*>(data);
+        const auto* pixel_data = static_cast<const uint32*>(data);
         const std::vector colors(pixel_data, pixel_data + pixel_count);
         stbi_image_free(data);
 
@@ -363,8 +361,7 @@ Texture SDL3GPURenderer::CreateTexture(const std::string& texture_path, Texture:
     return Texture{};
 }
 Texture SDL3GPURenderer::CreateTexture(
-    const std::uint32_t width, const std::uint32_t height, const std::vector<std::uint32_t>& colors,
-    const Texture::Type type
+    const uint32 width, const uint32 height, const std::vector<uint32>& colors, const Texture::Type type
 )
 {
     Texture texture;
@@ -413,7 +410,7 @@ void SDL3GPURenderer::ReloadTexture(Texture& texture)
     SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
 
     SDL_GPUTransferBuffer* texture_transfer_buffer =
-        CreateUploadTransferBuffer(texture.colors.data(), texture.colors.size() * sizeof(std::uint32_t));
+        CreateUploadTransferBuffer(texture.colors.data(), texture.colors.size() * sizeof(uint32));
 
     SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(command_buffer);
 
@@ -479,18 +476,18 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
         .has_depth_stencil_target = true
     };
 
-    constexpr SDL_GPUVertexBufferDescription vertex_buffer_descriptions[]{
-        {.slot = 0, .pitch = sizeof(float) * 8, .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX}
+    constexpr SDL_GPUVertexBufferDescription vertex_buffer_description{
+        .slot = 0, .pitch = sizeof(float) * 8, .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX
     };
 
-    constexpr SDL_GPUVertexAttribute vertex_attributes[]{
+    constexpr SDL_GPUVertexAttribute vertex_attributes[3]{
         {.location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = 0                },
         {.location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = sizeof(float) * 3},
         {.location = 2, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .offset = sizeof(float) * 6}
     };
 
     const SDL_GPUVertexInputState vertex_input_state{
-        .vertex_buffer_descriptions = vertex_buffer_descriptions,
+        .vertex_buffer_descriptions = &vertex_buffer_description,
         .num_vertex_buffers = 1,
         .vertex_attributes = vertex_attributes,
         .num_vertex_attributes = 3
@@ -537,8 +534,8 @@ void SDL3GPURenderer::ReloadDepthBuffer()
         SDL_GPU_TEXTURETYPE_2D,
         SDL_GPU_TEXTUREFORMAT_D24_UNORM,
         SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
-        static_cast<std::uint32_t>(Window::GetWidth()),
-        static_cast<std::uint32_t>(Window::GetHeight()),
+        static_cast<uint32>(Window::GetWidth()),
+        static_cast<uint32>(Window::GetHeight()),
         1,
         1,
         SDL_GPU_SAMPLECOUNT_1

@@ -13,7 +13,7 @@ namespace ImGui
 {
     namespace
     {
-        std::uint32_t frame_buffer, render_buffer, texture_id;
+        uint32 frame_buffer, render_buffer, texture_id;
     }
 
     PlatformOpenGL::PlatformOpenGL()

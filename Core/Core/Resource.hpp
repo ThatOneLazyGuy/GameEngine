@@ -3,40 +3,43 @@
 #include <memory>
 #include <unordered_map>
 
-#include "TypeNames.hpp"
+#include "../Tools/TypeNames.hpp"
+
+template <typename Type>
+using Handle = std::shared_ptr<Type>;
 
 struct Resource
 {
     virtual ~Resource() = default;
 
     [[nodiscard]] const std::string_view& GetTypeName() const { return type_name; }
-    [[nodiscard]] std::uint64_t GetID() const { return id; }
+    [[nodiscard]] uint64 GetID() const { return id; }
 
     template <typename ResourceType, typename... Args>
-    static std::shared_ptr<ResourceType> Load(Args... args);
+    static Handle<ResourceType> Load(Args... args);
 
     template <typename ResourceType>
-    [[nodiscard]] static std::shared_ptr<ResourceType> Find(std::uint64_t id);
+    [[nodiscard]] static Handle<ResourceType> Find(uint64 id);
 
     template <typename ResourceType, typename... Args>
-    [[nodiscard]] static std::shared_ptr<ResourceType> Find(Args... args);
+    [[nodiscard]] static Handle<ResourceType> Find(Args... args);
 
     template <typename ResourceType>
-    [[nodiscard]] static std::vector<std::shared_ptr<ResourceType>> GetResources();
+    [[nodiscard]] static std::vector<Handle<ResourceType>> GetResources();
 
   private:
     friend struct FileResource;
 
-    inline static std::unordered_map<std::uint64_t, std::shared_ptr<Resource>> resources;
+    inline static std::unordered_map<uint64, Handle<Resource>> resources;
 
     std::string_view type_name{};
-    std::uint64_t id{};
+    uint64 id{};
 };
 
 template <typename ResourceType, typename... Args>
-std::shared_ptr<ResourceType> Resource::Load(Args... args)
+Handle<ResourceType> Resource::Load(Args... args)
 {
-    const std::uint64_t id = ResourceType::GetID(std::forward<Args>(args)...);
+    const uint64 id = ResourceType::GetID(std::forward<Args>(args)...);
 
     const auto existing_resource = Resource::Find<ResourceType>(id);
     if (existing_resource) return existing_resource;
@@ -50,7 +53,7 @@ std::shared_ptr<ResourceType> Resource::Load(Args... args)
 }
 
 template <typename ResourceType>
-std::shared_ptr<ResourceType> Resource::Find(const std::uint64_t id)
+Handle<ResourceType> Resource::Find(const uint64 id)
 {
     const auto iterator = resources.find(id);
     if (iterator != resources.end()) return std::dynamic_pointer_cast<ResourceType>(iterator->second);
@@ -59,16 +62,16 @@ std::shared_ptr<ResourceType> Resource::Find(const std::uint64_t id)
 }
 
 template <typename ResourceType, typename... Args>
-std::shared_ptr<ResourceType> Resource::Find(Args... args)
+Handle<ResourceType> Resource::Find(Args... args)
 {
-    const std::uint64_t id = ResourceType::GetID(std::forward<Args>(args)...);
+    const uint64 id = ResourceType::GetID(std::forward<Args>(args)...);
     return Find<ResourceType>(id);
 }
 
 template <typename ResourceType = Resource>
-std::vector<std::shared_ptr<ResourceType>> Resource::GetResources()
+std::vector<Handle<ResourceType>> Resource::GetResources()
 {
-    std::vector<std::shared_ptr<ResourceType>> return_resources;
+    std::vector<Handle<ResourceType>> return_resources;
     for (const auto& [id, resource] : resources)
     {
         const auto valid_resource = std::dynamic_pointer_cast<ResourceType>(resource);
@@ -83,19 +86,19 @@ struct FileResource : Resource
     [[nodiscard]] const std::string& GetPath() const { return path; }
 
     template <typename ResourceType, typename... Args>
-    static std::shared_ptr<ResourceType> Load(const std::string& path, Args... args);
+    static Handle<ResourceType> Load(const std::string& path, Args... args);
     template <typename ResourceType>
-    static std::shared_ptr<ResourceType> Find(const std::string& path);
+    static Handle<ResourceType> Find(const std::string& path);
 
   private:
     std::string path{};
 };
 
 template <typename ResourceType, typename... Args>
-std::shared_ptr<ResourceType> FileResource::Load(const std::string& path, Args... args)
+Handle<ResourceType> FileResource::Load(const std::string& path, Args... args)
 {
     constexpr std::hash<std::string> hasher;
-    const std::uint64_t id = hasher(path);
+    const uint64 id = hasher(path);
 
     const auto existing_resource = Resource::Find<ResourceType>(id);
     if (existing_resource) return existing_resource;
@@ -111,10 +114,10 @@ std::shared_ptr<ResourceType> FileResource::Load(const std::string& path, Args..
 }
 
 template <typename ResourceType>
-std::shared_ptr<ResourceType> FileResource::Find(const std::string& path)
+Handle<ResourceType> FileResource::Find(const std::string& path)
 {
     constexpr std::hash<std::string> hasher;
-    const std::uint64_t id = hasher(path);
+    const uint64 id = hasher(path);
 
     return Resource::Find<ResourceType>(id);
 }

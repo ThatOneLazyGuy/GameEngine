@@ -26,7 +26,7 @@ namespace
 
     std::map<int, unsigned int> uniformBuffers;
 
-    void CheckCompileErrors(const std::uint32_t id, const std::string& type)
+    void CheckCompileErrors(const uint32 id, const std::string& type)
     {
         int success;
         char infoLog[1024];
@@ -167,8 +167,8 @@ void OpenGLRenderer::Update()
 
     for (const auto& mesh : loaded_model.meshes)
     {
-        std::uint32_t diffuse_count = 0;
-        std::uint32_t specular_count = 0;
+        uint32 diffuse_count = 0;
+        uint32 specular_count = 0;
         for (const auto& texture : mesh->textures)
         {
             switch (texture->type)
@@ -186,7 +186,7 @@ void OpenGLRenderer::Update()
         }
 
         glBindVertexArray(mesh->bind);
-        glDrawElements(GL_TRIANGLES, static_cast<std::int32_t>(mesh->indices.size()), GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh->indices.size()), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
     }
 }
@@ -200,8 +200,8 @@ void OpenGLRenderer::SwapBuffer()
 void* OpenGLRenderer::GetContext() { return &context; }
 
 Mesh OpenGLRenderer::CreateMesh(
-    const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
-    const std::vector<std::shared_ptr<Texture>>& textures
+    const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
+    const std::vector<Handle<Texture>>& textures
 )
 {
     Mesh mesh{.vertices = vertices, .indices = indices, .textures = textures};
@@ -231,7 +231,7 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
     glBufferData(
-        GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(std::uint32_t), mesh.indices.data(), GL_STATIC_DRAW
+        GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(uint32), mesh.indices.data(), GL_STATIC_DRAW
     );
 
     const void* offset = nullptr;
@@ -258,13 +258,13 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
 
 Texture OpenGLRenderer::CreateTexture(const std::string& texture_path, const Texture::Type type)
 {
-    std::int32_t width, height, component_count;
+    sint32 width, height, component_count;
     void* data = stbi_load(("Assets/Backpack/" + texture_path).c_str(), &width, &height, &component_count, 4);
 
-    const std::uint32_t pixel_count = width * height;
+    const uint32 pixel_count = width * height;
     if (data != nullptr)
     {
-        const auto* pixel_data = static_cast<const std::uint32_t*>(data);
+        const auto* pixel_data = static_cast<const uint32*>(data);
         const std::vector colors(pixel_data, pixel_data + pixel_count);
         stbi_image_free(data);
 
@@ -276,7 +276,7 @@ Texture OpenGLRenderer::CreateTexture(const std::string& texture_path, const Tex
 }
 
 Texture OpenGLRenderer::CreateTexture(
-    const std::uint32_t width, const std::uint32_t height, const std::vector<std::uint32_t>& colors,
+    const uint32 width, const uint32 height, const std::vector<uint32>& colors,
     const Texture::Type type
 )
 {
@@ -346,7 +346,7 @@ Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::s
     const char* fShaderCode = fragmentCode.c_str();
 
     // 2. compile shaders
-    std::uint32_t vertex, fragment;
+    uint32 vertex, fragment;
 
     // vertex shader
     vertex = glCreateShader(GL_VERTEX_SHADER);
@@ -361,7 +361,7 @@ Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::s
     CheckCompileErrors(fragment, "FRAGMENT");
 
     // shader Program
-    std::uint32_t opengl_id;
+    uint32 opengl_id;
     opengl_id = glCreateProgram();
 
     glAttachShader(opengl_id, vertex);

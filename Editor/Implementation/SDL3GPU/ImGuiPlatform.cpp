@@ -121,8 +121,8 @@ namespace ImGui
             SDL_GPU_TEXTURETYPE_2D,
             SDL_GetGPUSwapchainTextureFormat(device, window),
             SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
-            static_cast<std::uint32_t>(width),
-            static_cast<std::uint32_t>(height),
+            static_cast<uint32>(width),
+            static_cast<uint32>(height),
             1,
             1,
             SDL_GPU_SAMPLECOUNT_1

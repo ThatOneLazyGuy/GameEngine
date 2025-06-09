@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "Math.hpp"
-#include "Tools/Resource.hpp"
+#include "Resource.hpp"
 
 struct SDL_GPUBuffer;
 struct SDL_GPUGraphicsPipeline;
@@ -33,14 +33,14 @@ struct Texture final : FileResource
 
     Type type{Type::DIFFUSE};
 
-    std::uint32_t width{0};
-    std::uint32_t height{0};
-    std::vector<std::uint32_t> colors{};
+    uint32 width{0};
+    uint32 height{0};
+    std::vector<uint32> colors{};
 
     union
     {
         SDL_GPUTexture* texture = nullptr;
-        std::uint32_t id;
+        uint32 id;
     };
 
     SDL_GPUSampler* sampler = nullptr;
@@ -49,28 +49,28 @@ struct Texture final : FileResource
 struct Mesh
 {
     std::vector<Vertex> vertices;
-    std::vector<std::uint32_t> indices;
+    std::vector<uint32> indices;
 
-    std::uint32_t bind{};
+    uint32 bind{};
 
     union
     {
         SDL_GPUBuffer* vertices_buffer = nullptr;
-        std::uint32_t VBO;
+        uint32 VBO;
     };
     union
     {
         SDL_GPUBuffer* indices_buffer = nullptr;
-        std::uint32_t EBO;
+        uint32 EBO;
     };
 
-    std::vector<std::shared_ptr<Texture>> textures;
+    std::vector<Handle<Texture>> textures;
 };
 
 union Shader
 {
     SDL_GPUGraphicsPipeline* pipeline = nullptr;
-    std::uint32_t program;
+    uint32 program;
 };
 
 class Renderer
@@ -96,15 +96,15 @@ class Renderer
     virtual void* GetContext() = 0;
 
     virtual Mesh CreateMesh(
-        const std::vector<Vertex>& vertices, const std::vector<std::uint32_t>& indices,
-        const std::vector<std::shared_ptr<Texture>>& textures
+        const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
+        const std::vector<Handle<Texture>>& textures
     ) = 0;
     virtual void ReloadMesh(Mesh& mesh) = 0;
     virtual void DeleteMesh(Mesh& mesh) = 0;
 
     virtual Texture CreateTexture(const std::string& texture_path, Texture::Type type) = 0;
     virtual Texture CreateTexture(
-        std::uint32_t width, std::uint32_t height, const std::vector<std::uint32_t>& colors, Texture::Type type
+        uint32 width, uint32 height, const std::vector<uint32>& colors, Texture::Type type
     ) = 0;
     virtual void ReloadTexture(Texture& texture) = 0;
     virtual void DeleteTexture(Texture& texture) = 0;
