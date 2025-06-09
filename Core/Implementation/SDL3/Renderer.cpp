@@ -248,7 +248,7 @@ void SDL3GPURenderer::Update()
                 .sampler = texture->sampler,
             };
 
-            SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
+            SDL_BindGPUFragmentSamplers(render_pass, 0, &binding, 1);
         }
 
         SDL_DrawGPUIndexedPrimitives(render_pass, mesh->indices.size(), 1, 0, 0, 0);
@@ -372,7 +372,11 @@ Texture SDL3GPURenderer::CreateTexture(
     const Texture::Type type
 )
 {
-    Texture texture{.type = type, .width = width, .height = height, .colors = colors};
+    Texture texture;
+    texture.type = type;
+    texture.width = width;
+    texture.height = height;
+    texture.colors = colors;
 
     constexpr SDL_GPUSamplerCreateInfo sampler_info{
         SDL_GPU_FILTER_NEAREST,

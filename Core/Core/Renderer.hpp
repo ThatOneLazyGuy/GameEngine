@@ -1,11 +1,11 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "Math.hpp"
-
-#include <memory>
+#include "Tools/Resource.hpp"
 
 struct SDL_GPUBuffer;
 struct SDL_GPUGraphicsPipeline;
@@ -19,13 +19,19 @@ struct Vertex
     Vec2 tex_coord{};
 };
 
-struct Texture
+struct Texture final : FileResource
 {
     enum class Type
     {
         DIFFUSE,
         SPECULAR
-    } type{Type::DIFFUSE};
+    };
+
+    Texture() = default;
+    explicit Texture(const std::string& path, Type type);
+    void Delete();
+
+    Type type{Type::DIFFUSE};
 
     std::uint32_t width{0};
     std::uint32_t height{0};

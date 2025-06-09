@@ -9,10 +9,10 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include "Tools/Resource.hpp"
+
 namespace
 {
-    std::map<std::string, std::shared_ptr<Texture>> test;
-
     std::vector<std::shared_ptr<Texture>> loadMaterialTextures(const aiMaterial& material, const aiTextureType type)
     {
         std::vector<std::shared_ptr<Texture>> textures;
@@ -21,20 +21,10 @@ namespace
             aiString string;
             material.GetTexture(type, i, &string);
 
-            auto iterator = test.find(string.C_Str());
-            if (iterator != test.end())
-            {
-                textures.push_back(iterator->second);
-                continue;
-            }
-
-
-            Texture texture = Renderer::Instance().CreateTexture(
+            auto texture_resource = FileResource::Load<Texture>(
                 string.C_Str(), (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR)
             );
-            auto texture_handle = std::make_shared<Texture>(texture);
-            textures.push_back(texture_handle);
-            test[string.C_Str()] = texture_handle;
+            textures.push_back(texture_resource);
         }
         return textures;
     }

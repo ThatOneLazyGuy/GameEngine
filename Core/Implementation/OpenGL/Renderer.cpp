@@ -279,7 +279,11 @@ Texture OpenGLRenderer::CreateTexture(
     const Texture::Type type
 )
 {
-    Texture texture{.type = type, .width = width, .height = height, .colors = colors};
+    Texture texture;
+    texture.type = type;
+    texture.width = width;
+    texture.height = height;
+    texture.colors = colors;
 
     glGenTextures(1, &texture.id);
     ReloadTexture(texture);
