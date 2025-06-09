@@ -35,7 +35,7 @@ struct Texture final : FileResource
 
     std::uint32_t width{0};
     std::uint32_t height{0};
-    std::vector<std::uint32_t> colors;
+    std::vector<std::uint32_t> colors{};
 
     union
     {

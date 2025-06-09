@@ -52,7 +52,8 @@ namespace
         }
     }
 
-    template <typename Type> void CreateUniformBuffer(const Shader shader, const int binding)
+    template <typename Type>
+    void CreateUniformBuffer(const Shader shader, const int binding)
     {
         unsigned int& UBO = uniformBuffers[binding];
 
@@ -66,7 +67,8 @@ namespace
     }
 
     // utility uniform functions
-    template <typename Type> void SetUniform(const int binding, const Type& value)
+    template <typename Type>
+    void SetUniform(const int binding, const Type& value)
     {
         const auto iterator = uniformBuffers.find(binding);
         if (iterator == uniformBuffers.end())
@@ -82,7 +84,8 @@ namespace
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
-    template <typename> void SetUniform(const int binding, const Mat4& value)
+    template <typename>
+    void SetUniform(const int binding, const Mat4& value)
     {
         const auto iterator = uniformBuffers.find(binding);
         if (iterator == uniformBuffers.end())
@@ -98,7 +101,8 @@ namespace
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
-    template <size_t TextureType = GL_TEXTURE_2D> void SetTexture(const unsigned int texture, const int binding)
+    template <size_t TextureType = GL_TEXTURE_2D>
+    void SetTexture(const unsigned int texture, const int binding)
     {
         glActiveTexture(GL_TEXTURE0 + binding);
         glBindTexture(TextureType, texture);
@@ -139,8 +143,6 @@ void OpenGLRenderer::Exit() {}
 void OpenGLRenderer::Update()
 {
     static Model loaded_model{"Assets/Backpack/backpack.obj"};
-    //static Model loaded_model{"Assets/cube_usemtl.obj"};
-    //static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
 
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -157,7 +159,6 @@ void OpenGLRenderer::Update()
     const Vec3 cameraPos{position};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
     const Mat4 projection = PerspectiveNO(ToRadians(fov), width / height, 0.1f, 100.0f);
-    //const Mat4 mvp = model * view * projection;
 
     glUseProgram(default_shader.program);
     SetUniform<Mat4>(0, model);

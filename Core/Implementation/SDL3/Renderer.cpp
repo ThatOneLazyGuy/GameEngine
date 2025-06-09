@@ -15,8 +15,14 @@ namespace
 {
     SDL_GPUDevice* device = nullptr;
     Shader shader;
+    std::vector<SDL_GPUTexture*> global_textures;
 
-    SDL_GPUColorTargetInfo color_target_info;
+    SDL_GPUColorTargetInfo color_target_info{
+        .layer_or_depth_plane = 0,
+        .clear_color = {0.75f, 0.81f, 0.4f, 1.0f},
+        .load_op = SDL_GPU_LOADOP_CLEAR,
+        .store_op = SDL_GPU_STOREOP_STORE
+    };
 
     SDL_GPUTexture* depth_texture;
     SDL_GPUDepthStencilTargetInfo depth_stencil_target_info{
@@ -103,6 +109,7 @@ namespace
         const std::uint32_t uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 3 : 0);
         const std::uint32_t samplers = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 0 : 1);
 
+
         const SDL_GPUShaderCreateInfo shaderInfo{
             .code_size = codeSize,
             .code = static_cast<const Uint8*>(code),
@@ -126,9 +133,9 @@ namespace
     }
 } // namespace
 
-void SDL3GPURenderer::Init(void* const native_window)
+void SDL3GPURenderer::Init(void* window_handle)
 {
-    auto* window = static_cast<SDL_Window*>(native_window);
+    auto* window = static_cast<SDL_Window*>(window_handle);
 
     device = SDL_CreateGPUDevice(
         SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, nullptr
@@ -145,10 +152,6 @@ void SDL3GPURenderer::Init(void* const native_window)
     SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX);
 
     shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
-
-    color_target_info.clear_color = {0.75f, 0.81f, 0.4f, 1.0f};
-    color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-    color_target_info.store_op = SDL_GPU_STOREOP_STORE;
 }
 
 void SDL3GPURenderer::Exit()
@@ -165,8 +168,6 @@ void SDL3GPURenderer::Exit()
 void SDL3GPURenderer::Update()
 {
     static Model loaded_model{"Assets/Backpack/backpack.obj"};
-    //static Model loaded_model{"Assets/cube_usemtl.obj"};
-    //static Model loaded_model{"Assets/cube_with_vertexcolors.obj"};
 
     SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
     if (command_buffer == nullptr)
@@ -208,7 +209,6 @@ void SDL3GPURenderer::Update()
     const Vec3 cameraPos{position};
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
     const Mat4 projection = PerspectiveZO(ToRadians(fov), width / height, 0.1f, 100.0f);
-    //const Mat4 mvp = model * view * projection;
 
     depth_stencil_target_info.texture = depth_texture;
     SDL_GPURenderPass* render_pass =
@@ -227,19 +227,21 @@ void SDL3GPURenderer::Update()
         const SDL_GPUBufferBinding index_binding{.buffer = mesh->indices_buffer};
         SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
-        std::uint32_t diffuse_count = 0;
-        std::uint32_t specular_count = 0;
+        // std::uint32_t diffuse_count = 0;
+        // std::uint32_t specular_count = 0;
         for (const auto& texture : mesh->textures)
         {
             std::uint32_t sampler_slot = 0;
             switch (texture->type)
             {
             case Texture::Type::DIFFUSE:
-                sampler_slot = diffuse_count++;
+                //sampler_slot = diffuse_count++;
+                sampler_slot = 0;
                 break;
 
             case Texture::Type::SPECULAR:
-                sampler_slot = 3 + specular_count++;
+                //sampler_slot = 3 + specular_count++;
+                sampler_slot = 3;
                 break;
             }
 
@@ -248,7 +250,7 @@ void SDL3GPURenderer::Update()
                 .sampler = texture->sampler,
             };
 
-            SDL_BindGPUFragmentSamplers(render_pass, 0, &binding, 1);
+            SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
         }
 
         SDL_DrawGPUIndexedPrimitives(render_pass, mesh->indices.size(), 1, 0, 0, 0);
@@ -275,7 +277,6 @@ Mesh SDL3GPURenderer::CreateMesh(
 
     const auto vertices_size = static_cast<std::uint32_t>(vertices.size() * sizeof(Vertex));
     const auto indices_size = static_cast<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
-    auto* device = static_cast<SDL_GPUDevice*>(Renderer::Instance().GetContext());
 
     SDL_GPUBufferCreateInfo buffer_info{};
 
@@ -287,7 +288,6 @@ Mesh SDL3GPURenderer::CreateMesh(
         SDL_Log("Failed to create vertex buffer");
         return std::move(mesh);
     }
-
 
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_INDEX;
     buffer_info.size = indices_size;
@@ -342,11 +342,6 @@ void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
 
     SDL_ReleaseGPUTransferBuffer(device, vertex_transfer_buffer);
     SDL_ReleaseGPUTransferBuffer(device, index_transfer_buffer);
-
-    // for (const auto& texture : mesh.textures)
-    // {
-    //     ReloadTexture(*texture);
-    // }
 }
 
 Texture SDL3GPURenderer::CreateTexture(const std::string& texture_path, Texture::Type type)
@@ -414,6 +409,7 @@ void SDL3GPURenderer::ReloadTexture(Texture& texture)
         return;
     }
 
+    global_textures.push_back(texture.texture);
     SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
 
     SDL_GPUTransferBuffer* texture_transfer_buffer =
@@ -429,7 +425,7 @@ void SDL3GPURenderer::ReloadTexture(Texture& texture)
     };
 
 
-    SDL_GPUTextureRegion texture_destination{
+    const SDL_GPUTextureRegion texture_destination{
         .texture = texture.texture,
         .w = texture.width,
         .h = texture.height,
@@ -472,12 +468,12 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
     };
 
     // Create the pipelines
-    const SDL_GPUColorTargetDescription color_target_description[] = {
-        {.format = SDL_GetGPUSwapchainTextureFormat(device, window), .blend_state = blend_state}
+    const SDL_GPUColorTargetDescription color_target_description{
+        .format = SDL_GetGPUSwapchainTextureFormat(device, window), .blend_state = blend_state
     };
 
     const SDL_GPUGraphicsPipelineTargetInfo target_info{
-        .color_target_descriptions = color_target_description,
+        .color_target_descriptions = &color_target_description,
         .num_color_targets = 1,
         .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
         .has_depth_stencil_target = true

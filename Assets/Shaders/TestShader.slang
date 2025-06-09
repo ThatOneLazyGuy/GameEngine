@@ -50,4 +50,5 @@ Sampler2D<float4> texture_specular1;
 float4 FragmentMain(float4 position: SV_Position, in Vertex data) : SV_Target
 {
     return texture_diffuse0.Sample(data.texCoord);
+    //return float4(data.color, 1.0);
 }
