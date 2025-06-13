@@ -7,9 +7,6 @@
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 #include <filesystem>
 #include <fstream>
 #include <glad/glad.h>
@@ -196,12 +193,11 @@ void OpenGLRenderer::SwapBuffer()
 
 void* OpenGLRenderer::GetContext() { return &context; }
 
-Mesh OpenGLRenderer::CreateMesh(
-    const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
+void OpenGLRenderer::CreateMesh(
+    Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
     const std::vector<Handle<Texture>>& textures
 )
 {
-    Mesh mesh;
     mesh.vertices = vertices;
     mesh.indices = indices;
     mesh.textures = textures;
@@ -211,8 +207,6 @@ Mesh OpenGLRenderer::CreateMesh(
     glGenBuffers(1, &mesh.EBO);
 
     ReloadMesh(mesh);
-
-    return std::move(mesh);
 }
 
 void OpenGLRenderer::DeleteMesh(Mesh& mesh)
@@ -264,30 +258,11 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     }
 }
 
-Texture OpenGLRenderer::CreateTexture(const std::string& texture_path, const Texture::Type type)
-{
-    sint32 width, height, component_count;
-    void* data = stbi_load(("Assets/Backpack/" + texture_path).c_str(), &width, &height, &component_count, 4);
-
-    const uint32 pixel_count = width * height;
-    if (data != nullptr)
-    {
-        const auto* pixel_data = static_cast<const uint32*>(data);
-        const std::vector colors(pixel_data, pixel_data + pixel_count);
-        stbi_image_free(data);
-
-        return std::move(CreateTexture(width, height, colors, type));
-    }
-
-    SDL_Log("Failed to load OpenGL Texture: %s", stbi_failure_reason());
-    return Texture{};
-}
-
-Texture OpenGLRenderer::CreateTexture(
-    const uint32 width, const uint32 height, const std::vector<uint32>& colors, const Texture::Type type
+void OpenGLRenderer::CreateTexture(
+    Texture& texture, const uint32 width, const uint32 height, const std::vector<uint32>& colors,
+    const Texture::Type type
 )
 {
-    Texture texture;
     texture.type = type;
     texture.width = width;
     texture.height = height;
@@ -295,8 +270,6 @@ Texture OpenGLRenderer::CreateTexture(
 
     glGenTextures(1, &texture.id);
     ReloadTexture(texture);
-
-    return std::move(texture);
 }
 
 

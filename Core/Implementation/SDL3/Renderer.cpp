@@ -6,8 +6,6 @@
 
 #include <SDL3/SDL.h>
 
-#include <stb_image.h>
-
 #include <filesystem>
 #include <string>
 
@@ -31,12 +29,12 @@ namespace
         .store_op = SDL_GPU_STOREOP_STORE,
     };
 
-
     SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size data_size)
     {
-        SDL_GPUTransferBufferCreateInfo transfer_buffer_info{.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD};
+        SDL_GPUTransferBufferCreateInfo transfer_buffer_info{
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = static_cast<uint32>(data_size)
+        };
 
-        transfer_buffer_info.size = data_size;
         SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(device, &transfer_buffer_info);
         if (transfer_buffer == nullptr)
         {
@@ -106,9 +104,9 @@ namespace
             return nullptr;
         }
 
-        const uint32 uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 3 : 0);
         const uint32 samplers = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 0 : 1);
-
+        constexpr uint32 storages = 0;
+        const uint32 uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 3 : 0);
 
         const SDL_GPUShaderCreateInfo shaderInfo{
             .code_size = codeSize,
@@ -117,6 +115,7 @@ namespace
             .format = format,
             .stage = stage,
             .num_samplers = samplers,
+            .num_storage_buffers = storages,
             .num_uniform_buffers = uniforms
         };
         SDL_GPUShader* shader = SDL_CreateGPUShader(device, &shaderInfo);
@@ -217,17 +216,11 @@ void SDL3GPURenderer::Update()
     SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Mat4));
     SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Mat4));
 
-    for (const auto& mesh : Resource::GetResources<Mesh>())
+    for (const auto& mesh_handle : Resource::GetResources<Mesh>())
     {
-        const SDL_GPUBufferBinding vertex_binding{.buffer = mesh->vertices_buffer};
-        SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
-
-        const SDL_GPUBufferBinding index_binding{.buffer = mesh->indices_buffer};
-        SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-
         uint32 diffuse_count = 0;
         uint32 specular_count = 0;
-        for (const auto& texture : mesh->textures)
+        for (const auto& texture : mesh_handle->textures)
         {
             uint32 sampler_slot = 0;
             switch (texture->type)
@@ -249,7 +242,13 @@ void SDL3GPURenderer::Update()
             SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
         }
 
-        SDL_DrawGPUIndexedPrimitives(render_pass, mesh->indices.size(), 1, 0, 0, 0);
+        const SDL_GPUBufferBinding vertex_binding{.buffer = mesh_handle->vertices_buffer};
+        SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
+
+        const SDL_GPUBufferBinding index_binding{.buffer = mesh_handle->indices_buffer};
+        SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+        SDL_DrawGPUIndexedPrimitives(render_pass, mesh_handle->indices.size(), 1, 0, 0, 0);
     }
 
     SDL_EndGPURenderPass(render_pass);
@@ -264,12 +263,11 @@ void SDL3GPURenderer::SwapBuffer() { color_target_info.texture = nullptr; }
 
 void* SDL3GPURenderer::GetContext() { return device; }
 
-Mesh SDL3GPURenderer::CreateMesh(
-    const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
+void SDL3GPURenderer::CreateMesh(
+    Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
     const std::vector<Handle<Texture>>& textures
 )
 {
-    Mesh mesh;
     mesh.vertices = vertices;
     mesh.indices = indices;
     mesh.textures = textures;
@@ -285,7 +283,7 @@ Mesh SDL3GPURenderer::CreateMesh(
     if (mesh.vertices_buffer == nullptr)
     {
         SDL_Log("Failed to create vertex buffer");
-        return std::move(mesh);
+        return;
     }
 
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_INDEX;
@@ -294,12 +292,10 @@ Mesh SDL3GPURenderer::CreateMesh(
     if (mesh.indices_buffer == nullptr)
     {
         SDL_Log("Failed to create index buffer");
-        return std::move(mesh);
+        return;
     }
 
     ReloadMesh(mesh);
-
-    return std::move(mesh);
 }
 
 void SDL3GPURenderer::DeleteMesh(Mesh& mesh)
@@ -343,29 +339,11 @@ void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
     SDL_ReleaseGPUTransferBuffer(device, index_transfer_buffer);
 }
 
-Texture SDL3GPURenderer::CreateTexture(const std::string& texture_path, Texture::Type type)
-{
-    std::int32_t width, height, component_count;
-    void* data = stbi_load(("Assets/Backpack/" + texture_path).c_str(), &width, &height, &component_count, 4);
-
-    const uint32 pixel_count = width * height;
-    if (data != nullptr)
-    {
-        const auto* pixel_data = static_cast<const uint32*>(data);
-        const std::vector colors(pixel_data, pixel_data + pixel_count);
-        stbi_image_free(data);
-
-        return std::move(CreateTexture(width, height, colors, type));
-    }
-
-    SDL_Log("Failed to load OpenGL Texture: %s", stbi_failure_reason());
-    return Texture{};
-}
-Texture SDL3GPURenderer::CreateTexture(
-    const uint32 width, const uint32 height, const std::vector<uint32>& colors, const Texture::Type type
+void SDL3GPURenderer::CreateTexture(
+    Texture& texture, const uint32 width, const uint32 height, const std::vector<uint32>& colors,
+    const Texture::Type type
 )
 {
-    Texture texture;
     texture.type = type;
     texture.width = width;
     texture.height = height;
@@ -383,8 +361,6 @@ Texture SDL3GPURenderer::CreateTexture(
     if (texture.sampler == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the texture sampler");
 
     ReloadTexture(texture);
-
-    return std::move(texture);
 }
 void SDL3GPURenderer::ReloadTexture(Texture& texture)
 {

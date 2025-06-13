@@ -1,16 +1,22 @@
 #pragma once
 
 #include <memory>
+#include <ranges>
 #include <unordered_map>
 
-#include "../Tools/TypeNames.hpp"
+#include "Tools/TypeNames.hpp"
 
 template <typename Type>
 using Handle = std::shared_ptr<Type>;
 
+void Destroyer();
+
+#pragma region Resource
+
 struct Resource
 {
     virtual ~Resource() = default;
+    virtual void Destroy() {}
 
     [[nodiscard]] const std::string_view& GetTypeName() const { return type_name; }
     [[nodiscard]] uint64 GetID() const { return id; }
@@ -27,6 +33,21 @@ struct Resource
     template <typename ResourceType>
     [[nodiscard]] static std::vector<Handle<ResourceType>> GetResources();
 
+    static bool ResourceDangling(const Handle<Resource>& handle) { return handle.use_count() <= 1; }
+    static bool ResourceDangling(const uint64 id) { return ResourceDangling(resources[id]); }
+
+    /// @brief Destroys the resource if it is no longer being used by anything.
+    /// @return If the resource was destroyed.
+    static bool TryDestroyResource(uint64 id);
+
+    /// @brief Destroys out all dangling resources.
+    /// @return Amount of resources destroyed.
+    static size CleanResources()
+    {
+        Handle<Resource> empty;
+        return std::erase_if(resources, [](const auto& item) { return ResourceDangling(item.second); });
+    }
+
   private:
     friend struct FileResource;
 
@@ -35,6 +56,14 @@ struct Resource
     std::string_view type_name{};
     uint64 id{};
 };
+
+inline bool Resource::TryDestroyResource(const uint64 id)
+{
+    const bool resource_dangling = ResourceDangling(id);
+    if (resource_dangling) resources.erase(id);
+
+    return resource_dangling;
+}
 
 template <typename ResourceType, typename... Args>
 Handle<ResourceType> Resource::Load(Args... args)
@@ -81,6 +110,10 @@ std::vector<Handle<ResourceType>> Resource::GetResources()
     return std::move(return_resources);
 }
 
+#pragma endregion
+
+#pragma region FileResource
+
 struct FileResource : Resource
 {
     [[nodiscard]] const std::string& GetPath() const { return path; }
@@ -120,4 +153,11 @@ Handle<ResourceType> FileResource::Find(const std::string& path)
     const uint64 id = hasher(path);
 
     return Resource::Find<ResourceType>(id);
+}
+
+#pragma endregion
+
+static void Deleter(Resource* resource)
+{
+    resource->Destroy();
 }

@@ -5,8 +5,10 @@
 
 #include "Core/Model.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include <SDL3/SDL_log.h>
 #include <assimp/scene.h>
+#include <stb_image.h>
 
 namespace
 {
@@ -18,18 +20,36 @@ namespace
             aiString string;
             material.GetTexture(type, i, &string);
 
-            auto texture_resource = FileResource::Load<Texture>(
-                string.C_Str(), (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR)
-            );
-            textures.push_back(texture_resource);
+            const Texture::Type real_type =
+                (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR);
+
+            auto texture_handle = FileResource::Load<Texture>(string.C_Str(), real_type);
+            textures.push_back(texture_handle);
         }
         return textures;
     }
 } // namespace
 
-Texture::Texture(const std::string& path, const Type type) { *this = Renderer::Instance().CreateTexture(path, type); }
+Texture::Texture(const std::string& path, const Type type)
+{
+    sint32 width, height, component_count;
+    void* data = stbi_load(("Assets/Backpack/" + path).c_str(), &width, &height, &component_count, 4);
 
-void Texture::Delete() { Renderer::Instance().DeleteTexture(*this); }
+    const uint32 pixel_count = width * height;
+    if (data != nullptr)
+    {
+        const auto* pixel_data = static_cast<const uint32*>(data);
+        const std::vector colors(pixel_data, pixel_data + pixel_count);
+        stbi_image_free(data);
+
+        Renderer::Instance().CreateTexture(*this, width, height, colors, type);
+        return;
+    }
+
+    SDL_Log("Failed to load image: %s", stbi_failure_reason());
+}
+
+Texture::~Texture() { Renderer::Instance().DeleteTexture(*this); }
 
 Mesh::Mesh(const std::string& path, const uint32 index)
 {
@@ -63,7 +83,6 @@ Mesh::Mesh(const std::string& path, const uint32 index)
 
     const size face_count = static_cast<int>(model_mesh.mNumFaces);
     indices.resize(face_count * 3);
-
     for (size i = 0; i < face_count; i++)
     {
         std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
@@ -76,10 +95,10 @@ Mesh::Mesh(const std::string& path, const uint32 index)
     auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR);
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
-    *this = Renderer::Instance().CreateMesh(vertices, indices, textures);
+    Renderer::Instance().CreateMesh(*this, vertices, indices, textures);
 }
 
-void Mesh::Delete() { Renderer::Instance().DeleteMesh(*this); }
+Mesh::~Mesh() { Renderer::Instance().DeleteMesh(*this); }
 
 void Renderer::SetupBackend(const std::string& backend_name)
 {

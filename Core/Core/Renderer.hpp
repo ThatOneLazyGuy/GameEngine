@@ -15,7 +15,7 @@ struct SDL_GPUTexture;
 struct Vertex
 {
     Vec3 position{};
-    Vec3 color{};
+    Vec3 color{1.0f, 0.0f, 1.0f};
     Vec2 tex_coord{};
 };
 
@@ -29,7 +29,7 @@ struct Texture final : FileResource
 
     Texture() = default;
     explicit Texture(const std::string& path, Type type);
-    void Delete();
+    ~Texture();
 
     Type type{Type::DIFFUSE};
 
@@ -56,7 +56,7 @@ struct Mesh final : Resource
 
     Mesh() = default;
     Mesh(const std::string& path, uint32 index);
-    void Delete();
+    ~Mesh();
 
     std::vector<Vertex> vertices;
     std::vector<uint32> indices;
@@ -105,16 +105,19 @@ class Renderer
 
     virtual void* GetContext() = 0;
 
-    virtual Mesh CreateMesh(
-        const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
+  protected:
+    friend struct Texture;
+    friend struct Mesh;
+
+    virtual void CreateMesh(
+        Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
         const std::vector<Handle<Texture>>& textures
     ) = 0;
     virtual void ReloadMesh(Mesh& mesh) = 0;
     virtual void DeleteMesh(Mesh& mesh) = 0;
 
-    virtual Texture CreateTexture(const std::string& texture_path, Texture::Type type) = 0;
-    virtual Texture CreateTexture(
-        uint32 width, uint32 height, const std::vector<uint32>& colors, Texture::Type type
+    virtual void CreateTexture(
+        Texture& texture, uint32 width, uint32 height, const std::vector<uint32>& colors, Texture::Type type
     ) = 0;
     virtual void ReloadTexture(Texture& texture) = 0;
     virtual void DeleteTexture(Texture& texture) = 0;
@@ -122,9 +125,10 @@ class Renderer
     virtual Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path) = 0;
     virtual void DeleteShader(Shader shader) = 0;
 
-  protected:
+
     Renderer() = default;
     virtual ~Renderer() = default;
 
+  private:
     static inline Renderer* renderer;
 };

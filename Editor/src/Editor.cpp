@@ -43,6 +43,7 @@ int main(int, char*[])
         Renderer::Instance().SwapBuffer();
     }
 
+    Resource::CleanResources();
     ImGui::PlatformExit();
     Renderer::Instance().Exit();
     Window::Exit();
