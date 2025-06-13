@@ -167,8 +167,6 @@ void SDL3GPURenderer::Exit()
 
 void SDL3GPURenderer::Update()
 {
-    static Model loaded_model{"Assets/Backpack/backpack.obj"};
-
     SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
     if (command_buffer == nullptr)
     {
@@ -219,7 +217,7 @@ void SDL3GPURenderer::Update()
     SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Mat4));
     SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Mat4));
 
-    for (const auto& mesh : loaded_model.meshes)
+    for (const auto& mesh : Resource::GetResources<Mesh>())
     {
         const SDL_GPUBufferBinding vertex_binding{.buffer = mesh->vertices_buffer};
         SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
@@ -271,7 +269,10 @@ Mesh SDL3GPURenderer::CreateMesh(
     const std::vector<Handle<Texture>>& textures
 )
 {
-    Mesh mesh{.vertices = vertices, .indices = indices, .textures = textures};
+    Mesh mesh;
+    mesh.vertices = vertices;
+    mesh.indices = indices;
+    mesh.textures = textures;
 
     const auto vertices_size = static_cast<uint32>(vertices.size() * sizeof(Vertex));
     const auto indices_size = static_cast<uint32>(indices.size() * sizeof(uint32));

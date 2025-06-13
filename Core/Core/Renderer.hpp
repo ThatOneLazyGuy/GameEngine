@@ -46,8 +46,18 @@ struct Texture final : FileResource
     SDL_GPUSampler* sampler = nullptr;
 };
 
-struct Mesh
+struct Mesh final : Resource
 {
+    static uint64 GetID(const std::string& path, const uint32 index)
+    {
+        constexpr std::hash<std::string> hasher{};
+        return hasher(path + '-' + std::to_string(index));
+    };
+
+    Mesh() = default;
+    Mesh(const std::string& path, uint32 index);
+    void Delete();
+
     std::vector<Vertex> vertices;
     std::vector<uint32> indices;
 

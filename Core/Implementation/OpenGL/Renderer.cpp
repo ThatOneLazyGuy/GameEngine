@@ -30,13 +30,13 @@ namespace
     {
         int success;
         char infoLog[1024];
-        if (type != "PROGRAM")
+        if (type != "program")
         {
             glGetShaderiv(id, GL_COMPILE_STATUS, &success);
             if (!success)
             {
                 glGetShaderInfoLog(id, 1024, nullptr, infoLog);
-                std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n"
+                std::cout << "Error compiling shader of type: " << type << "\n"
                           << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
             }
         }
@@ -46,7 +46,7 @@ namespace
             if (!success)
             {
                 glGetProgramInfoLog(id, 1024, nullptr, infoLog);
-                std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n"
+                std::cout << "Error linking program of type: " << type << "\n"
                           << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
             }
         }
@@ -57,11 +57,10 @@ namespace
     {
         unsigned int& UBO = uniformBuffers[binding];
 
-        glUniformBlockBinding(shader.program, binding, binding);
         glGenBuffers(1, &UBO);
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(Type), nullptr, GL_STATIC_DRAW);
+        //glBufferData(GL_UNIFORM_BUFFER, sizeof(Type), nullptr, GL_STATIC_DRAW);
         glBindBufferRange(GL_UNIFORM_BUFFER, binding, UBO, 0, sizeof(Type));
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
@@ -80,7 +79,7 @@ namespace
         const unsigned int UBO = iterator->second;
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(Type), &value);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(Type), &value, GL_STATIC_DRAW);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
@@ -97,7 +96,7 @@ namespace
         const unsigned int UBO = iterator->second;
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(Mat4), value.data());
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(Mat4), value.data(), GL_STATIC_DRAW);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
@@ -142,8 +141,6 @@ void OpenGLRenderer::Exit() {}
 
 void OpenGLRenderer::Update()
 {
-    static Model loaded_model{"Assets/Backpack/backpack.obj"};
-
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -165,11 +162,11 @@ void OpenGLRenderer::Update()
     SetUniform<Mat4>(1, view);
     SetUniform<Mat4>(2, projection);
 
-    for (const auto& mesh : loaded_model.meshes)
+    for (const auto& mesh_handle : Resource::GetResources<Mesh>())
     {
         uint32 diffuse_count = 0;
         uint32 specular_count = 0;
-        for (const auto& texture : mesh->textures)
+        for (const auto& texture : mesh_handle->textures)
         {
             switch (texture->type)
             {
@@ -185,8 +182,8 @@ void OpenGLRenderer::Update()
             glBindTexture(GL_TEXTURE_2D, texture->id);
         }
 
-        glBindVertexArray(mesh->bind);
-        glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh->indices.size()), GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(mesh_handle->bind);
+        glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh_handle->indices.size()), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
     }
 }
@@ -204,7 +201,10 @@ Mesh OpenGLRenderer::CreateMesh(
     const std::vector<Handle<Texture>>& textures
 )
 {
-    Mesh mesh{.vertices = vertices, .indices = indices, .textures = textures};
+    Mesh mesh;
+    mesh.vertices = vertices;
+    mesh.indices = indices;
+    mesh.textures = textures;
 
     glGenVertexArrays(1, &mesh.bind);
     glGenBuffers(1, &mesh.VBO);
@@ -227,11 +227,19 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     glBindVertexArray(mesh.bind);
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
-    glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size() * sizeof(Vertex), mesh.vertices.data(), GL_STATIC_DRAW);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        static_cast<sint32>(mesh.vertices.size() * sizeof(Vertex)),
+        mesh.vertices.data(),
+        GL_STATIC_DRAW
+    );
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
     glBufferData(
-        GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(uint32), mesh.indices.data(), GL_STATIC_DRAW
+        GL_ELEMENT_ARRAY_BUFFER,
+        static_cast<sint32>(mesh.indices.size() * sizeof(uint32)),
+        mesh.indices.data(),
+        GL_STATIC_DRAW
     );
 
     const void* offset = nullptr;
@@ -276,8 +284,7 @@ Texture OpenGLRenderer::CreateTexture(const std::string& texture_path, const Tex
 }
 
 Texture OpenGLRenderer::CreateTexture(
-    const uint32 width, const uint32 height, const std::vector<uint32>& colors,
-    const Texture::Type type
+    const uint32 width, const uint32 height, const std::vector<uint32>& colors, const Texture::Type type
 )
 {
     Texture texture;
@@ -297,7 +304,15 @@ void OpenGLRenderer::ReloadTexture(Texture& texture)
 {
     glBindTexture(GL_TEXTURE_2D, texture.id);
     glTexImage2D(
-        GL_TEXTURE_2D, 0, GL_RGBA, texture.width, texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture.colors.data()
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        static_cast<sint32>(texture.width),
+        static_cast<sint32>(texture.height),
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        texture.colors.data()
     );
     glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -311,54 +326,55 @@ void OpenGLRenderer::ReloadTexture(Texture& texture)
 
 void OpenGLRenderer::DeleteTexture(Texture& mesh) { glDeleteTextures(1, &mesh.id); }
 
+// Taken from the LearnOpenGL shader class: https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/shader_m.h
 Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::string& fragment_path)
 {
     // 1. retrieve the vertex/fragment source code from filePath
-    std::string vertexCode;
-    std::string fragmentCode;
-    std::ifstream vShaderFile;
-    std::ifstream fShaderFile;
+    std::string vertex_code;
+    std::string fragment_code;
+    std::ifstream vertex_file;
+    std::ifstream fragment_file;
 
     // ensure ifstream objects can throw exceptions:
-    vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    vertex_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    fragment_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     try
     {
         // open files
-        vShaderFile.open(vertex_path);
-        fShaderFile.open(fragment_path);
+        vertex_file.open(vertex_path);
+        fragment_file.open(fragment_path);
         std::stringstream vShaderStream, fShaderStream;
         // read file's buffer contents into streams
-        vShaderStream << vShaderFile.rdbuf();
-        fShaderStream << fShaderFile.rdbuf();
+        vShaderStream << vertex_file.rdbuf();
+        fShaderStream << fragment_file.rdbuf();
         // close file handlers
-        vShaderFile.close();
-        fShaderFile.close();
+        vertex_file.close();
+        fragment_file.close();
         // convert stream into string
-        vertexCode = vShaderStream.str();
-        fragmentCode = fShaderStream.str();
+        vertex_code = vShaderStream.str();
+        fragment_code = fShaderStream.str();
     }
     catch (std::ifstream::failure& e)
     {
-        SDL_Log("ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: %s", e.what());
+        SDL_Log("Error reading shader file: %s", e.what());
     }
-    const char* vShaderCode = vertexCode.c_str();
-    const char* fShaderCode = fragmentCode.c_str();
+    const char* vertex_shader_code = vertex_code.c_str();
+    const char* fragment_shader_code = fragment_code.c_str();
 
     // 2. compile shaders
     uint32 vertex, fragment;
 
     // vertex shader
     vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &vShaderCode, nullptr);
+    glShaderSource(vertex, 1, &vertex_shader_code, nullptr);
     glCompileShader(vertex);
-    CheckCompileErrors(vertex, "VERTEX");
+    CheckCompileErrors(vertex, "vertex");
 
     // fragment Shader
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &fShaderCode, nullptr);
+    glShaderSource(fragment, 1, &fragment_shader_code, nullptr);
     glCompileShader(fragment);
-    CheckCompileErrors(fragment, "FRAGMENT");
+    CheckCompileErrors(fragment, "fragment");
 
     // shader Program
     uint32 opengl_id;
@@ -367,7 +383,7 @@ Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::s
     glAttachShader(opengl_id, vertex);
     glAttachShader(opengl_id, fragment);
     glLinkProgram(opengl_id);
-    CheckCompileErrors(opengl_id, "PROGRAM");
+    CheckCompileErrors(opengl_id, "program");
 
     // delete the shaders as they're linked into our program now and no longer necessary
     glDeleteShader(vertex);

@@ -1,84 +1,9 @@
 #include "Model.hpp"
 
-#include <vector>
-
-#include <SDL3/SDL_log.h>
-
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
-#include <assimp/scene.h>
-
-#include "Resource.hpp"
-
-namespace
-{
-    std::vector<Handle<Texture>> loadMaterialTextures(const aiMaterial& material, const aiTextureType type)
-    {
-        std::vector<Handle<Texture>> textures;
-        for (uint32 i = 0; i < material.GetTextureCount(type); i++)
-        {
-            aiString string;
-            material.GetTexture(type, i, &string);
-
-            auto texture_resource = FileResource::Load<Texture>(
-                string.C_Str(), (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR)
-            );
-            textures.push_back(texture_resource);
-        }
-        return textures;
-    }
-} // namespace
 
 Model::Model(const std::string& path)
 {
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices);
-
-    if (scene == nullptr)
-    {
-        SDL_Log("Failed to load asset: ", path.c_str());
-        return;
-    }
-
-
-    for (size mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
-    {
-        const aiMesh& model_mesh = *scene->mMeshes[mesh_index];
-        const aiVector3D* mesh_vertices = model_mesh.mVertices;
-        const aiColor4D* mesh_colors = model_mesh.mColors[0];
-        const aiVector3D* mesh_tex_coords = model_mesh.mTextureCoords[0];
-
-        const size vertex_count = model_mesh.mNumVertices;
-        std::vector<Vertex> vertices(vertex_count);
-
-        for (size i = 0; i < vertex_count; i++)
-        {
-            auto& [position, color, tex_coord] = vertices[i];
-
-            position = Vec3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
-            if (mesh_colors != nullptr) color = Vec3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
-            if (mesh_tex_coords != nullptr) tex_coord = Vec2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
-        }
-
-        const aiFace* mesh_faces = model_mesh.mFaces;
-
-        const size face_count = static_cast<int>(model_mesh.mNumFaces);
-        std::vector<uint32> indices(face_count * 3);
-
-        for (size i = 0; i < face_count; i++)
-        {
-            std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
-        }
-
-        std::vector<Handle<Texture>> textures;
-
-        const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
-        auto diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE);
-        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-
-        auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR);
-        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-
-        meshes.push_back(std::make_shared<Mesh>(Renderer::Instance().CreateMesh(vertices, indices, textures)));
-    }
+    importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices);
 }

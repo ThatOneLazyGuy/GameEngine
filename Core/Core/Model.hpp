@@ -1,14 +1,14 @@
 #pragma once
 
-#include "Renderer.hpp"
-
-#include <memory>
 #include <string>
 
-class Model
+#include <assimp/Importer.hpp>
+
+#include "Renderer.hpp"
+
+struct Model final : FileResource
 {
-  public:
     explicit Model(const std::string& path);
 
-    std::vector<Handle<Mesh>> meshes;
+    Assimp::Importer importer;
 };

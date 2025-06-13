@@ -1,14 +1,15 @@
 #include "Editor.hpp"
 
 #include "ImGuiExtra.hpp"
+#include "ImGuiPlatform.hpp"
 
 #include <algorithm>
 #include <ranges>
 
+#include <Core/Model.hpp>
 #include <Core/Renderer.hpp>
+#include <Core/Resource.hpp>
 #include <Core/Window.hpp>
-
-#include "ImGuiPlatform.hpp"
 
 #include <imgui.h>
 
@@ -31,6 +32,8 @@ int main(int, char*[])
     Window::Init(&ImGui::PlatformProcessEvent);
     Renderer::Instance().Init(Window::GetHandle());
     Editor::Init();
+
+    Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
 
     bool done = false;
     while (!done)
@@ -74,7 +77,6 @@ void Editor::Update()
     ImGui::PlatformNewFrame();
 
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
-    ImGui::ShowStyleEditor();
     ImGui::ShowDemoWindow();
 
     static bool open_window = true;
@@ -107,7 +109,7 @@ void Editor::Update()
             ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_ClearOnClickVoid |
             ImGuiMultiSelectFlags_BoxSelect1d | ImGuiMultiSelectFlags_SelectOnClickRelease;
 
-        ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, static_cast<int>(selected.size()), items.size());
+        ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, static_cast<int>(selected.size()), static_cast<int>(items.size()));
         ImGui::ApplyRequests(ms_io, selected, items);
         for (int i = 0; i < items.size(); i++)
         {
