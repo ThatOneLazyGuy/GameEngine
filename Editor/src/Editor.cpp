@@ -21,18 +21,14 @@ namespace Editor
         io.Fonts->Clear();
         io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Verdana.ttf", 23.0f);
     }
-
-    std::string render_backend;
 } // namespace Editor
 
 int main(int, char* args[])
 {
-    Editor::render_backend = args[1];
-
-    Renderer::SetupBackend(Editor::render_backend);
+    Renderer::SetupBackend(args[1]);
 
     Window::Init(&ImGui::PlatformProcessEvent);
-    Renderer::Instance().Init(Window::GetHandle());
+    Renderer::Instance().Init();
     Editor::Init();
 
     Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
@@ -45,7 +41,7 @@ int main(int, char* args[])
         Renderer::Instance().SwapBuffer();
     }
 
-    Resource::CleanResources();
+    Resource::CleanResources(true);
     ImGui::PlatformExit();
     Renderer::Instance().Exit();
     Window::Exit();
@@ -71,7 +67,7 @@ void Editor::Init()
     InitFonts();
 
     ImGui::StyleColorsDark();
-    ImGui::PlatformInit(render_backend);
+    ImGui::PlatformInit(Renderer::GetBackendName());
 }
 
 void Editor::Update()

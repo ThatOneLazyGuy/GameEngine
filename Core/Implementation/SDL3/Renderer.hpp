@@ -9,9 +9,9 @@ class SDL3GPURenderer final : public Renderer
     SDL3GPURenderer() = default;
     ~SDL3GPURenderer() override = default;
 
-    constexpr std::size_t WindowFlags() override { return 0; }
+    constexpr size WindowFlags() override { return 0; }
 
-    void Init(void* window_handle) override;
+    void Init() override;
     void Exit() override;
 
     void Update() override;
@@ -20,21 +20,22 @@ class SDL3GPURenderer final : public Renderer
 
     void* GetContext() override;
 
-    void CreateMesh(
-        Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
-        const std::vector<Handle<Texture>>& textures
-    ) override;
-    void ReloadMesh(Mesh& mesh) override;
-    void DeleteMesh(Mesh& mesh) override;
-
-    void CreateTexture(
-        Texture& texture, uint32 width, uint32 height, const std::vector<uint32>& colors, Texture::Type type
-    ) override;
-    void ReloadTexture(Texture& texture) override;
-    void DeleteTexture(Texture& texture) override;
-
-    Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path) override;
-    void DeleteShader(Shader shader) override;
-
     static SDL_GPUColorTargetInfo& GetColorTarget();
+
+  private:
+    void CreateTexture(Texture& texture) override;
+    void ReloadTexture(Texture& texture) override;
+    void DestroyTexture(Texture& texture) override;
+
+    void CreateMesh(Mesh& mesh) override;
+    void ReloadMesh(Mesh& mesh) override;
+    void DestroyMesh(Mesh& mesh) override;
+
+    void CreateShader(Shader& shader) override;
+    void DestroyShader(Shader& shader) override;
+
+    void CreateShaderPipeline(
+        ShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
+    ) override;
+    void DestroyShaderPipeline(ShaderPipeline& shader) override;
 };

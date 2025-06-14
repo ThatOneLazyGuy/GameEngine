@@ -14,7 +14,6 @@ using Handle = std::shared_ptr<Type>;
 struct Resource
 {
     virtual ~Resource() = default;
-    virtual void Destroy() {}
 
     [[nodiscard]] const std::string_view& GetTypeName() const { return type_name; }
     [[nodiscard]] uint64 GetID() const { return id; }
@@ -22,10 +21,10 @@ struct Resource
     template <typename ResourceType, typename... Args>
     static Handle<ResourceType> Load(Args... args);
 
-    template <typename ResourceType>
+    template <typename ResourceType = Resource>
     [[nodiscard]] static Handle<ResourceType> Find(uint64 id);
 
-    template <typename ResourceType, typename... Args>
+    template <typename ResourceType = Resource, typename... Args>
     [[nodiscard]] static Handle<ResourceType> Find(Args... args);
 
     template <typename ResourceType>
@@ -40,12 +39,19 @@ struct Resource
 
     /// @brief Destroys out all dangling resources.
     /// @return Amount of resources destroyed.
-    static size CleanResources()
+    static size CleanResources(const bool force_clear = false)
     {
+        if (force_clear)
+        {
+            const size resources_size = resources.size();
+            resources.clear();
+            return resources_size;
+        }
+
         return std::erase_if(resources, [](const auto& item) { return ResourceDangling(item.second); });
     }
 
-  protected:
+  private:
     friend struct FileResource;
 
     inline static std::unordered_map<uint64, Handle<Resource>> resources;
@@ -120,7 +126,7 @@ struct FileResource : Resource
     template <typename ResourceType>
     static Handle<ResourceType> Find(const std::string& path);
 
-  protected:
+  private:
     std::string path{};
 };
 

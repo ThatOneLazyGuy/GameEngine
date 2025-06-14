@@ -10,7 +10,6 @@
 #include <filesystem>
 #include <fstream>
 #include <glad/glad.h>
-#include <iostream>
 #include <map>
 #include <string>
 
@@ -19,7 +18,6 @@
 namespace
 {
     SDL_GLContext context;
-    Shader default_shader;
 
     std::map<int, unsigned int> uniformBuffers;
 
@@ -48,7 +46,7 @@ namespace
     }
 
     template <typename Type>
-    void CreateUniformBuffer(const Shader shader, const int binding)
+    void CreateUniformBuffer(const int binding)
     {
         unsigned int& UBO = uniformBuffers[binding];
 
@@ -102,9 +100,9 @@ namespace
     }
 } // namespace
 
-void OpenGLRenderer::Init(void* window_handle)
+void OpenGLRenderer::Init()
 {
-    auto* window = static_cast<SDL_Window*>(window_handle);
+    auto* window = static_cast<SDL_Window*>(Window::GetHandle());
     context = SDL_GL_CreateContext(window);
 
     if (context == nullptr) SDL_Log("Failed to create GL context: %s", SDL_GetError());
@@ -123,12 +121,12 @@ void OpenGLRenderer::Init(void* window_handle)
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
 
-    default_shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
+    Resource::Load<ShaderPipeline>("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
 
-    glUseProgram(default_shader.program);
-    CreateUniformBuffer<Mat4>(default_shader, 0);
-    CreateUniformBuffer<Mat4>(default_shader, 1);
-    CreateUniformBuffer<Mat4>(default_shader, 2);
+    glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
+    CreateUniformBuffer<Mat4>(0);
+    CreateUniformBuffer<Mat4>(1);
+    CreateUniformBuffer<Mat4>(2);
 }
 
 void OpenGLRenderer::Exit() {}
@@ -151,7 +149,7 @@ void OpenGLRenderer::Update()
     const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
     const Mat4 projection = PerspectiveNO(ToRadians(fov), width / height, 0.1f, 100.0f);
 
-    glUseProgram(default_shader.program);
+    glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
     SetUniform<Mat4>(0, model);
     SetUniform<Mat4>(1, view);
     SetUniform<Mat4>(2, projection);
@@ -173,7 +171,7 @@ void OpenGLRenderer::Update()
                 break;
             }
 
-            glBindTexture(GL_TEXTURE_2D, texture->id);
+            glBindTexture(GL_TEXTURE_2D, texture->texture.opengl);
         }
 
         glBindVertexArray(mesh_handle->bind);
@@ -192,26 +190,19 @@ void OpenGLRenderer::OnResize(const uint32 width, const uint32 height) { glViewp
 
 void* OpenGLRenderer::GetContext() { return &context; }
 
-void OpenGLRenderer::CreateMesh(
-    Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
-    const std::vector<Handle<Texture>>& textures
-)
+void OpenGLRenderer::CreateMesh(Mesh& mesh)
 {
-    mesh.vertices = vertices;
-    mesh.indices = indices;
-    mesh.textures = textures;
-
     glGenVertexArrays(1, &mesh.bind);
-    glGenBuffers(1, &mesh.VBO);
-    glGenBuffers(1, &mesh.EBO);
+    glGenBuffers(1, &mesh.vertices_buffer.opengl);
+    glGenBuffers(1, &mesh.indices_buffer.opengl);
 
     ReloadMesh(mesh);
 }
 
-void OpenGLRenderer::DeleteMesh(Mesh& mesh)
+void OpenGLRenderer::DestroyMesh(Mesh& mesh)
 {
-    glDeleteBuffers(1, &mesh.VBO);
-    glDeleteBuffers(1, &mesh.EBO);
+    glDeleteBuffers(1, &mesh.vertices_buffer.opengl);
+    glDeleteBuffers(1, &mesh.indices_buffer.opengl);
     glDeleteVertexArrays(1, &mesh.bind);
 }
 
@@ -219,7 +210,7 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
 {
     glBindVertexArray(mesh.bind);
 
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices_buffer.opengl);
     glBufferData(
         GL_ARRAY_BUFFER,
         static_cast<sint32>(mesh.vertices.size() * sizeof(Vertex)),
@@ -227,7 +218,7 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
         GL_STATIC_DRAW
     );
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.opengl);
     glBufferData(
         GL_ELEMENT_ARRAY_BUFFER,
         static_cast<sint32>(mesh.indices.size() * sizeof(uint32)),
@@ -257,24 +248,16 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     }
 }
 
-void OpenGLRenderer::CreateTexture(
-    Texture& texture, const uint32 width, const uint32 height, const std::vector<uint32>& colors,
-    const Texture::Type type
-)
+void OpenGLRenderer::CreateTexture(Texture& texture)
 {
-    texture.type = type;
-    texture.width = width;
-    texture.height = height;
-    texture.colors = colors;
-
-    glGenTextures(1, &texture.id);
+    glGenTextures(1, &texture.texture.opengl);
     ReloadTexture(texture);
 }
 
 
 void OpenGLRenderer::ReloadTexture(Texture& texture)
 {
-    glBindTexture(GL_TEXTURE_2D, texture.id);
+    glBindTexture(GL_TEXTURE_2D, texture.texture.opengl);
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
@@ -296,72 +279,36 @@ void OpenGLRenderer::ReloadTexture(Texture& texture)
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void OpenGLRenderer::DeleteTexture(Texture& mesh) { glDeleteTextures(1, &mesh.id); }
+void OpenGLRenderer::DestroyTexture(Texture& mesh) { glDeleteTextures(1, &mesh.texture.opengl); }
+
+void OpenGLRenderer::CreateShader(Shader& shader)
+{
+    const size shader_type = (shader.type == Shader::VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
+
+    shader.shader.opengl = glCreateShader(shader_type);
+    const char* code = shader.code.data();
+    glShaderSource(shader.shader.opengl, 1, &code, nullptr);
+    glCompileShader(shader.shader.opengl);
+
+    const std::string type_name = (shader.type == Shader::VERTEX ? "vertex" : "fragment");
+    CheckCompileErrors(shader.shader.opengl, type_name);
+}
+void OpenGLRenderer::DestroyShader(Shader& shader) { glDeleteShader(shader.shader.opengl); }
 
 // Taken from the LearnOpenGL shader class: https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/shader_m.h
-Shader OpenGLRenderer::CreateShader(const std::string& vertex_path, const std::string& fragment_path)
+void OpenGLRenderer::CreateShaderPipeline(
+    ShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
+)
 {
-    // 1. retrieve the vertex/fragment source code from filePath
-    std::string vertex_code;
-    std::string fragment_code;
-    std::ifstream vertex_file;
-    std::ifstream fragment_file;
+    pipeline.shader_pipeline.opengl = glCreateProgram();
 
-    // ensure ifstream objects can throw exceptions:
-    vertex_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    fragment_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    try
-    {
-        // open files
-        vertex_file.open(vertex_path);
-        fragment_file.open(fragment_path);
-        std::stringstream vShaderStream, fShaderStream;
-        // read file's buffer contents into streams
-        vShaderStream << vertex_file.rdbuf();
-        fShaderStream << fragment_file.rdbuf();
-        // close file handlers
-        vertex_file.close();
-        fragment_file.close();
-        // convert stream into string
-        vertex_code = vShaderStream.str();
-        fragment_code = fShaderStream.str();
-    }
-    catch (std::ifstream::failure& e)
-    {
-        SDL_Log("Error reading shader file: %s", e.what());
-    }
-    const char* vertex_shader_code = vertex_code.c_str();
-    const char* fragment_shader_code = fragment_code.c_str();
-
-    // 2. compile shaders
-    uint32 vertex, fragment;
-
-    // vertex shader
-    vertex = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex, 1, &vertex_shader_code, nullptr);
-    glCompileShader(vertex);
-    CheckCompileErrors(vertex, "vertex");
-
-    // fragment Shader
-    fragment = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment, 1, &fragment_shader_code, nullptr);
-    glCompileShader(fragment);
-    CheckCompileErrors(fragment, "fragment");
-
-    // shader Program
-    uint32 opengl_id;
-    opengl_id = glCreateProgram();
-
-    glAttachShader(opengl_id, vertex);
-    glAttachShader(opengl_id, fragment);
-    glLinkProgram(opengl_id);
-    CheckCompileErrors(opengl_id, "program");
-
-    // delete the shaders as they're linked into our program now and no longer necessary
-    glDeleteShader(vertex);
-    glDeleteShader(fragment);
-
-    return Shader{.program = opengl_id};
+    glAttachShader(pipeline.shader_pipeline.opengl, vertex_shader->shader.opengl);
+    glAttachShader(pipeline.shader_pipeline.opengl, fragment_shader->shader.opengl);
+    glLinkProgram(pipeline.shader_pipeline.opengl);
+    CheckCompileErrors(pipeline.shader_pipeline.opengl, "program");
 }
 
-void OpenGLRenderer::DeleteShader(Shader shader) { glDeleteProgram(shader.program); }
+void OpenGLRenderer::DestroyShaderPipeline(ShaderPipeline& pipeline)
+{
+    glDeleteProgram(pipeline.shader_pipeline.opengl);
+}
