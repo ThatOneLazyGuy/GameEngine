@@ -22,12 +22,14 @@ namespace Editor
         io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Verdana.ttf", 23.0f);
     }
 
+    std::string render_backend;
 } // namespace Editor
 
-int main(int, char*[])
+int main(int, char* args[])
 {
-    Renderer::SetupBackend("SDL3GPU");
-    //Renderer::SetupBackend("OpenGL");
+    Editor::render_backend = args[1];
+
+    Renderer::SetupBackend(Editor::render_backend);
 
     Window::Init(&ImGui::PlatformProcessEvent);
     Renderer::Instance().Init(Window::GetHandle());
@@ -69,8 +71,7 @@ void Editor::Init()
     InitFonts();
 
     ImGui::StyleColorsDark();
-    ImGui::PlatformInit("SDL3GPU");
-    //ImGui::PlatformInit("OpenGL");
+    ImGui::PlatformInit(render_backend);
 }
 
 void Editor::Update()

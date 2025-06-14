@@ -62,10 +62,8 @@ namespace ImGui
         SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
     }
 
-    void PlatformOpenGL::RescaleFramebuffer(const int width, const int height)
+    void PlatformOpenGL::RescaleFramebuffer(const sint32 width, const sint32 height)
     {
-        glViewport(0, 0, width, height);
-
         glBindTexture(GL_TEXTURE_2D, texture_id);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

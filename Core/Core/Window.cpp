@@ -9,7 +9,6 @@ namespace Window
 {
     namespace
     {
-
         std::function<void(const void*)> process_events;
 
         SDL_Window* window = nullptr;
@@ -54,11 +53,14 @@ namespace Window
             case SDL_EVENT_QUIT:
                 return true;
 
-            case SDL_EVENT_WINDOW_RESIZED:
-            {
+            case SDL_EVENT_WINDOW_RESIZED: {
                 const SDL_WindowEvent& window_event = event.window;
-                width = window_event.data1;
-                height = window_event.data2;
+                if (window_event.windowID == SDL_GetWindowID(window))
+                {
+                    width = window_event.data1;
+                    height = window_event.data2;
+                    Renderer::Instance().OnResize(width, height);
+                }
                 break;
             }
 

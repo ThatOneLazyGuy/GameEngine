@@ -9,8 +9,6 @@
 template <typename Type>
 using Handle = std::shared_ptr<Type>;
 
-void Destroyer();
-
 #pragma region Resource
 
 struct Resource
@@ -44,11 +42,10 @@ struct Resource
     /// @return Amount of resources destroyed.
     static size CleanResources()
     {
-        Handle<Resource> empty;
         return std::erase_if(resources, [](const auto& item) { return ResourceDangling(item.second); });
     }
 
-  private:
+  protected:
     friend struct FileResource;
 
     inline static std::unordered_map<uint64, Handle<Resource>> resources;
@@ -123,7 +120,7 @@ struct FileResource : Resource
     template <typename ResourceType>
     static Handle<ResourceType> Find(const std::string& path);
 
-  private:
+  protected:
     std::string path{};
 };
 
@@ -156,8 +153,3 @@ Handle<ResourceType> FileResource::Find(const std::string& path)
 }
 
 #pragma endregion
-
-static void Deleter(Resource* resource)
-{
-    resource->Destroy();
-}

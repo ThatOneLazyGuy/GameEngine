@@ -18,8 +18,8 @@ namespace ImGui
     namespace
     {
         Platform* platform;
-        int frame_buffer_width{0};
-        int frame_buffer_height{0};
+        sint32 frame_buffer_width{0};
+        sint32 frame_buffer_height{0};
 
     } // namespace
 
@@ -48,8 +48,8 @@ namespace ImGui
 
     void RescaleFramebuffer(const ImVec2 viewport_size)
     {
-        const int width = static_cast<int>(viewport_size.x);
-        const int height = static_cast<int>(viewport_size.y);
+        const auto width = static_cast<sint32>(viewport_size.x);
+        const auto height = static_cast<sint32>(viewport_size.y);
 
         if (frame_buffer_width == width & frame_buffer_height == height) return;
         if (width <= 0 || height <= 0) return;

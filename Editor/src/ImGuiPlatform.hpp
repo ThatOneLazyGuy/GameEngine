@@ -1,7 +1,10 @@
 #pragma once
 
-#include <string>
 #include <imgui.h>
+#include <string>
+
+#include <Tools/Types.hpp>
+
 
 namespace ImGui
 {
@@ -14,7 +17,7 @@ namespace ImGui
         virtual void NewFrame() = 0;
         virtual void EndFrame() = 0;
 
-        virtual void RescaleFramebuffer(int width, int height) = 0;
+        virtual void RescaleFramebuffer(sint32 width, sint32 height) = 0;
         virtual ImTextureID GetFramebuffer() = 0;
     };
 

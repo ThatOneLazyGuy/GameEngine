@@ -102,6 +102,7 @@ class Renderer
 
     virtual void Update() = 0;
     virtual void SwapBuffer() = 0;
+    virtual void OnResize(uint32 width, uint32 height) = 0;
 
     virtual void* GetContext() = 0;
 

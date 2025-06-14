@@ -33,8 +33,7 @@ namespace
             if (!success)
             {
                 glGetShaderInfoLog(id, 1024, nullptr, infoLog);
-                std::cout << "Error compiling shader of type: " << type << "\n"
-                          << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+                SDL_Log("Error compiling shader of type: %s", type.c_str());
             }
         }
         else
@@ -43,8 +42,7 @@ namespace
             if (!success)
             {
                 glGetProgramInfoLog(id, 1024, nullptr, infoLog);
-                std::cout << "Error linking program of type: " << type << "\n"
-                          << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
+                SDL_Log("Error linking program of type: %s", type.c_str());
             }
         }
     }
@@ -57,7 +55,6 @@ namespace
         glGenBuffers(1, &UBO);
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-        //glBufferData(GL_UNIFORM_BUFFER, sizeof(Type), nullptr, GL_STATIC_DRAW);
         glBindBufferRange(GL_UNIFORM_BUFFER, binding, UBO, 0, sizeof(Type));
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
@@ -190,6 +187,8 @@ void OpenGLRenderer::SwapBuffer()
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
     SDL_GL_SwapWindow(window);
 }
+
+void OpenGLRenderer::OnResize(const uint32 width, const uint32 height) { glViewport(0, 0, width, height); }
 
 void* OpenGLRenderer::GetContext() { return &context; }
 

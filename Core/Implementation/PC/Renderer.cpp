@@ -12,7 +12,9 @@
 
 namespace
 {
-    std::vector<Handle<Texture>> loadMaterialTextures(const aiMaterial& material, const aiTextureType type)
+    std::vector<Handle<Texture>> loadMaterialTextures(
+        const aiMaterial& material, const aiTextureType type, const std::string& mesh_path
+    )
     {
         std::vector<Handle<Texture>> textures;
         for (uint32 i = 0; i < material.GetTextureCount(type); i++)
@@ -23,7 +25,8 @@ namespace
             const Texture::Type real_type =
                 (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR);
 
-            auto texture_handle = FileResource::Load<Texture>(string.C_Str(), real_type);
+            const std::string full_path = mesh_path + string.C_Str();
+            auto texture_handle = FileResource::Load<Texture>(full_path, real_type);
             textures.push_back(texture_handle);
         }
         return textures;
@@ -33,7 +36,7 @@ namespace
 Texture::Texture(const std::string& path, const Type type)
 {
     sint32 width, height, component_count;
-    void* data = stbi_load(("Assets/Backpack/" + path).c_str(), &width, &height, &component_count, 4);
+    void* data = stbi_load(path.c_str(), &width, &height, &component_count, 4);
 
     const uint32 pixel_count = width * height;
     if (data != nullptr)
@@ -53,7 +56,7 @@ Texture::~Texture() { Renderer::Instance().DeleteTexture(*this); }
 
 Mesh::Mesh(const std::string& path, const uint32 index)
 {
-    const auto model_handle = FileResource::Load<Model>(path);
+    const auto model_handle = FileResource::Load<ModelParser>(path);
     const aiScene* scene = model_handle->importer.GetScene();
 
     if (scene == nullptr)
@@ -88,11 +91,15 @@ Mesh::Mesh(const std::string& path, const uint32 index)
         std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
     }
 
+    const size last_separator = path.find_last_of('/');
+    const std::string mesh_path =
+        path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
+
     const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
-    auto diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE);
+    auto diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, mesh_path);
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
-    auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR);
+    auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, mesh_path);
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
     Renderer::Instance().CreateMesh(*this, vertices, indices, textures);

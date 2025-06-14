@@ -7,31 +7,32 @@ class OpenGLRenderer final : public Renderer
 {
   public:
     OpenGLRenderer() = default;
-    virtual ~OpenGLRenderer() override = default;
+    ~OpenGLRenderer() override = default;
 
-    virtual constexpr size WindowFlags() { return SDL_WINDOW_OPENGL; }
+    constexpr size WindowFlags() override { return SDL_WINDOW_OPENGL; }
 
-    virtual void Init(void* window_handle);
-    virtual void Exit();
+    void Init(void* window_handle) override;
+    void Exit() override;
 
-    virtual void Update();
-    virtual void SwapBuffer();
+    void Update() override;
+    void SwapBuffer() override;
+    void OnResize(uint32 width, uint32 height) override;
 
-    virtual void* GetContext();
+    void* GetContext() override;
 
-    virtual void CreateMesh(
+    void CreateMesh(
         Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices,
         const std::vector<Handle<Texture>>& textures
-    );
-    virtual void ReloadMesh(Mesh& mesh);
-    virtual void DeleteMesh(Mesh& mesh);
+    ) override;
+    void ReloadMesh(Mesh& mesh) override;
+    void DeleteMesh(Mesh& mesh) override;
 
-    virtual void CreateTexture(
+    void CreateTexture(
         Texture& texture, uint32 width, uint32 height, const std::vector<uint32>& colors, Texture::Type type
-    );
-    virtual void ReloadTexture(Texture& texture);
-    virtual void DeleteTexture(Texture& texture);
+    ) override;
+    void ReloadTexture(Texture& texture) override;
+    void DeleteTexture(Texture& texture) override;
 
-    virtual Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path);
-    virtual void DeleteShader(Shader shader);
+    Shader CreateShader(const std::string& vertex_path, const std::string& fragment_path) override;
+    void DeleteShader(Shader shader) override;
 };

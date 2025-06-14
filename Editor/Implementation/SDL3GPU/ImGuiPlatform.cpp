@@ -110,23 +110,22 @@ namespace ImGui
         RenderPlatformWindowsDefault();
     }
 
-    void PlatformSDL3GPU::RescaleFramebuffer(const int width, const int height)
+    void PlatformSDL3GPU::RescaleFramebuffer(const sint32 width, const sint32 height)
     {
         auto* window = static_cast<SDL_Window*>(Window::GetHandle());
         auto* device = static_cast<SDL_GPUDevice*>(Renderer::Instance().GetContext());
 
         if (viewport_binding.texture != nullptr) SDL_ReleaseGPUTexture(device, viewport_binding.texture);
 
-        const SDL_GPUTextureCreateInfo texture_info{
-            SDL_GPU_TEXTURETYPE_2D,
-            SDL_GetGPUSwapchainTextureFormat(device, window),
-            SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
-            static_cast<uint32>(width),
-            static_cast<uint32>(height),
-            1,
-            1,
-            SDL_GPU_SAMPLECOUNT_1
+        static SDL_GPUTextureCreateInfo texture_info{
+            .type = SDL_GPU_TEXTURETYPE_2D,
+            .format = SDL_GetGPUSwapchainTextureFormat(device, window),
+            .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
+            .layer_count_or_depth = 1,
+            .num_levels = 1
         };
+        texture_info.width = static_cast<uint32>(width),
+        texture_info.height = static_cast<uint32>(height),
 
         viewport_binding.texture = SDL_CreateGPUTexture(device, &texture_info);
         if (viewport_binding.texture == nullptr)
@@ -136,7 +135,6 @@ namespace ImGui
         }
 
         SDL3GPURenderer::GetColorTarget().texture = viewport_binding.texture;
-        SDL3GPURenderer::ReloadDepthBuffer();
     }
 
     ImTextureID PlatformSDL3GPU::GetFramebuffer() { return reinterpret_cast<ImTextureID>(&viewport_binding); }

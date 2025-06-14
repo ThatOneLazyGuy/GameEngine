@@ -55,7 +55,10 @@ namespace
         return transfer_buffer;
     }
 
-    SDL_GPUShader* LoadShader(SDL_GPUDevice*, const std::string& shader_filename)
+    SDL_GPUShader* LoadShader(
+        SDL_GPUDevice*, const std::string& shader_filename, const uint32 sampler_count, const uint32 storage_count,
+        const uint32 uniform_count
+    )
     {
         // Auto-detect the shader stage from the file name for convenience
         SDL_GPUShaderStage stage;
@@ -67,7 +70,7 @@ namespace
             return nullptr;
         }
 
-        SDL_GPUShaderFormat backendFormats = SDL_GetGPUShaderFormats(device);
+        const SDL_GPUShaderFormat backendFormats = SDL_GetGPUShaderFormats(device);
         SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_INVALID;
         const char* entrypoint;
 
@@ -104,19 +107,15 @@ namespace
             return nullptr;
         }
 
-        const uint32 samplers = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 0 : 1);
-        constexpr uint32 storages = 0;
-        const uint32 uniforms = (stage == SDL_GPU_SHADERSTAGE_VERTEX ? 3 : 0);
-
         const SDL_GPUShaderCreateInfo shaderInfo{
             .code_size = codeSize,
             .code = static_cast<const Uint8*>(code),
             .entrypoint = entrypoint,
             .format = format,
             .stage = stage,
-            .num_samplers = samplers,
-            .num_storage_buffers = storages,
-            .num_uniform_buffers = uniforms
+            .num_samplers = sampler_count,
+            .num_storage_buffers = storage_count,
+            .num_uniform_buffers = uniform_count
         };
         SDL_GPUShader* shader = SDL_CreateGPUShader(device, &shaderInfo);
         if (shader == nullptr)
@@ -140,7 +139,11 @@ void SDL3GPURenderer::Init(void* window_handle)
         SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, nullptr
     );
 
-    if (device == nullptr) SDL_Log("GPUCreateDevice failed");
+    if (device == nullptr)
+    {
+        SDL_Log("GPUCreateDevice failed");
+        return;
+    }
 
     if (!SDL_ClaimWindowForGPUDevice(device, window))
     {
@@ -149,7 +152,6 @@ void SDL3GPURenderer::Init(void* window_handle)
     }
 
     SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX);
-
     shader = CreateShader("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
 }
 
@@ -260,6 +262,23 @@ void SDL3GPURenderer::Update()
 }
 
 void SDL3GPURenderer::SwapBuffer() { color_target_info.texture = nullptr; }
+
+void SDL3GPURenderer::OnResize(const uint32 width, const uint32 height)
+{
+    if (depth_texture != nullptr) SDL_ReleaseGPUTexture(device, depth_texture);
+
+    static SDL_GPUTextureCreateInfo depth_texture_info{
+        .format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
+        .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        .layer_count_or_depth = 1,
+        .num_levels = 1
+    };
+    depth_texture_info.width = width;
+    depth_texture_info.height = height;
+
+    depth_texture = SDL_CreateGPUTexture(device, &depth_texture_info);
+    if (depth_texture == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the depth texture");
+}
 
 void* SDL3GPURenderer::GetContext() { return device; }
 
@@ -425,10 +444,10 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
 
     // Create the shaders
-    SDL_GPUShader* vertex_shader = LoadShader(device, vertex_path);
+    SDL_GPUShader* vertex_shader = LoadShader(device, vertex_path, 0, 0, 3);
     if (vertex_shader == nullptr) SDL_Log("Failed to create vertex shader!");
 
-    SDL_GPUShader* fragment_shader = LoadShader(device, fragment_path);
+    SDL_GPUShader* fragment_shader = LoadShader(device, fragment_path, 1, 0, 0);
     if (fragment_shader == nullptr) SDL_Log("Failed to create fragment shader!");
 
     constexpr SDL_GPUColorTargetBlendState blend_state{
@@ -502,24 +521,5 @@ Shader SDL3GPURenderer::CreateShader(const std::string& vertex_path, const std::
     return shader;
 }
 void SDL3GPURenderer::DeleteShader(const Shader shader) { SDL_ReleaseGPUGraphicsPipeline(device, shader.pipeline); }
-
-void SDL3GPURenderer::ReloadDepthBuffer()
-{
-    if (depth_texture != nullptr) SDL_ReleaseGPUTexture(device, depth_texture);
-
-    const SDL_GPUTextureCreateInfo depth_texture_info{
-        SDL_GPU_TEXTURETYPE_2D,
-        SDL_GPU_TEXTUREFORMAT_D24_UNORM,
-        SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
-        static_cast<uint32>(Window::GetWidth()),
-        static_cast<uint32>(Window::GetHeight()),
-        1,
-        1,
-        SDL_GPU_SAMPLECOUNT_1
-    };
-
-    depth_texture = SDL_CreateGPUTexture(device, &depth_texture_info);
-    if (depth_texture == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the depth texture");
-}
 
 SDL_GPUColorTargetInfo& SDL3GPURenderer::GetColorTarget() { return color_target_info; }

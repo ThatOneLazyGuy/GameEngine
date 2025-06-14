@@ -6,9 +6,12 @@
 
 #include "Renderer.hpp"
 
-struct Model final : FileResource
+struct ModelParser final : FileResource
 {
-    explicit Model(const std::string& path);
+    explicit ModelParser(const std::string& path);
+
+    [[nodiscard]] Handle<Mesh> GetMesh(uint32 index) const;
+    [[nodiscard]] std::vector<Handle<Mesh>> GetMeshes() const;
 
     Assimp::Importer importer;
 };
