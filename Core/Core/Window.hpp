@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <Tools/Types.hpp>
 
 namespace Window
 {
@@ -9,8 +10,8 @@ namespace Window
 
     bool PollEvents();
 
-    size_t GetWidth();
-    size_t GetHeight();
+    sint32 GetWidth();
+    sint32 GetHeight();
 
     void* GetHandle();
 

@@ -1,8 +1,6 @@
 file(GLOB core_sources "Core/*.cpp")
 
-add_library(Core STATIC "${core_sources}"
-        Core/Model.cpp
-        Core/Model.hpp)
+add_library(Core STATIC "${core_sources}")
 
 target_sources(Core PRIVATE "Implementation/PC/Renderer.cpp")
 target_sources(Core PRIVATE "Implementation/SDL3/Renderer.cpp")

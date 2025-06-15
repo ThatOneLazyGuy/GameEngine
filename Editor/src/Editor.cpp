@@ -6,9 +6,11 @@
 #include <algorithm>
 #include <ranges>
 
+#include <Core/Input.hpp>
 #include <Core/Model.hpp>
 #include <Core/Renderer.hpp>
 #include <Core/Resource.hpp>
+#include <Core/Time.hpp>
 #include <Core/Window.hpp>
 
 #include <imgui.h>
@@ -33,10 +35,15 @@ int main(int, char* args[])
 
     Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
 
-    bool done = false;
-    while (!done)
+    while (!Window::PollEvents())
     {
-        done = Window::PollEvents();
+        Time::Update();
+
+        const auto forward_move = static_cast<float>(Input::GetKey(Input::Key::S) - Input::GetKey(Input::Key::W));
+        const auto up_move = static_cast<float>(Input::GetKey(Input::Key::E) - Input::GetKey(Input::Key::Q));
+        const auto right_move = static_cast<float>(Input::GetKey(Input::Key::D) - Input::GetKey(Input::Key::A));
+        Renderer::position += Vec3{right_move, up_move, forward_move} * 40.0f * Time::GetDeltaTime();
+
         Editor::Update();
         Renderer::Instance().SwapBuffer();
     }
@@ -100,14 +107,16 @@ void Editor::Update()
     };
     if (ImGui::Begin("Item window", nullptr, ImGuiWindowFlags_NoCollapse))
     {
-        ImGui::DragFloat3("test", Renderer::position, 0.1f);
+        ImGui::Text("Delta time: %f", Time::GetDeltaTime());
+        ImGui::DragFloat3("test", Renderer::position.data(), 0.1f);
         ImGui::DragFloat("test", &Renderer::fov, 0.1f);
 
         constexpr ImGuiMultiSelectFlags flags =
             ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_ClearOnClickVoid |
             ImGuiMultiSelectFlags_BoxSelect1d | ImGuiMultiSelectFlags_SelectOnClickRelease;
 
-        ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, static_cast<int>(selected.size()), static_cast<int>(items.size()));
+        ImGuiMultiSelectIO* ms_io =
+            ImGui::BeginMultiSelect(flags, static_cast<int>(selected.size()), static_cast<int>(items.size()));
         ImGui::ApplyRequests(ms_io, selected, items);
         for (int i = 0; i < items.size(); i++)
         {

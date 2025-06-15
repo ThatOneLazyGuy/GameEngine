@@ -1,5 +1,6 @@
 #include "Window.hpp"
 
+#include "Input.hpp"
 #include "Renderer.hpp"
 
 #include <SDL3/SDL.h>
@@ -13,8 +14,8 @@ namespace Window
 
         SDL_Window* window = nullptr;
 
-        size_t width = 1920;
-        size_t height = 1080;
+        sint32 width = 1920;
+        sint32 height = 1080;
     } // namespace
 
     void Init(const std::function<void(const void*)>& event_process_func)
@@ -23,12 +24,7 @@ namespace Window
 
         SDL_Init(SDL_INIT_VIDEO);
 
-        window = SDL_CreateWindow(
-            "Engine",                 // window title
-            static_cast<int>(width),  // width, in pixels
-            static_cast<int>(height), // height, in pixels
-            Renderer::Instance().WindowFlags() | SDL_WINDOW_RESIZABLE
-        );
+        window = SDL_CreateWindow("Engine", width, height, Renderer::Instance().WindowFlags() | SDL_WINDOW_RESIZABLE);
 
         if (window == nullptr) SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
 
@@ -53,7 +49,8 @@ namespace Window
             case SDL_EVENT_QUIT:
                 return true;
 
-            case SDL_EVENT_WINDOW_RESIZED: {
+            case SDL_EVENT_WINDOW_RESIZED:
+            {
                 const SDL_WindowEvent& window_event = event.window;
                 if (window_event.windowID == SDL_GetWindowID(window))
                 {
@@ -64,6 +61,13 @@ namespace Window
                 break;
             }
 
+            case SDL_EVENT_KEY_UP:
+            case SDL_EVENT_KEY_DOWN:
+            {
+                const SDL_KeyboardEvent& keyboard_event = event.key;
+                Input::SetKey(static_cast<Input::Key>(keyboard_event.scancode), keyboard_event.down);
+            }
+
             default:
                 break;
             }
@@ -72,8 +76,8 @@ namespace Window
         return false;
     }
 
-    size_t GetWidth() { return width; }
-    size_t GetHeight() { return height; }
+    sint32 GetWidth() { return width; }
+    sint32 GetHeight() { return height; }
 
     void* GetHandle() { return window; }
 } // namespace Window

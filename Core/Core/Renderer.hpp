@@ -151,7 +151,7 @@ class Renderer
     Renderer(Renderer& other) = delete;
     void operator=(const Renderer&) = delete;
 
-    static inline float position[3]{0.0f, 0.0f, 0.0f};
+    static inline Vec3 position{0.0f, 0.0f, 0.0f};
     static inline float fov{90.0f};
 
     static void SetupBackend(const std::string& backend_name);

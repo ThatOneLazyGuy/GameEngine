@@ -2,10 +2,28 @@
 
 #include "Tools/Types.hpp"
 
-inline float ToRadians(const float degrees) { return degrees * std::numbers::pi_v<float> / 180.0f; }
-
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+
+template <typename Type>
+constexpr Type PI{static_cast<Type>(EIGEN_PI)};
+
+template <typename Type>
+constexpr Type ToRadians(const Type degrees)
+{
+    return degrees * PI<Type> / static_cast<Type>(180.0);
+}
+
+template <typename Type>
+constexpr Type Min(const Type a, const Type b)
+{
+    return Eigen::numext::mini(a, b);
+}
+template <typename Type>
+constexpr Type Max(const Type a, const Type b)
+{
+    return Eigen::numext::maxi(a, b);
+}
 
 using Vec2 = Eigen::RowVector2f;
 using Vec3 = Eigen::RowVector3f;
@@ -19,11 +37,27 @@ using Quat = Eigen::Quaternion<float>;
 using Transform2D = Eigen::Transform<float, 2, Eigen::Affine, Eigen::RowMajor>;
 using Transform3D = Eigen::Transform<float, 3, Eigen::Affine, Eigen::RowMajor>;
 
-template <typename MatrixType> constexpr MatrixType Identity() { return MatrixType::Identity(); }
-template <typename MatrixType> constexpr MatrixType Transpose(const MatrixType& matrix) { return matrix.transpose(); }
+template <typename MatrixType>
+constexpr MatrixType Identity()
+{
+    return MatrixType::Identity();
+}
+template <typename MatrixType>
+constexpr MatrixType Transpose(const MatrixType& matrix)
+{
+    return matrix.transpose();
+}
 
-template <typename Type> constexpr Vec3 Cross(const Type& a, const Type& b) { return a.cross(b); }
-template <typename Type> constexpr typename Type::Scalar Dot(const Type& a, const Type& b) { return a.dot(b); }
+template <typename Type>
+constexpr Vec3 Cross(const Type& a, const Type& b)
+{
+    return a.cross(b);
+}
+template <typename Type>
+constexpr typename Type::Scalar Dot(const Type& a, const Type& b)
+{
+    return a.dot(b);
+}
 
 inline Mat4 Translation(const Vec3& translation)
 {
@@ -45,7 +79,8 @@ inline Mat4 Scale(const Vec3& scale)
 }
 
 // Based on glm::perspective_RH_NO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
-template <typename T> Mat4 PerspectiveNO(T fovy, T aspect, T zNear, T zFar)
+template <typename T>
+Mat4 PerspectiveNO(T fovy, T aspect, T zNear, T zFar)
 {
     T const tan_half_fovy = std::tan(fovy / static_cast<T>(2));
 
@@ -59,7 +94,8 @@ template <typename T> Mat4 PerspectiveNO(T fovy, T aspect, T zNear, T zFar)
 }
 
 // Based on glm::perspective_RH_ZO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
-template <typename T> Mat4 PerspectiveZO(T fovy, T aspect, T zNear, T zFar)
+template <typename T>
+Mat4 PerspectiveZO(T fovy, T aspect, T zNear, T zFar)
 {
     T const tan_half_fovy = std::tan(fovy / static_cast<T>(2));
 
