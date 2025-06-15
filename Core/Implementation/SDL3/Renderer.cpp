@@ -159,18 +159,18 @@ void SDL3GPURenderer::Update()
         return;
     }
 
-    auto model = Identity<Mat4>();
+    auto model = Math::Identity<Mat4>();
 
     const size time = SDL_GetTicks();
-    model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
-    model *= Translation(Vec3{0.5f, -0.5f, -2.5f});
+    model *= Math::Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
+    model *= Math::Translation(Vec3{0.5f, -0.5f, -2.5f});
 
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
     const Vec3 cameraPos{position};
-    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
-    const Mat4 projection = PerspectiveZO(ToRadians(fov), width / height, 0.1f, 100.0f);
+    const Mat4 view = Math::LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    const Mat4 projection = Math::PerspectiveZO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
 
     depth_stencil_target_info.texture = depth_texture;
     SDL_GPURenderPass* render_pass =

@@ -136,18 +136,18 @@ void OpenGLRenderer::Update()
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto model = Identity<Mat4>();
+    auto model = Math::Identity<Mat4>();
 
     const size_t time = SDL_GetTicks();
-    model *= Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
-    model *= Translation(Vec3{0.5f, -0.5f, -2.5f});
+    model *= Math::Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
+    model *= Math::Translation(Vec3{0.5f, -0.5f, -2.5f});
 
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
     const Vec3 cameraPos{position};
-    const Mat4 view = LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
-    const Mat4 projection = PerspectiveNO(ToRadians(fov), width / height, 0.1f, 100.0f);
+    const Mat4 view = Math::LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    const Mat4 projection = Math::PerspectiveNO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
 
     glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
     SetUniform<Mat4>(0, model);
