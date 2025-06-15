@@ -27,7 +27,10 @@ namespace ImGui
     void PlatformNewFrame();
     void PlatformEndFrame();
 
+    void LockMouse(bool lock);
+    bool IsMouseLocked();
+
     void RescaleFramebuffer(ImVec2 viewport_size);
     ImTextureID GetFramebuffer();
-    void PlatformProcessEvent(const void* event);
+    bool PlatformProcessEvent(const void* event);
 } // namespace ImGui

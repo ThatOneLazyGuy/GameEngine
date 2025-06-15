@@ -5,7 +5,7 @@
 
 namespace Window
 {
-    void Init(const std::function<void(const void*)>& event_process_func);
+    void Init(const std::function<bool(const void*)>& event_process_func);
     void Exit();
 
     bool PollEvents();

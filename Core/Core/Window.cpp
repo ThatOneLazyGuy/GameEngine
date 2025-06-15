@@ -10,7 +10,7 @@ namespace Window
 {
     namespace
     {
-        std::function<void(const void*)> process_events;
+        std::function<bool(const void*)> process_events;
 
         SDL_Window* window = nullptr;
 
@@ -18,7 +18,7 @@ namespace Window
         sint32 height = 1080;
     } // namespace
 
-    void Init(const std::function<void(const void*)>& event_process_func)
+    void Init(const std::function<bool(const void*)>& event_process_func)
     {
         process_events = event_process_func;
 
@@ -39,10 +39,12 @@ namespace Window
 
     bool PollEvents()
     {
+        Vec2 mouse_pos_delta{};
+
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
-            if (process_events) process_events(&event);
+            if (process_events && process_events(&event)) continue;
 
             switch (event.type)
             {
@@ -66,12 +68,23 @@ namespace Window
             {
                 const SDL_KeyboardEvent& keyboard_event = event.key;
                 Input::SetKey(static_cast<Input::Key>(keyboard_event.scancode), keyboard_event.down);
+                break;
+            }
+
+            case SDL_EVENT_MOUSE_MOTION:
+            {
+                const SDL_MouseMotionEvent& motion_event = event.motion;
+                mouse_pos_delta = Vec2{motion_event.xrel, motion_event.yrel};
+                Input::SetMousePos(motion_event.x, motion_event.y);
+
+                break;
             }
 
             default:
                 break;
             }
         }
+        Input::SetMouseDelta(mouse_pos_delta.x(), mouse_pos_delta.y());
 
         return false;
     }

@@ -146,7 +146,7 @@ void OpenGLRenderer::Update()
     const auto height = static_cast<float>(Window::GetHeight());
 
     const Vec3 cameraPos{position};
-    const Mat4 view = Math::LookAt(cameraPos, Vec3{0.0f, 0.0f, -1.0f}, Vec3{0.0f, 1.0f, 0.0f});
+    const Mat4 view = Math::LookAt(cameraPos, forward, up);
     const Mat4 projection = Math::PerspectiveNO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
 
     glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);

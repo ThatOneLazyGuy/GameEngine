@@ -1,6 +1,11 @@
 #include "Input.hpp"
 
-#include "Math.hpp"
+#include "Window.hpp"
+
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_rect.h>
+
 #include "Tools/Types.hpp"
 
 namespace Input
@@ -18,11 +23,14 @@ namespace Input
         {
             return key_states[key >> key_shift_count] & (1ull << (key & key_lower_mask));
         }
+
+        Vec2 mouse_pos_delta{};
+        Vec2 mouse_pos{};
     } // namespace
 
     void SetKey(const Key key, const bool pressed)
     {
-        uint64& state = key_states[key >> key_shift_count];
+        KeyType& state = key_states[key >> key_shift_count];
         previous_key_states[key >> key_shift_count] = state;
 
         if (pressed) state |= (1ull << (key & key_lower_mask));
@@ -32,4 +40,44 @@ namespace Input
     bool GetKeyPressed(const Key key) { return GetState(key_states, key) && !GetState(previous_key_states, key); }
     bool GetKey(const Key key) { return GetState(key_states, key); }
     bool GetKeyReleased(const Key key) { return !GetState(key_states, key) && GetState(previous_key_states, key); }
+
+    void ClearKeys()
+    {
+        memset(previous_key_states, 0, sizeof(previous_key_states));
+        memset(key_states, 0, sizeof(key_states));
+    }
+
+
+    void SetMousePos(const float x, const float y) { mouse_pos = Vec2{x, y}; }
+    void SetMousePos(const Vec2& pos) { mouse_pos = pos; }
+
+    void SetMouseDelta(const float x, const float y) { mouse_pos_delta = Vec2{x, y}; }
+    void SetMouseDelta(const Vec2& pos_delta) { mouse_pos_delta = pos_delta; }
+
+    void LockMouse(const bool lock)
+    {
+        SDL_Window* window = static_cast<SDL_Window*>(Window::GetHandle());
+
+        if (lock)
+        {
+            const SDL_Rect rect{static_cast<sint32>(mouse_pos.x()), static_cast<sint32>(mouse_pos.y()), 1, 1};
+            if (!SDL_SetWindowMouseRect(window, &rect)) SDL_Log("Failed to set window mouse rect", SDL_GetError());
+        }
+        else SDL_SetWindowMouseRect(window, nullptr);
+
+        SDL_SetWindowRelativeMouseMode(window, lock);
+    }
+    bool IsMouseLocked()
+    {
+        SDL_Window* window = static_cast<SDL_Window*>(Window::GetHandle());
+        return SDL_GetWindowRelativeMouseMode(window);
+    }
+
+    Vec2 GetMousePos() { return mouse_pos; }
+    float GetMouseX() { return mouse_pos.x(); }
+    float GetMouseY() { return mouse_pos.y(); }
+
+    Vec2 GetMouseDeltaPos() { return mouse_pos_delta; }
+    float GetMouseDeltaX() { return mouse_pos_delta.x(); }
+    float GetMouseDeltaY() { return mouse_pos_delta.y(); }
 } // namespace Input

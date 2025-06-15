@@ -1,13 +1,12 @@
 #pragma once
 
+#include "Math.hpp"
 #include "Tools/Types.hpp"
-
-#include <limits>
 
 namespace Input
 {
     using KeyType = uint64;
-    
+
     // Scancodes taken from SDL3 scancodes, for documentation look here: https://wiki.libsdl.org/SDL3/SDL_Scancode
     enum Key : KeyType
     {
@@ -151,9 +150,6 @@ namespace Input
         VOLUMEUP = 128,
         VOLUMEDOWN = 129,
 
-
-
-
         KEY_PAD_COMMA = 133,
         KEY_PAD_EQUALSAS400 = 134,
 
@@ -292,9 +288,32 @@ namespace Input
         KEY_COUNT = 512
     };
 
+
     void SetKey(Key key, bool pressed);
 
     bool GetKeyPressed(Key key);
     bool GetKey(Key key);
     bool GetKeyReleased(Key key);
+
+    void ClearKeys();
+
+
+    void SetMousePos(float x, float y);
+    void SetMousePos(const Vec2& pos);
+
+    void SetMouseDelta(float x, float y);
+    void SetMouseDelta(const Vec2& pos_delta);
+
+    // Makes the mouse invisible and locks it in place, only mouse delta functions will be updated.
+    void LockMouse(bool lock);
+    bool IsMouseLocked();
+
+    Vec2 GetMousePos();
+    float GetMouseX();
+    float GetMouseY();
+
+    Vec2 GetMouseDeltaPos();
+    float GetMouseDeltaX();
+    float GetMouseDeltaY();
+
 } // namespace Input

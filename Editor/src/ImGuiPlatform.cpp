@@ -10,6 +10,8 @@
 #include "Implementation/OpenGL/ImGuiPlatform.hpp"
 #include "Implementation/SDL3GPU/ImGuiPlatform.hpp"
 
+#include "Core/Input.hpp"
+
 #include <backends/imgui_impl_sdl3.h>
 #include <imgui.h>
 
@@ -21,6 +23,8 @@ namespace ImGui
         sint32 frame_buffer_width{0};
         sint32 frame_buffer_height{0};
 
+
+        ImVec2 mouse_move_delta{};
     } // namespace
 
     void PlatformInit(const std::string& backend_name)
@@ -42,9 +46,32 @@ namespace ImGui
         ImGui_ImplSDL3_NewFrame();
         platform->NewFrame();
         NewFrame();
+
+        GetIO().MouseDelta = mouse_move_delta;
     }
 
     void PlatformEndFrame() { platform->EndFrame(); }
+
+    void LockMouse(const bool lock)
+    {
+        SDL_Window* window = static_cast<SDL_Window*>(Window::GetHandle());
+
+        if (lock)
+        {
+            const ImVec2 mouse_pos = GetMousePos() - GetWindowViewport()->Pos;
+
+            const SDL_Rect rect{static_cast<sint32>(mouse_pos.x), static_cast<sint32>(mouse_pos.y), 1, 1};
+            SDL_SetWindowMouseRect(window, &rect);
+        }
+        else SDL_SetWindowMouseRect(window, nullptr);
+
+        SDL_SetWindowRelativeMouseMode(window, lock);
+    }
+    bool IsMouseLocked()
+    {
+        SDL_Window* window = static_cast<SDL_Window*>(Window::GetHandle());
+        return SDL_GetWindowRelativeMouseMode(window);
+    }
 
     void RescaleFramebuffer(const ImVec2 viewport_size)
     {
@@ -57,19 +84,52 @@ namespace ImGui
         frame_buffer_width = width;
         frame_buffer_width = height;
 
-        SDL_WindowEvent test_event{
+        SDL_WindowEvent window_resize_event{
             .type = SDL_EVENT_WINDOW_RESIZED,
             .timestamp = SDL_GetTicksNS(),
             .windowID = SDL_GetWindowID(static_cast<SDL_Window*>(Window::GetHandle())),
             .data1 = width,
             .data2 = height
         };
-        SDL_PushEvent(reinterpret_cast<SDL_Event*>(&test_event));
+        SDL_PushEvent(reinterpret_cast<SDL_Event*>(&window_resize_event));
 
         platform->RescaleFramebuffer(width, height);
     }
 
     ImTextureID GetFramebuffer() { return platform->GetFramebuffer(); }
 
-    void PlatformProcessEvent(const void* event) { ImGui_ImplSDL3_ProcessEvent(static_cast<const SDL_Event*>(event)); }
+    bool PlatformProcessEvent(const void* event)
+    {
+        const SDL_Event* sdl_event = static_cast<const SDL_Event*>(event);
+
+        mouse_move_delta = ImVec2{0.0f, 0.0f};
+        bool block_event = true;
+        switch (sdl_event->type)
+        {
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+            if (!GetIO().WantCaptureKeyboard) block_event = false;
+            else Input::ClearKeys();
+            ImGui_ImplSDL3_ProcessEvent(sdl_event);
+            break;
+
+        case SDL_EVENT_MOUSE_MOTION:
+            mouse_move_delta = ImVec2{sdl_event->motion.xrel, sdl_event->motion.yrel};
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+        case SDL_EVENT_MOUSE_WHEEL:
+            if (!GetIO().WantCaptureMouse) block_event = false;
+            ImGui_ImplSDL3_ProcessEvent(sdl_event);
+            break;
+
+        case SDL_EVENT_WINDOW_RESIZED:
+        case SDL_EVENT_QUIT:
+            block_event = false;
+        default:
+            ImGui_ImplSDL3_ProcessEvent(sdl_event);
+            break;
+        }
+
+        return block_event;
+    }
 } // namespace ImGui

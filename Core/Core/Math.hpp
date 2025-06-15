@@ -42,14 +42,19 @@ namespace Math
     {
         return maxi<Type>(a, b);
     }
+    template <typename Type>
+    constexpr Type Clamp(const Type value, const Type min, const Type max)
+    {
+        return Min<Type>(Max<Type>(value, min), max);
+    }
 
     template <typename Type>
-    constexpr Type sin(const Type angle)
+    constexpr Type Sin(const Type angle)
     {
         return sin<Type>(angle);
     }
     template <typename Type>
-    constexpr Type cos(const Type angle)
+    constexpr Type Cos(const Type angle)
     {
         return cos<Type>(angle);
     }
