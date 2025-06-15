@@ -127,10 +127,11 @@ Shader::Shader(const std::string& path, const Type type) : type{type}
         return;
     }
 
-    code.resize(shader_file.tellg());
+    const std::streamsize size = shader_file.tellg();
+    code.resize(size);
 
     shader_file.seekg(0, std::ios::beg);
-    shader_file.read(code.data(), code.size());
+    shader_file.read(code.data(), size);
     shader_file.close();
 
     Renderer::Instance().CreateShader(*this);

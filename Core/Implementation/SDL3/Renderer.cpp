@@ -11,6 +11,20 @@
 
 namespace
 {
+    struct TextureCopyInfo
+    {
+        SDL_GPUTextureTransferInfo transfer_info{};
+        SDL_GPUTextureRegion region{};
+    };
+    std::vector<TextureCopyInfo> texture_copies;
+
+    struct BufferCopyInfo
+    {
+        SDL_GPUTransferBufferLocation transfer_location{};
+        SDL_GPUBufferRegion region{};
+    };
+    std::vector<BufferCopyInfo> buffer_copies;
+
     SDL_GPUDevice* device = nullptr;
     std::vector<SDL_GPUTexture*> global_textures;
 
@@ -30,7 +44,7 @@ namespace
 
     SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size data_size)
     {
-        SDL_GPUTransferBufferCreateInfo transfer_buffer_info{
+        const SDL_GPUTransferBufferCreateInfo transfer_buffer_info{
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = static_cast<uint32>(data_size)
         };
 
@@ -52,6 +66,30 @@ namespace
         SDL_UnmapGPUTransferBuffer(device, transfer_buffer);
 
         return transfer_buffer;
+    }
+
+    void DataUploadPass(SDL_GPUCommandBuffer* command_buffer)
+    {
+        if (texture_copies.empty() && buffer_copies.empty()) return;
+
+        SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(command_buffer);
+
+        for (const auto& [transfer_info, region] : texture_copies)
+        {
+            SDL_UploadToGPUTexture(copy_pass, &transfer_info, &region, false);
+            SDL_ReleaseGPUTransferBuffer(device, transfer_info.transfer_buffer);
+        }
+
+        for (const auto& [transfer_location, region] : buffer_copies)
+        {
+            SDL_UploadToGPUBuffer(copy_pass, &transfer_location, &region, false);
+            SDL_ReleaseGPUTransferBuffer(device, transfer_location.transfer_buffer);
+        }
+
+        SDL_EndGPUCopyPass(copy_pass);
+
+        texture_copies.clear();
+        buffer_copies.clear();
     }
 } // namespace
 
@@ -92,6 +130,8 @@ void SDL3GPURenderer::Exit()
 void SDL3GPURenderer::Update()
 {
     SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
+    DataUploadPass(command_buffer);
+
     if (command_buffer == nullptr)
     {
         SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
@@ -205,75 +245,6 @@ void SDL3GPURenderer::OnResize(const uint32 width, const uint32 height)
 
 void* SDL3GPURenderer::GetContext() { return device; }
 
-void SDL3GPURenderer::CreateMesh(Mesh& mesh)
-{
-    const auto vertices_size = static_cast<uint32>(mesh.vertices.size() * sizeof(Vertex));
-    const auto indices_size = static_cast<uint32>(mesh.indices.size() * sizeof(uint32));
-
-    SDL_GPUBufferCreateInfo buffer_info{};
-
-    buffer_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-    buffer_info.size = vertices_size;
-    mesh.vertices_buffer.sdl3gpu = SDL_CreateGPUBuffer(device, &buffer_info);
-    if (mesh.vertices_buffer.sdl3gpu == nullptr)
-    {
-        SDL_Log("Failed to create vertex buffer");
-        return;
-    }
-
-    buffer_info.usage = SDL_GPU_BUFFERUSAGE_INDEX;
-    buffer_info.size = indices_size;
-    mesh.indices_buffer.sdl3gpu = SDL_CreateGPUBuffer(device, &buffer_info);
-    if (mesh.indices_buffer.sdl3gpu == nullptr)
-    {
-        SDL_Log("Failed to create index buffer");
-        return;
-    }
-
-    ReloadMesh(mesh);
-}
-
-void SDL3GPURenderer::DestroyMesh(Mesh& mesh)
-{
-    auto* device = static_cast<SDL_GPUDevice*>(GetContext());
-
-    SDL_ReleaseGPUBuffer(device, mesh.vertices_buffer.sdl3gpu);
-    SDL_ReleaseGPUBuffer(device, mesh.indices_buffer.sdl3gpu);
-}
-
-void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
-{
-    const auto vertices_size = static_cast<uint32>(mesh.vertices.size() * sizeof(Vertex));
-    const auto indices_size = static_cast<uint32>(mesh.indices.size() * sizeof(uint32));
-    auto* device = static_cast<SDL_GPUDevice*>(GetContext());
-
-    SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
-    SDL_GPUTransferBufferLocation buffer_location{};
-    SDL_GPUBufferRegion buffer_region{};
-
-    SDL_GPUTransferBuffer* vertex_transfer_buffer = CreateUploadTransferBuffer(mesh.vertices.data(), vertices_size);
-    SDL_GPUTransferBuffer* index_transfer_buffer = CreateUploadTransferBuffer(mesh.indices.data(), indices_size);
-
-    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(command_buffer);
-
-    buffer_location.transfer_buffer = vertex_transfer_buffer;
-    buffer_region.buffer = mesh.vertices_buffer.sdl3gpu;
-    buffer_region.size = vertices_size;
-    SDL_UploadToGPUBuffer(copy_pass, &buffer_location, &buffer_region, false);
-
-    buffer_location.transfer_buffer = index_transfer_buffer;
-    buffer_region.buffer = mesh.indices_buffer.sdl3gpu;
-    buffer_region.size = indices_size;
-    SDL_UploadToGPUBuffer(copy_pass, &buffer_location, &buffer_region, false);
-
-    SDL_EndGPUCopyPass(copy_pass);
-
-    if (!SDL_SubmitGPUCommandBuffer(command_buffer)) { SDL_Log("Failed to submit copy command buffer to load model"); }
-
-    SDL_ReleaseGPUTransferBuffer(device, vertex_transfer_buffer);
-    SDL_ReleaseGPUTransferBuffer(device, index_transfer_buffer);
-}
-
 void SDL3GPURenderer::CreateTexture(Texture& texture)
 {
     constexpr SDL_GPUSamplerCreateInfo sampler_info{
@@ -311,40 +282,82 @@ void SDL3GPURenderer::ReloadTexture(Texture& texture)
     }
 
     global_textures.push_back(texture.texture.sdl3gpu);
-    SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
 
     SDL_GPUTransferBuffer* texture_transfer_buffer =
         CreateUploadTransferBuffer(texture.colors.data(), texture.colors.size() * sizeof(uint32));
 
-    SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(command_buffer);
+    auto& [texture_transfer_info, texture_destination] = texture_copies.emplace_back();
 
-    const SDL_GPUTextureTransferInfo texture_transfer_info{
-        .transfer_buffer = texture_transfer_buffer,
-        .offset = 0,
-        .pixels_per_row = texture.width,
-        .rows_per_layer = texture.height
-    };
+    texture_transfer_info.transfer_buffer = texture_transfer_buffer;
+    texture_transfer_info.offset = 0;
+    texture_transfer_info.pixels_per_row = texture.width;
+    texture_transfer_info.rows_per_layer = texture.height;
 
-
-    const SDL_GPUTextureRegion texture_destination{
-        .texture = texture.texture.sdl3gpu,
-        .w = texture.width,
-        .h = texture.height,
-        .d = 1,
-    };
-    SDL_UploadToGPUTexture(copy_pass, &texture_transfer_info, &texture_destination, false);
-
-    SDL_EndGPUCopyPass(copy_pass);
-
-    if (!SDL_SubmitGPUCommandBuffer(command_buffer)) SDL_Log("Failed to submit copy command buffer to load texture!");
-
-    SDL_ReleaseGPUTransferBuffer(device, texture_transfer_buffer);
+    texture_destination.texture = texture.texture.sdl3gpu;
+    texture_destination.w = texture.width;
+    texture_destination.h = texture.height;
+    texture_destination.d = 1;
 }
 
 void SDL3GPURenderer::DestroyTexture(Texture& texture)
 {
     SDL_ReleaseGPUTexture(device, texture.texture.sdl3gpu);
     SDL_ReleaseGPUSampler(device, texture.sampler.sdl3gpu);
+}
+
+void SDL3GPURenderer::CreateMesh(Mesh& mesh)
+{
+    const auto vertices_size = static_cast<uint32>(mesh.vertices.size() * sizeof(Vertex));
+    const auto indices_size = static_cast<uint32>(mesh.indices.size() * sizeof(uint32));
+
+    SDL_GPUBufferCreateInfo buffer_info{};
+
+    buffer_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
+    buffer_info.size = vertices_size;
+    mesh.vertices_buffer.sdl3gpu = SDL_CreateGPUBuffer(device, &buffer_info);
+    if (mesh.vertices_buffer.sdl3gpu == nullptr)
+    {
+        SDL_Log("Failed to create vertex buffer");
+        return;
+    }
+
+    buffer_info.usage = SDL_GPU_BUFFERUSAGE_INDEX;
+    buffer_info.size = indices_size;
+    mesh.indices_buffer.sdl3gpu = SDL_CreateGPUBuffer(device, &buffer_info);
+    if (mesh.indices_buffer.sdl3gpu == nullptr)
+    {
+        SDL_Log("Failed to create index buffer");
+        return;
+    }
+
+    ReloadMesh(mesh);
+}
+
+void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
+{
+    const auto vertices_size = static_cast<uint32>(mesh.vertices.size() * sizeof(Vertex));
+    const auto indices_size = static_cast<uint32>(mesh.indices.size() * sizeof(uint32));
+
+    SDL_GPUTransferBuffer* vertex_transfer_buffer = CreateUploadTransferBuffer(mesh.vertices.data(), vertices_size);
+    SDL_GPUTransferBuffer* index_transfer_buffer = CreateUploadTransferBuffer(mesh.indices.data(), indices_size);
+
+    auto& [vertices_buffer_location, vertices_buffer_region] = buffer_copies.emplace_back();
+    vertices_buffer_location.transfer_buffer = vertex_transfer_buffer;
+    vertices_buffer_region.buffer = mesh.vertices_buffer.sdl3gpu;
+    vertices_buffer_region.size = vertices_size;
+
+    auto& [indices_buffer_location, indices_buffer_region] = buffer_copies.emplace_back();
+    indices_buffer_location.transfer_buffer = index_transfer_buffer;
+    indices_buffer_region.buffer = mesh.indices_buffer.sdl3gpu;
+    indices_buffer_region.size = indices_size;
+}
+
+void SDL3GPURenderer::DestroyMesh(Mesh& mesh)
+{
+    auto* device = static_cast<SDL_GPUDevice*>(GetContext());
+
+    SDL_ReleaseGPUBuffer(device, mesh.vertices_buffer.sdl3gpu);
+    SDL_ReleaseGPUBuffer(device, mesh.indices_buffer.sdl3gpu);
 }
 
 void SDL3GPURenderer::CreateShader(Shader& shader)
@@ -376,7 +389,6 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
         return;
     }
 
-
     const SDL_GPUShaderCreateInfo shaderInfo{
         .code_size = shader.code.size(),
         .code = reinterpret_cast<const uint8*>(shader.code.data()),
@@ -387,6 +399,7 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
         .num_storage_buffers = shader.storage_count,
         .num_uniform_buffers = shader.uniform_count
     };
+
     shader.shader.sdl3gpu = SDL_CreateGPUShader(device, &shaderInfo);
     if (shader.shader.sdl3gpu == nullptr) SDL_Log("Failed to create shader: %s", SDL_GetError());
 }
