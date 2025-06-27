@@ -1,13 +1,14 @@
 #include "Editor.hpp"
+#include "Core/ECS.hpp"
 
 #include "ImGuiExtra.hpp"
 #include "ImGuiPlatform.hpp"
 
 #include <algorithm>
 #include <ranges>
+#include <filesystem>
 
 #include <Core/Input.hpp>
-#include <Core/Model.hpp>
 #include <Core/Renderer.hpp>
 #include <Core/Resource.hpp>
 #include <Core/Time.hpp>
@@ -36,7 +37,10 @@ int main(int, char* args[])
     Renderer::Instance().OnResize(1, 1);
     Editor::Init();
 
-    Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
+    const auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
+    const ECS::Entity entity = ECS::GetWorld().entity();
+    entity.add<Transform>();
+    entity.set<Handle<Mesh>>(handle);
 
     while (!Window::PollEvents())
     {

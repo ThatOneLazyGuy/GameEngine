@@ -92,7 +92,11 @@ namespace Math
     }
     inline Mat4 Rotation(const float radians, const Vec3& vector)
     {
-        return Identity<Transform3D>().rotate(Eigen::AngleAxisf{radians, vector}).matrix();
+        return Identity<Transform3D>().rotate(AngleAxisf{radians, vector}).matrix();
+    }
+    inline Mat4 Rotation(const Quat& quat)
+    {
+        return Identity<Transform3D>().rotate(quat).matrix();
     }
     inline Mat4 Scale(const Vec3& scale)
     {

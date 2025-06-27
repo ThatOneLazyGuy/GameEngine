@@ -4,6 +4,9 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include "Core/ECS.hpp"
+
+
 ModelParser::ModelParser(const std::string& path)
 {
     importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices);

@@ -1,6 +1,7 @@
 #include "Core/Renderer.hpp"
 #include "Renderer.hpp"
 
+#include "Core/ECS.hpp"
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
 
@@ -97,9 +98,7 @@ void SDL3GPURenderer::Init()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
 
-    device = SDL_CreateGPUDevice(
-        SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, nullptr
-    );
+    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, nullptr);
 
     if (device == nullptr)
     {
@@ -141,11 +140,7 @@ void SDL3GPURenderer::Update()
     if (color_target_info.texture == nullptr)
     {
         if (!SDL_WaitAndAcquireGPUSwapchainTexture(
-                command_buffer,
-                static_cast<SDL_Window*>(Window::GetHandle()),
-                &color_target_info.texture,
-                nullptr,
-                nullptr
+                command_buffer, static_cast<SDL_Window*>(Window::GetHandle()), &color_target_info.texture, nullptr, nullptr
             ))
         {
             SDL_Log("WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
@@ -173,16 +168,17 @@ void SDL3GPURenderer::Update()
     const Mat4 projection = Math::PerspectiveZO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
 
     depth_stencil_target_info.texture = depth_texture;
-    SDL_GPURenderPass* render_pass =
-        SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, &depth_stencil_target_info);
+    SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, &depth_stencil_target_info);
     SDL_BindGPUGraphicsPipeline(render_pass, Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.sdl3gpu);
 
-    SDL_PushGPUVertexUniformData(command_buffer, 0, model.data(), sizeof(Mat4));
     SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Mat4));
     SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Mat4));
 
-    for (const auto& mesh_handle : Resource::GetResources<Mesh>())
+    const auto query = ECS::GetWorld().query_builder<Transform, Handle<Mesh>>().build();
+    query.each([command_buffer, render_pass](Transform& transform, const Handle<Mesh>& mesh_handle)
     {
+        SDL_PushGPUVertexUniformData(command_buffer, 0, transform.GetMatrix().data(), sizeof(Mat4));
+
         uint32 diffuse_count = 0;
         uint32 specular_count = 0;
         for (const auto& texture : mesh_handle->textures)
@@ -214,7 +210,7 @@ void SDL3GPURenderer::Update()
         SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
         SDL_DrawGPUIndexedPrimitives(render_pass, mesh_handle->indices.size(), 1, 0, 0, 0);
-    }
+    });
 
     SDL_EndGPURenderPass(render_pass);
 

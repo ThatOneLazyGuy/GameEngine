@@ -226,7 +226,7 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
         GL_STATIC_DRAW
     );
 
-    const void* offset = nullptr;
+    const size* offset = 0;
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(0);
     offset += sizeof(Vec3);
