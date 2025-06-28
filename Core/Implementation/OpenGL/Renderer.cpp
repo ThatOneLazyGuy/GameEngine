@@ -4,6 +4,8 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 
+#include "Core/ECS.hpp"
+#include "Core/Math.hpp"
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
 
@@ -13,7 +15,6 @@
 #include <map>
 #include <string>
 
-#include "Core/Math.hpp"
 
 namespace
 {
@@ -76,7 +77,7 @@ namespace
     }
 
     template <typename>
-    void SetUniform(const int binding, const Mat4& value)
+    void SetUniform(const int binding, const Matrix4& value)
     {
         const auto iterator = uniformBuffers.find(binding);
         if (iterator == uniformBuffers.end())
@@ -88,11 +89,11 @@ namespace
         const unsigned int UBO = iterator->second;
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(Mat4), value.data(), GL_STATIC_DRAW);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(Matrix4), value.data(), GL_STATIC_DRAW);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
-    template <size_t TextureType = GL_TEXTURE_2D>
+    template <size TextureType = GL_TEXTURE_2D>
     void SetTexture(const unsigned int texture, const int binding)
     {
         glActiveTexture(GL_TEXTURE0 + binding);
@@ -107,9 +108,7 @@ void OpenGLRenderer::Init()
 
     if (context == nullptr) SDL_Log("Failed to create GL context: %s", SDL_GetError());
 
-    if (!gladLoadGLLoader(
-            reinterpret_cast<GLADloadproc>(&SDL_GL_GetProcAddress)
-        )) // NOLINT(clang-diagnostic-cast-function-type-strict)
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(&SDL_GL_GetProcAddress))) // NOLINT(clang-diagnostic-cast-function-type-strict)
     {
         SDL_Log("Failed to initialize GLAD");
     }
@@ -124,9 +123,9 @@ void OpenGLRenderer::Init()
     Resource::Load<ShaderPipeline>("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
 
     glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
-    CreateUniformBuffer<Mat4>(0);
-    CreateUniformBuffer<Mat4>(1);
-    CreateUniformBuffer<Mat4>(2);
+    CreateUniformBuffer<Matrix4>(0);
+    CreateUniformBuffer<Matrix4>(1);
+    CreateUniformBuffer<Matrix4>(2);
 }
 
 void OpenGLRenderer::Exit() {}
@@ -136,26 +135,27 @@ void OpenGLRenderer::Update()
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto model = Math::Identity<Mat4>();
+    auto model = Math::Identity<Matrix4>();
 
     const size_t time = SDL_GetTicks();
-    model *= Math::Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
-    model *= Math::Translation(Vec3{0.5f, -0.5f, -2.5f});
+    model *= Math::Rotation(static_cast<float>(time) / 600.0f, float3{0.0f, 1.0f, 0.0f});
+    model *= Math::Translation(float3{0.5f, -0.5f, -2.5f});
 
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
-    const Vec3 cameraPos{position};
-    const Mat4 view = Math::LookAt(cameraPos, forward, up);
-    const Mat4 projection = Math::PerspectiveNO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
+    const float3 cameraPos{position};
+    const Matrix4 view = Math::LookAt(cameraPos, forward, up);
+    const Matrix4 projection = Math::PerspectiveNO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
 
     glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
-    SetUniform<Mat4>(0, model);
-    SetUniform<Mat4>(1, view);
-    SetUniform<Mat4>(2, projection);
+    SetUniform<Matrix4>(1, view);
+    SetUniform<Matrix4>(2, projection);
 
-    for (const auto& mesh_handle : Resource::GetResources<Mesh>())
-    {
+    const auto query = ECS::GetWorld().query_builder<Transform, Handle<Mesh>>().build();
+    query.each([](Transform& transform, const Handle<Mesh>& mesh_handle) {
+        SetUniform<Matrix4>(0, transform.GetMatrix());
+
         uint32 diffuse_count = 0;
         uint32 specular_count = 0;
         for (const auto& texture : mesh_handle->textures)
@@ -177,7 +177,7 @@ void OpenGLRenderer::Update()
         glBindVertexArray(mesh_handle->bind);
         glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh_handle->indices.size()), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
-    }
+    });
 }
 
 void OpenGLRenderer::SwapBuffer()
@@ -211,31 +211,21 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     glBindVertexArray(mesh.bind);
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices_buffer.opengl);
-    glBufferData(
-        GL_ARRAY_BUFFER,
-        static_cast<sint32>(mesh.vertices.size() * sizeof(Vertex)),
-        mesh.vertices.data(),
-        GL_STATIC_DRAW
-    );
+    glBufferData(GL_ARRAY_BUFFER, static_cast<sint32>(mesh.vertices.size() * sizeof(Vertex)), mesh.vertices.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.opengl);
-    glBufferData(
-        GL_ELEMENT_ARRAY_BUFFER,
-        static_cast<sint32>(mesh.indices.size() * sizeof(uint32)),
-        mesh.indices.data(),
-        GL_STATIC_DRAW
-    );
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<sint32>(mesh.indices.size() * sizeof(uint32)), mesh.indices.data(), GL_STATIC_DRAW);
 
-    const size* offset = 0;
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    uint64 offset = 0;
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(offset));
     glEnableVertexAttribArray(0);
-    offset += sizeof(Vec3);
+    offset += sizeof(float3);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(offset));
     glEnableVertexAttribArray(1);
-    offset += sizeof(Vec3);
+    offset += sizeof(float3);
 
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(offset));
     glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
@@ -308,7 +298,4 @@ void OpenGLRenderer::CreateShaderPipeline(
     CheckCompileErrors(pipeline.shader_pipeline.opengl, "program");
 }
 
-void OpenGLRenderer::DestroyShaderPipeline(ShaderPipeline& pipeline)
-{
-    glDeleteProgram(pipeline.shader_pipeline.opengl);
-}
+void OpenGLRenderer::DestroyShaderPipeline(ShaderPipeline& pipeline) { glDeleteProgram(pipeline.shader_pipeline.opengl); }

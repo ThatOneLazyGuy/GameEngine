@@ -43,9 +43,9 @@ union ShaderPipelineID
 
 struct Vertex
 {
-    Vec3 position{};
-    Vec3 color{1.0f, 0.0f, 1.0f};
-    Vec2 tex_coord{};
+    float3 position{};
+    float3 color{1.0f, 0.0f, 1.0f};
+    float2 tex_coord{};
 };
 
 struct Texture final : FileResource
@@ -151,9 +151,9 @@ class Renderer
     Renderer(Renderer& other) = delete;
     void operator=(const Renderer&) = delete;
 
-    static inline Vec3 position{0.0f, 0.0f, 0.0f};
-    static inline Vec3 forward{0.0f, 0.0f, -1.0f};
-    static inline Vec3 up{0.0f, 0.0f, 1.0f};
+    static inline float3 position{0.0f, 0.0f, 0.0f};
+    static inline float3 forward{0.0f, 0.0f, -1.0f};
+    static inline float3 up{0.0f, 1.0f, 0.0f};
     static inline float fov{90.0f};
 
     static void SetupBackend(const std::string& backend_name);

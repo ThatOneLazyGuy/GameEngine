@@ -8,9 +8,9 @@ class Transform
   public:
     Transform() = default;
 
-    const Mat4& GetMatrix()
+    const Matrix4& GetMatrix()
     {
-        matrix = Math::Identity<Mat4>();
+        matrix = Math::Identity<Matrix4>();
 
         matrix *= Math::Scale(scale);
         matrix *= Math::Rotation(rotation);
@@ -19,12 +19,12 @@ class Transform
         return matrix;
     }
 
-    Vec3 position{0.0f, 0.0f, 0.0f};
+    float3 position{0.0f, 0.0f, 0.0f};
     Quat rotation = Math::Identity<Quat>();
-    Vec3 scale{1.0f, 1.0f, 1.0f};
+    float3 scale{1.0f, 1.0f, 1.0f};
 
   private:
-    Mat4 matrix = Math::Identity<Mat4>();
+    Matrix4 matrix = Math::Identity<Matrix4>();
 };
 
 namespace ECS

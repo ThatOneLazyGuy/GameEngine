@@ -299,20 +299,20 @@ namespace Input
 
 
     void SetMousePos(float x, float y);
-    void SetMousePos(const Vec2& pos);
+    void SetMousePos(const float2& pos);
 
     void SetMouseDelta(float x, float y);
-    void SetMouseDelta(const Vec2& pos_delta);
+    void SetMouseDelta(const float2& pos_delta);
 
     // Makes the mouse invisible and locks it in place, only mouse delta functions will be updated.
     void LockMouse(bool lock);
     bool IsMouseLocked();
 
-    Vec2 GetMousePos();
+    float2 GetMousePos();
     float GetMouseX();
     float GetMouseY();
 
-    Vec2 GetMouseDeltaPos();
+    float2 GetMouseDeltaPos();
     float GetMouseDeltaX();
     float GetMouseDeltaY();
 

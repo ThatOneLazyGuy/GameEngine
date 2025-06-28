@@ -82,9 +82,9 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     {
         auto& [position, color, tex_coord] = vertices[i];
 
-        position = Vec3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
-        if (mesh_colors != nullptr) color = Vec3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
-        if (mesh_tex_coords != nullptr) tex_coord = Vec2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
+        position = float3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
+        if (mesh_colors != nullptr) color = float3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
+        if (mesh_tex_coords != nullptr) tex_coord = float2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
     }
 
     const aiFace* mesh_faces = model_mesh.mFaces;

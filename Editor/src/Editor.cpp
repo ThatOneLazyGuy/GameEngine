@@ -1,12 +1,12 @@
-#include "Editor.hpp"
 #include "Core/ECS.hpp"
+#include "Editor.hpp"
 
 #include "ImGuiExtra.hpp"
 #include "ImGuiPlatform.hpp"
 
 #include <algorithm>
-#include <ranges>
 #include <filesystem>
+#include <ranges>
 
 #include <Core/Input.hpp>
 #include <Core/Renderer.hpp>
@@ -38,9 +38,7 @@ int main(int, char* args[])
     Editor::Init();
 
     const auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
-    const ECS::Entity entity = ECS::GetWorld().entity();
-    entity.add<Transform>();
-    entity.set<Handle<Mesh>>(handle);
+    const ECS::Entity entity = ECS::GetWorld().entity().add<Transform>().set<Handle<Mesh>>(handle);
 
     while (!Window::PollEvents())
     {
@@ -100,7 +98,7 @@ void Editor::Update()
                 const ImVec2 delta = ImGui::GetIO().MouseDelta;
 
                 static float pitch = 0.0f;
-                pitch = Math::Clamp(pitch - delta.y * 0.01f, -Math::PI<float> / 2.0f, Math::PI<float> / 2.0f);
+                pitch = Math::Clamp(pitch - delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
 
                 static float yaw = 0.0f;
                 yaw += delta.x * 0.01f;
@@ -112,13 +110,13 @@ void Editor::Update()
 
                 Renderer::forward = {sin_yaw * cos_pitch, sin_pitch, -cos_yaw * cos_pitch};
                 Renderer::up = {-sin_yaw * sin_pitch, cos_pitch, cos_yaw * sin_pitch};
-                const Vec3 right = Math::Cross(Renderer::forward, Renderer::up);
+                const float3 right = Math::Cross(Renderer::forward, Renderer::up);
 
                 const auto forward_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_W) - ImGui::IsKeyDown(ImGuiKey_S));
                 const auto up_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_E) - ImGui::IsKeyDown(ImGuiKey_Q));
                 const auto right_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_D) - ImGui::IsKeyDown(ImGuiKey_A));
                 Renderer::position +=
-                    (right_move * right + Vec3{0.0f, up_move, 0.0f} + forward_move * Renderer::forward) * 40.0f * Time::GetDeltaTime();
+                    (right_move * right + float3{0.0f, up_move, 0.0f} + forward_move * Renderer::forward) * 40.0f * Time::GetDeltaTime();
             }
             else if (ImGui::IsMouseLocked()) ImGui::LockMouse(false);
         }

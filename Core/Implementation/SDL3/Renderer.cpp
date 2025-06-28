@@ -154,30 +154,30 @@ void SDL3GPURenderer::Update()
         return;
     }
 
-    auto model = Math::Identity<Mat4>();
+    auto model = Math::Identity<Matrix4>();
 
     const size time = SDL_GetTicks();
-    model *= Math::Rotation(static_cast<float>(time) / 600.0f, Vec3{0.0f, 1.0f, 0.0f});
-    model *= Math::Translation(Vec3{0.5f, -0.5f, -2.5f});
+    model *= Math::Rotation(static_cast<float>(time) / 600.0f, float3{0.0f, 1.0f, 0.0f});
+    model *= Math::Translation(float3{0.5f, -0.5f, -2.5f});
 
     const auto width = static_cast<float>(Window::GetWidth());
     const auto height = static_cast<float>(Window::GetHeight());
 
-    const Vec3 cameraPos{position};
-    const Mat4 view = Math::LookAt(cameraPos, forward, up);
-    const Mat4 projection = Math::PerspectiveZO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
+    const float3 cameraPos{position};
+    const Matrix4 view = Math::LookAt(cameraPos, forward, up);
+    const Matrix4 projection = Math::PerspectiveZO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
 
     depth_stencil_target_info.texture = depth_texture;
     SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &color_target_info, 1, &depth_stencil_target_info);
     SDL_BindGPUGraphicsPipeline(render_pass, Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.sdl3gpu);
 
-    SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Mat4));
-    SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Mat4));
+    SDL_PushGPUVertexUniformData(command_buffer, 1, view.data(), sizeof(Matrix4));
+    SDL_PushGPUVertexUniformData(command_buffer, 2, projection.data(), sizeof(Matrix4));
 
     const auto query = ECS::GetWorld().query_builder<Transform, Handle<Mesh>>().build();
     query.each([command_buffer, render_pass](Transform& transform, const Handle<Mesh>& mesh_handle)
     {
-        SDL_PushGPUVertexUniformData(command_buffer, 0, transform.GetMatrix().data(), sizeof(Mat4));
+        SDL_PushGPUVertexUniformData(command_buffer, 0, transform.GetMatrix().data(), sizeof(Matrix4));
 
         uint32 diffuse_count = 0;
         uint32 specular_count = 0;

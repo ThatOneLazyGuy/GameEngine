@@ -24,8 +24,8 @@ namespace Input
             return key_states[key >> key_shift_count] & (1ull << (key & key_lower_mask));
         }
 
-        Vec2 mouse_pos_delta{};
-        Vec2 mouse_pos{};
+        float2 mouse_pos_delta{};
+        float2 mouse_pos{};
     } // namespace
 
     void SetKey(const Key key, const bool pressed)
@@ -48,11 +48,11 @@ namespace Input
     }
 
 
-    void SetMousePos(const float x, const float y) { mouse_pos = Vec2{x, y}; }
-    void SetMousePos(const Vec2& pos) { mouse_pos = pos; }
+    void SetMousePos(const float x, const float y) { mouse_pos = float2{x, y}; }
+    void SetMousePos(const float2& pos) { mouse_pos = pos; }
 
-    void SetMouseDelta(const float x, const float y) { mouse_pos_delta = Vec2{x, y}; }
-    void SetMouseDelta(const Vec2& pos_delta) { mouse_pos_delta = pos_delta; }
+    void SetMouseDelta(const float x, const float y) { mouse_pos_delta = float2{x, y}; }
+    void SetMouseDelta(const float2& pos_delta) { mouse_pos_delta = pos_delta; }
 
     void LockMouse(const bool lock)
     {
@@ -73,11 +73,11 @@ namespace Input
         return SDL_GetWindowRelativeMouseMode(window);
     }
 
-    Vec2 GetMousePos() { return mouse_pos; }
+    float2 GetMousePos() { return mouse_pos; }
     float GetMouseX() { return mouse_pos.x(); }
     float GetMouseY() { return mouse_pos.y(); }
 
-    Vec2 GetMouseDeltaPos() { return mouse_pos_delta; }
+    float2 GetMouseDeltaPos() { return mouse_pos_delta; }
     float GetMouseDeltaX() { return mouse_pos_delta.x(); }
     float GetMouseDeltaY() { return mouse_pos_delta.y(); }
 } // namespace Input

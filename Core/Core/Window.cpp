@@ -39,7 +39,7 @@ namespace Window
 
     bool PollEvents()
     {
-        Vec2 mouse_pos_delta{};
+        float2 mouse_pos_delta{};
 
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -74,7 +74,7 @@ namespace Window
             case SDL_EVENT_MOUSE_MOTION:
             {
                 const SDL_MouseMotionEvent& motion_event = event.motion;
-                mouse_pos_delta = Vec2{motion_event.xrel, motion_event.yrel};
+                mouse_pos_delta = float2{motion_event.xrel, motion_event.yrel};
                 Input::SetMousePos(motion_event.x, motion_event.y);
 
                 break;
