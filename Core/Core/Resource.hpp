@@ -100,7 +100,7 @@ Handle<ResourceType> Resource::Find(Args... args)
     return Find<ResourceType>(id);
 }
 
-template <typename ResourceType = Resource>
+template <typename ResourceType>
 std::vector<Handle<ResourceType>> Resource::GetResources()
 {
     std::vector<Handle<ResourceType>> return_resources;

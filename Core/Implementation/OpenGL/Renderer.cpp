@@ -269,7 +269,7 @@ void OpenGLRenderer::DestroyTexture(Texture& mesh) { glDeleteTextures(1, &mesh.t
 
 void OpenGLRenderer::CreateShader(Shader& shader)
 {
-    const size shader_type = (shader.type == Shader::VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
+    const GLuint shader_type = (shader.type == Shader::VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
 
     shader.shader.opengl = glCreateShader(shader_type);
     const char* code = shader.code.data();

@@ -2,6 +2,8 @@ file(GLOB core_sources "Core/*.cpp")
 
 add_library(Core STATIC "${core_sources}")
 
+set_target_properties(Core PROPERTIES CXX_STANDARD 20)
+
 target_sources(Core PRIVATE "Implementation/PC/Renderer.cpp")
 target_sources(Core PRIVATE "Implementation/SDL3/Renderer.cpp")
 target_sources(Core PRIVATE "Implementation/OpenGL/Renderer.cpp")
@@ -14,15 +16,13 @@ target_include_directories(Core PUBLIC "${EXTERNAL}/SDL/include")
 target_include_directories(Core PUBLIC "${EXTERNAL}/assimp/include")
 target_include_directories(Core PUBLIC "${EXTERNAL}/eigen")
 target_include_directories(Core PUBLIC "${EXTERNAL}/flecs/include")
-target_include_directories(Core PUBLIC "${EXTERNAL}/JoltPhysics/Jolt")
+target_include_directories(Core PUBLIC "${EXTERNAL}/JoltPhysics")
 
-set_target_properties(Core PROPERTIES CXX_STANDARD 23)
 target_link_libraries(Core SDL3::SDL3)
 target_link_libraries(Core assimp::assimp)
 target_link_libraries(Core flecs::flecs_static)
-target_link_libraries(Core Jolt)
+target_link_libraries(Core Jolt::Jolt)
 
-add_compile_definitions(EIGEN_INITIALIZE_MATRICES_BY_ZERO)
 add_compile_definitions(FLECS_CUSTOM_BUILD)
 add_compile_definitions(FLECS_CPP)
 

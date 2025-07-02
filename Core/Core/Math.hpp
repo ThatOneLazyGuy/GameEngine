@@ -7,6 +7,7 @@
 
 #include <format>
 #include <iostream>
+#include <numbers>
 
 // Math types don't really need to be in the Math namespace, makes them easier to work with.
 using float2 = Eigen::RowVector2f;
@@ -22,8 +23,6 @@ using Quat = Eigen::Quaternion<float>;
 
 namespace Math
 {
-    using namespace Eigen::numext;
-
     template <typename Type = float>
     constexpr Type PI{std::numbers::pi_v<Type>};
 
@@ -40,12 +39,12 @@ namespace Math
     template <typename Type>
     constexpr Type Min(const Type a, const Type b)
     {
-        return mini<Type>(a, b);
+        return Eigen::numext::mini<Type>(a, b);
     }
     template <typename Type>
     constexpr Type Max(const Type a, const Type b)
     {
-        return maxi<Type>(a, b);
+        return Eigen::numext::maxi<Type>(a, b);
     }
     template <typename Type>
     constexpr Type Clamp(const Type value, const Type min, const Type max)
@@ -56,12 +55,12 @@ namespace Math
     template <typename Type>
     constexpr Type Sin(const Type angle)
     {
-        return sin<Type>(angle);
+        return Eigen::numext::sin<Type>(angle);
     }
     template <typename Type>
     constexpr Type Cos(const Type angle)
     {
-        return cos<Type>(angle);
+        return Eigen::numext::cos<Type>(angle);
     }
 
     using Transform2D = Eigen::Transform<float, 2, Eigen::Affine, Eigen::RowMajor>;
@@ -128,32 +127,32 @@ namespace Math
     }
 
     // Based on glm::perspective_RH_NO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
-    template <typename T>
-    Matrix4 PerspectiveNO(T fovy, T aspect, T zNear, T zFar)
+    template <typename Type>
+    Matrix4 PerspectiveNO(const Type fov_y, const Type aspect, const Type near, const Type far)
     {
-        T const tan_half_fovy = std::tan(fovy / static_cast<T>(2));
+        const Type tan_half_fov_y = Eigen::numext::tan<Type>(fov_y / static_cast<Type>(2));
 
-        Matrix4 result{};
-        result(0, 0) = static_cast<T>(1) / (aspect * tan_half_fovy);
-        result(1, 1) = static_cast<T>(1) / tan_half_fovy;
-        result(2, 2) = -(zFar + zNear) / (zFar - zNear);
-        result(2, 3) = -static_cast<T>(1);
-        result(3, 2) = -(static_cast<T>(2) * zFar * zNear) / (zFar - zNear);
+        Matrix4 result = Matrix4::Zero();
+        result(0, 0) = static_cast<Type>(1) / (aspect * tan_half_fov_y);
+        result(1, 1) = static_cast<Type>(1) / tan_half_fov_y;
+        result(2, 2) = -(far + near) / (far - near);
+        result(2, 3) = -static_cast<Type>(1);
+        result(3, 2) = -(static_cast<Type>(2) * far * near) / (far - near);
         return result;
     }
 
     // Based on glm::perspective_RH_ZO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl
-    template <typename T>
-    Matrix4 PerspectiveZO(T fovy, T aspect, T zNear, T zFar)
+    template <typename Type>
+    Matrix4 PerspectiveZO(const Type fov_y, const Type aspect, const Type near, const Type far)
     {
-        T const tan_half_fovy = std::tan(fovy / static_cast<T>(2));
+        const Type tan_half_fov_y = Eigen::numext::tan<Type>(fov_y / static_cast<Type>(2));
 
-        Matrix4 result{};
-        result(0, 0) = static_cast<T>(1) / (aspect * tan_half_fovy);
-        result(1, 1) = static_cast<T>(1) / tan_half_fovy;
-        result(2, 2) = zFar / (zNear - zFar);
-        result(2, 3) = -static_cast<T>(1);
-        result(3, 2) = -(zFar * zNear) / (zFar - zNear);
+        Matrix4 result = Matrix4::Zero();
+        result(0, 0) = static_cast<Type>(1) / (aspect * tan_half_fov_y);
+        result(1, 1) = static_cast<Type>(1) / tan_half_fov_y;
+        result(2, 2) = far / (near - far);
+        result(2, 3) = -static_cast<Type>(1);
+        result(3, 2) = -(far * near) / (far - near);
         return result;
     }
 

@@ -66,7 +66,7 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 
     if (scene == nullptr)
     {
-        SDL_Log("Failed to load asset: ", path.c_str());
+        SDL_Log("Failed to load asset: %s", path.c_str());
         return;
     }
 

@@ -204,7 +204,7 @@ void SDL3GPURenderer::Update()
         const SDL_GPUBufferBinding index_binding{.buffer = mesh_handle->indices_buffer.sdl3gpu};
         SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
-        SDL_DrawGPUIndexedPrimitives(render_pass, mesh_handle->indices.size(), 1, 0, 0, 0);
+        SDL_DrawGPUIndexedPrimitives(render_pass, static_cast<uint32>(mesh_handle->indices.size()), 1, 0, 0, 0);
     });
 
     SDL_EndGPURenderPass(render_pass);

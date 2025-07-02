@@ -13,8 +13,6 @@ add_executable(
         "${EXTERNAL}/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 
-message("${editor_source}")
-
 set_target_properties(Editor PROPERTIES CXX_STANDARD 20)
 
 target_link_libraries(Editor Core)

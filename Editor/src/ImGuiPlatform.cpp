@@ -78,7 +78,7 @@ namespace ImGui
         const auto width = static_cast<sint32>(viewport_size.x);
         const auto height = static_cast<sint32>(viewport_size.y);
 
-        if (frame_buffer_width == width & frame_buffer_height == height) return;
+        if (frame_buffer_width == width && frame_buffer_height == height) return;
         if (width <= 0 || height <= 0) return;
 
         frame_buffer_width = width;
