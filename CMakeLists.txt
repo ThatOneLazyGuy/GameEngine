@@ -17,6 +17,7 @@ add_compile_definitions($<$<CONFIG:Debug>:DEBUG>)
 add_subdirectory("${EXTERNAL}/SDL" EXCLUDE_FROM_ALL)
 add_subdirectory("${EXTERNAL}/assimp" EXCLUDE_FROM_ALL)
 add_subdirectory("${EXTERNAL}/flecs" EXCLUDE_FROM_ALL)
+add_subdirectory("${EXTERNAL}/JoltPhysics/Build" EXCLUDE_FROM_ALL)
 
 add_subdirectory(Core)
 add_subdirectory(Editor)

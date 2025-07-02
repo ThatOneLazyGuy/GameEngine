@@ -101,9 +101,8 @@ void Editor::Update()
                 const ImVec2 delta = ImGui::GetIO().MouseDelta;
 
                 static float pitch = 0.0f;
-                pitch = Math::Clamp(pitch + delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
-
                 static float yaw = 0.0f;
+                pitch = Math::Clamp(pitch + delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
                 yaw += delta.x * 0.01f;
 
                 Transform& camera_transform = camera_entity.get_mut<Transform>();

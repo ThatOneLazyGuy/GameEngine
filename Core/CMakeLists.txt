@@ -14,11 +14,13 @@ target_include_directories(Core PUBLIC "${EXTERNAL}/SDL/include")
 target_include_directories(Core PUBLIC "${EXTERNAL}/assimp/include")
 target_include_directories(Core PUBLIC "${EXTERNAL}/eigen")
 target_include_directories(Core PUBLIC "${EXTERNAL}/flecs/include")
+target_include_directories(Core PUBLIC "${EXTERNAL}/JoltPhysics/Jolt")
 
 set_target_properties(Core PROPERTIES CXX_STANDARD 23)
 target_link_libraries(Core SDL3::SDL3)
 target_link_libraries(Core assimp::assimp)
 target_link_libraries(Core flecs::flecs_static)
+target_link_libraries(Core Jolt)
 
 add_compile_definitions(EIGEN_INITIALIZE_MATRICES_BY_ZERO)
 add_compile_definitions(FLECS_CUSTOM_BUILD)
