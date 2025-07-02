@@ -1,11 +1,15 @@
 #pragma once
 
+#include "ECS.hpp"
+
+
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "Math.hpp"
 #include "Resource.hpp"
+#include "Window.hpp"
 
 struct SDL_GPUBuffer;
 union BufferID
@@ -151,11 +155,6 @@ class Renderer
     Renderer(Renderer& other) = delete;
     void operator=(const Renderer&) = delete;
 
-    static inline float3 position{0.0f, 0.0f, 0.0f};
-    static inline float3 forward{0.0f, 0.0f, -1.0f};
-    static inline float3 up{0.0f, 1.0f, 0.0f};
-    static inline float fov{90.0f};
-
     static void SetupBackend(const std::string& backend_name);
     static Renderer& Instance() { return *renderer; }
     static const std::string& GetBackendName() { return backend_name; }
@@ -200,4 +199,32 @@ class Renderer
 
   private:
     static inline Renderer* renderer;
+};
+
+class Camera
+{
+  public:
+    Camera() = default;
+
+    static Matrix4 GetView(const ECS::Entity entity)
+    {
+        Transform& transform = entity.get_mut<Transform>();
+        const Matrix4& transform_matrix = transform.GetMatrix();
+
+        return Math::Inverse(transform_matrix);
+    }
+
+    Matrix4 GetProjection() const
+    {
+        const auto width = static_cast<float>(Window::GetWidth());
+        const auto height = static_cast<float>(Window::GetHeight());
+
+        if (Renderer::GetBackendName() == "OpenGL") return Math::PerspectiveNO(fov, width / height, near, far);
+        return Math::PerspectiveZO(fov, width / height, near, far);
+    }
+
+    float fov{Math::ToRadians(45.0f)};
+
+    float near{0.1f};
+    float far{1000.0f};
 };

@@ -27,6 +27,10 @@ namespace Math
     template <typename Type = float>
     constexpr Type PI{std::numbers::pi_v<Type>};
 
+    static inline const float3 RIGHT{1.0f, 0.0f, 0.0f};
+    static inline const float3 UP{0.0f, 1.0f, 0.0f};
+    static inline const float3 FORWARD{0.0f, 0.0f, -1.0f};
+
     template <typename Type>
     constexpr Type ToRadians(const Type degrees)
     {
@@ -73,6 +77,11 @@ namespace Math
     {
         return matrix.transpose();
     }
+    template <typename MatrixType>
+    constexpr MatrixType Inverse(const MatrixType& matrix)
+    {
+        return matrix.inverse();
+    }
 
     template <typename Type>
     constexpr float3 Cross(const Type& a, const Type& b)
@@ -87,7 +96,7 @@ namespace Math
 
     inline Matrix4 Translation(const float3& translation)
     {
-        Matrix4 matrix = Identity<Matrix4>();
+        auto matrix = Identity<Matrix4>();
         matrix.row(3) = float4{translation.x(), translation.y(), translation.z(), 1.0f};
         return matrix;
     }
@@ -95,10 +104,7 @@ namespace Math
     {
         return Identity<Transform3D>().rotate(Eigen::AngleAxisf{radians, vector}).matrix();
     }
-    inline Matrix4 Rotation(const Quat& quat)
-    {
-        return Identity<Transform3D>().rotate(quat).matrix();
-    }
+    inline Matrix4 Rotation(const Quat& quat) { return Identity<Transform3D>().rotate(quat).matrix(); }
     inline Matrix4 Scale(const float3& scale)
     {
         Matrix4 matrix = Identity<Matrix4>();
@@ -106,6 +112,19 @@ namespace Math
         matrix.row(1) *= scale.y();
         matrix.row(2) *= scale.z();
         return matrix;
+    }
+
+    inline float3 TransformPoint(const float3& point, const Matrix4& matrix)
+    {
+        float4 temp;
+        temp << point, 1.0f;
+        return (temp * matrix).head<3>();
+    }
+    inline float3 TransformVector(const float3& vector, const Matrix4& matrix)
+    {
+        float4 temp;
+        temp << vector, 0.0f;
+        return (temp * matrix).head<3>();
     }
 
     // Based on glm::perspective_RH_NO: https://github.com/g-truc/glm/blob/master/glm/ext/matrix_clip_space.inl

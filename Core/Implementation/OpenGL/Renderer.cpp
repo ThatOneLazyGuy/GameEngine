@@ -116,6 +116,8 @@ void OpenGLRenderer::Init()
     SDL_GL_SetSwapInterval(1);
 
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
@@ -135,26 +137,20 @@ void OpenGLRenderer::Update()
     glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto model = Math::Identity<Matrix4>();
-
-    const size_t time = SDL_GetTicks();
-    model *= Math::Rotation(static_cast<float>(time) / 600.0f, float3{0.0f, 1.0f, 0.0f});
-    model *= Math::Translation(float3{0.5f, -0.5f, -2.5f});
-
-    const auto width = static_cast<float>(Window::GetWidth());
-    const auto height = static_cast<float>(Window::GetHeight());
-
-    const float3 cameraPos{position};
-    const Matrix4 view = Math::LookAt(cameraPos, forward, up);
-    const Matrix4 projection = Math::PerspectiveNO(Math::ToRadians(fov), width / height, 0.1f, 100.0f);
+    const ECS::Entity camera_entity = ECS::GetWorld().query_builder<Transform, Camera>().build().first();
+    const Camera& camera = camera_entity.get<Camera>();
 
     glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
+
+    const auto view = Camera::GetView(camera_entity);
+    const auto projection = camera.GetProjection();
     SetUniform<Matrix4>(1, view);
     SetUniform<Matrix4>(2, projection);
 
     const auto query = ECS::GetWorld().query_builder<Transform, Handle<Mesh>>().build();
     query.each([](Transform& transform, const Handle<Mesh>& mesh_handle) {
-        SetUniform<Matrix4>(0, transform.GetMatrix());
+        const auto model = transform.GetMatrix();
+        SetUniform<Matrix4>(0, model);
 
         uint32 diffuse_count = 0;
         uint32 specular_count = 0;

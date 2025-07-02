@@ -28,6 +28,8 @@ namespace Editor
     }
 } // namespace Editor
 
+ECS::Entity camera_entity;
+
 int main(int, char* args[])
 {
     Renderer::SetupBackend(args[1]);
@@ -39,6 +41,7 @@ int main(int, char* args[])
 
     const auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
     const ECS::Entity entity = ECS::GetWorld().entity().add<Transform>().set<Handle<Mesh>>(handle);
+    camera_entity = ECS::GetWorld().entity().add<Transform>().add<Camera>();
 
     while (!Window::PollEvents())
     {
@@ -98,25 +101,24 @@ void Editor::Update()
                 const ImVec2 delta = ImGui::GetIO().MouseDelta;
 
                 static float pitch = 0.0f;
-                pitch = Math::Clamp(pitch - delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
+                pitch = Math::Clamp(pitch + delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
 
                 static float yaw = 0.0f;
                 yaw += delta.x * 0.01f;
 
-                const float sin_yaw = Math::Sin(yaw);
-                const float cos_yaw = Math::Cos(yaw);
-                const float sin_pitch = Math::Sin(pitch);
-                const float cos_pitch = Math::Cos(pitch);
+                Transform& camera_transform = camera_entity.get_mut<Transform>();
+                camera_transform.rotation = Eigen::AngleAxisf{pitch, Math::RIGHT} * Eigen::AngleAxisf{yaw, Math::UP};
 
-                Renderer::forward = {sin_yaw * cos_pitch, sin_pitch, -cos_yaw * cos_pitch};
-                Renderer::up = {-sin_yaw * sin_pitch, cos_pitch, cos_yaw * sin_pitch};
-                const float3 right = Math::Cross(Renderer::forward, Renderer::up);
+                const Matrix4 camera_matrix = camera_transform.GetMatrix();
+
+                const float3 forward = Math::TransformVector(Math::FORWARD, camera_matrix);
+                const float3 right = Math::TransformVector(Math::RIGHT, camera_matrix);
 
                 const auto forward_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_W) - ImGui::IsKeyDown(ImGuiKey_S));
                 const auto up_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_E) - ImGui::IsKeyDown(ImGuiKey_Q));
                 const auto right_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_D) - ImGui::IsKeyDown(ImGuiKey_A));
-                Renderer::position +=
-                    (right_move * right + float3{0.0f, up_move, 0.0f} + forward_move * Renderer::forward) * 40.0f * Time::GetDeltaTime();
+                camera_transform.position +=
+                    (right_move * right + float3{0.0f, up_move, 0.0f} + forward_move * forward) * 40.0f * Time::GetDeltaTime();
             }
             else if (ImGui::IsMouseLocked()) ImGui::LockMouse(false);
         }
@@ -135,9 +137,14 @@ void Editor::Update()
     static const std::vector<std::string> items{"item0", "item1", "item2", "item3", "item4", "item5", "item6", "item7", "item8", "item9"};
     if (ImGui::Begin("Item window", nullptr, ImGuiWindowFlags_NoCollapse))
     {
+        auto& transform = camera_entity.get_mut<Transform>();
+
         ImGui::Text("Delta time: %f", Time::GetDeltaTime());
-        ImGui::DragFloat3("test", Renderer::position.data(), 0.1f);
-        ImGui::DragFloat("test", &Renderer::fov, 0.1f);
+        ImGui::NewLine();
+
+        ImGui::Text("Camera");
+        ImGui::DragFloat3("Translation", transform.position.data(), 0.1f);
+        ImGui::DragFloat4("Rotation", &transform.rotation.x());
 
         constexpr ImGuiMultiSelectFlags flags = ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_ClearOnClickVoid |
                                                 ImGuiMultiSelectFlags_BoxSelect1d | ImGuiMultiSelectFlags_SelectOnClickRelease;
