@@ -8,6 +8,8 @@
 #include "Core/Math.hpp"
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
+#include "Core/Physics/DebugRenderer.hpp"
+#include "Core/Physics/Physics.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -174,6 +176,33 @@ void OpenGLRenderer::Update()
         glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh_handle->indices.size()), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
     });
+
+    for (const auto& [model, mesh] : Physics::RenderDebug(camera_entity.get<Transform>().position))
+    {
+        SetUniform<Matrix4>(0, model);
+
+        uint32 diffuse_count = 0;
+        uint32 specular_count = 0;
+        for (const auto& texture : mesh->textures)
+        {
+            switch (texture->type)
+            {
+            case Texture::Type::DIFFUSE:
+                glActiveTexture(GL_TEXTURE0 + diffuse_count++);
+                break;
+
+            case Texture::Type::SPECULAR:
+                glActiveTexture(GL_TEXTURE3 + specular_count++);
+                break;
+            }
+
+            glBindTexture(GL_TEXTURE_2D, texture->texture.opengl);
+        }
+
+        glBindVertexArray(mesh->bind);
+        glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh->indices.size()), GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(0);
+    }
 }
 
 void OpenGLRenderer::SwapBuffer()

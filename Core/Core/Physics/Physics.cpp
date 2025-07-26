@@ -1,7 +1,7 @@
 #include "Physics.hpp"
 
-#include "Math.hpp"
-#include "ECS.hpp"
+#include "DebugRenderer.hpp"
+#include "Core/ECS.hpp"
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/RegisterTypes.h>
@@ -17,6 +17,9 @@
 #include <cstdarg>
 #include <iostream>
 #include <thread>
+
+template <typename>
+extern void SetUniform(int binding, const Matrix4& value);
 
 // Callback for traces, connect this to your own trace function if you have one
 static void TraceImpl(const char* inFMT, ...)
@@ -238,6 +241,8 @@ namespace Physics
         body_interface.SetLinearVelocity(collider.GetBodyID(), velocity + JPH::Vec3{0.0f, 2.0f, 0.0f});
     }
 
+    DebugRenderer* debug_renderer;
+
     void Init()
     {
         // Register allocation hook. In this example we'll just let Jolt use malloc / free but you can override these if you want (see Memory.h).
@@ -309,9 +314,11 @@ namespace Physics
 
 
         physics_system.OptimizeBroadPhase();
+
+        debug_renderer = new DebugRenderer();
     }
 
-    void Update(float delta_time)
+    void Update(const float delta_time)
     {
         JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
 
@@ -332,6 +339,8 @@ namespace Physics
 
     void Exit()
     {
+        delete debug_renderer;
+
         JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
 
         // Remove and destroy the floor
@@ -350,5 +359,20 @@ namespace Physics
 
         delete job_system;
         job_system = nullptr;
+    }
+
+    std::vector<RenderData> RenderDebug(const float3& camera_position)
+    {
+        static constexpr JPH::BodyManager::DrawSettings draw_settings{};
+        debug_renderer->mCameraPos = *reinterpret_cast<const JPH::RVec3*>(&camera_position);
+
+        physics_system.DrawBodies(draw_settings, debug_renderer);
+
+        debug_renderer->NextFrame();
+
+        std::vector<RenderData> render_data{std::move(debug_renderer->render_data)};
+        debug_renderer->render_data.clear();
+
+        return std::move(render_data);
     }
 } // namespace Physics

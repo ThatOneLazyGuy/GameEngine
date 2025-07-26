@@ -4,6 +4,8 @@
 #include "Core/ECS.hpp"
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
+#include "Core/Physics/Physics.hpp"
+#include "Core/Physics/DebugRenderer.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -206,6 +208,43 @@ void SDL3GPURenderer::Update()
 
         SDL_DrawGPUIndexedPrimitives(render_pass, static_cast<uint32>(mesh_handle->indices.size()), 1, 0, 0, 0);
     });
+
+    for (const auto& [model, mesh] : Physics::RenderDebug(camera_entity.get<Transform>().position))
+    {
+        SDL_PushGPUVertexUniformData(command_buffer, 0, &model, sizeof(Matrix4));
+
+        uint32 diffuse_count = 0;
+        uint32 specular_count = 0;
+        for (const auto& texture : mesh->textures)
+        {
+            uint32 sampler_slot = 0;
+            switch (texture->type)
+            {
+            case Texture::Type::DIFFUSE:
+                sampler_slot = diffuse_count++;
+                break;
+
+            case Texture::Type::SPECULAR:
+                sampler_slot = 3 + specular_count++;
+                break;
+            }
+
+            const SDL_GPUTextureSamplerBinding binding{
+                .texture = texture->texture.sdl3gpu,
+                .sampler = texture->sampler.sdl3gpu,
+            };
+
+            SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
+        }
+
+        const SDL_GPUBufferBinding vertex_binding{.buffer = mesh->vertices_buffer.sdl3gpu};
+        SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
+
+        const SDL_GPUBufferBinding index_binding{.buffer = mesh->indices_buffer.sdl3gpu};
+        SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+        SDL_DrawGPUIndexedPrimitives(render_pass, static_cast<uint32>(mesh->indices.size()), 1, 0, 0, 0);
+    }
 
     SDL_EndGPURenderPass(render_pass);
 

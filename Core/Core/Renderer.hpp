@@ -1,15 +1,18 @@
 #pragma once
 
 #include "ECS.hpp"
-
+#include "Math.hpp"
+#include "Resource.hpp"
+#include "Window.hpp"
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "Math.hpp"
-#include "Resource.hpp"
-#include "Window.hpp"
+namespace Physics
+{
+    class DebugRenderer;
+}
 
 struct SDL_GPUBuffer;
 union BufferID
@@ -175,6 +178,7 @@ class Renderer
     friend struct Mesh;
     friend struct Shader;
     friend struct ShaderPipeline;
+    friend class Physics::DebugRenderer;
 
     static inline std::string backend_name;
 

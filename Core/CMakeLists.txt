@@ -1,8 +1,6 @@
 file(GLOB core_sources "Core/*.cpp")
 
-add_library(Core STATIC "${core_sources}")
-
-message("${core_sources}")
+add_library(Core STATIC "${core_sources}" "Core/Physics/Physics.cpp" "Core/Physics/DebugRenderer.cpp")
 
 set_target_properties(Core PROPERTIES CXX_STANDARD 20)
 
@@ -27,6 +25,7 @@ target_link_libraries(Core Jolt::Jolt)
 
 add_compile_definitions(FLECS_CUSTOM_BUILD)
 add_compile_definitions(FLECS_CPP)
+add_compile_definitions(JPH_DEBUG_RENDERER)
 
 add_custom_command(TARGET Core POST_BUILD
         COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D SDL3GPU -D VERTEX -matrix-layout-row-major -target spirv -profile spirv_1_3 -o "${SHADERS}/Shader.vert.spv" -entry "VertexMain"

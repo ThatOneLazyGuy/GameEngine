@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Math.hpp"
 #include "Tools/Types.hpp"
 
 #include <Jolt/Jolt.h>
@@ -7,6 +8,8 @@
 
 namespace Physics
 {
+    struct RenderData;
+
     class Collider
     {
       public:
@@ -29,12 +32,12 @@ namespace Physics
         Collider() = default;
         virtual ~Collider() = default;
 
-        virtual Type GetType() const = 0;
+        [[nodiscard]] virtual Type GetType() const = 0;
 
         virtual void SetMotionType(MotionType type);
-        MotionType GetMotionType() const { return motion_type; }
+        [[nodiscard]] MotionType GetMotionType() const { return motion_type; }
 
-        BodyID GetBodyID() const { return body_id; }
+        [[nodiscard]] BodyID GetBodyID() const { return body_id; }
 
       protected:
         BodyID body_id{JPH::BodyID::cInvalidBodyID};
@@ -59,14 +62,12 @@ namespace Physics
 
         [[nodiscard]] Type GetType() const override { return Type::SPHERE; }
 
-        float GetRadius() const { return radius; }
+        [[nodiscard]] float GetRadius() const { return radius; }
         void SetRadius(const float new_radius) { radius = new_radius; }
 
       private:
         float radius{1.0f};
     };
-
-    void Test(const Collider& collider);
 
     void Init();
 
@@ -74,4 +75,5 @@ namespace Physics
 
     void Exit();
 
+    std::vector<RenderData> RenderDebug(const float3& camera_position);
 } // namespace Physics

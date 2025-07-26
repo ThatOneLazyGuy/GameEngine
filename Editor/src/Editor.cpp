@@ -13,7 +13,7 @@
 #include <Core/Resource.hpp>
 #include <Core/Time.hpp>
 #include <Core/Window.hpp>
-#include <Core/Physics.hpp>
+#include <Core/Physics/Physics.hpp>
 
 #include <SDL3/SDL_mouse.h>
 
@@ -142,8 +142,6 @@ void Editor::Update()
 
     if (ImGui::Begin("Hierarchy", nullptr, ImGuiWindowFlags_NoCollapse))
     {
-        if (ImGui::Button("Test")) Physics::Test(backpack_entity.get<Physics::SphereCollider>());
-
         const auto query = ECS::GetWorld().query_builder<Transform>().build();
 
         query.each([](const ECS::Entity entity, const Transform&) {
