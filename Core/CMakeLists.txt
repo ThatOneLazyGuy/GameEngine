@@ -2,6 +2,8 @@ file(GLOB core_sources "Core/*.cpp")
 
 add_library(Core STATIC "${core_sources}")
 
+message("${core_sources}")
+
 set_target_properties(Core PROPERTIES CXX_STANDARD 20)
 
 target_sources(Core PRIVATE "Implementation/PC/Renderer.cpp")

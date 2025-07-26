@@ -100,7 +100,7 @@ namespace ImGui
 
     bool PlatformProcessEvent(const void* event)
     {
-        const SDL_Event* sdl_event = static_cast<const SDL_Event*>(event);
+        const auto* sdl_event = static_cast<const SDL_Event*>(event);
 
         mouse_move_delta = ImVec2{0.0f, 0.0f};
         bool block_event = true;

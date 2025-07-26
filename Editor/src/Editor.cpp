@@ -13,6 +13,7 @@
 #include <Core/Resource.hpp>
 #include <Core/Time.hpp>
 #include <Core/Window.hpp>
+#include <Core/Physics.hpp>
 
 #include <SDL3/SDL_mouse.h>
 
@@ -28,6 +29,7 @@ namespace Editor
     }
 } // namespace Editor
 
+ECS::Entity backpack_entity;
 ECS::Entity camera_entity;
 
 int main(int, char* args[])
@@ -37,21 +39,27 @@ int main(int, char* args[])
     Window::Init(&ImGui::PlatformProcessEvent);
     Renderer::Instance().Init();
     Renderer::Instance().OnResize(1, 1);
+    Physics::Init();
     Editor::Init();
 
     const auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
-    const ECS::Entity entity = ECS::GetWorld().entity().add<Transform>().set<Handle<Mesh>>(handle);
-    camera_entity = ECS::GetWorld().entity().add<Transform>().add<Camera>();
+    backpack_entity = ECS::GetWorld().entity("Backpack").add<Transform>().set<Handle<Mesh>>(handle).add<Physics::SphereCollider>();
+    camera_entity = ECS::GetWorld().entity("Camera").add<Transform>().add<Camera>();
+    camera_entity.get_mut<Transform>().position = float3{0.0f, 0.0f, 7.0f};
 
     while (!Window::PollEvents())
     {
         Time::Update();
 
+        Physics::Update(Time::GetDeltaTime());
+
         Editor::Update();
         Renderer::Instance().SwapBuffer();
     }
 
+    Physics::Exit();
     Resource::CleanResources(true);
+
     ImGui::PlatformExit();
     Renderer::Instance().Exit();
     Window::Exit();
@@ -105,7 +113,7 @@ void Editor::Update()
                 pitch = Math::Clamp(pitch + delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
                 yaw += delta.x * 0.01f;
 
-                Transform& camera_transform = camera_entity.get_mut<Transform>();
+                auto& camera_transform = camera_entity.get_mut<Transform>();
                 camera_transform.rotation = Eigen::AngleAxisf{pitch, Math::RIGHT} * Eigen::AngleAxisf{yaw, Math::UP};
 
                 const Matrix4 camera_matrix = camera_transform.GetMatrix();
@@ -129,6 +137,21 @@ void Editor::Update()
 
         ImGui::SetCursorPos(ImVec2{0.0f, ImGui::GetFrameHeight()});
         ImGui::Image(ImGui::GetFramebuffer(), window_content_area);
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("Hierarchy", nullptr, ImGuiWindowFlags_NoCollapse))
+    {
+        if (ImGui::Button("Test")) Physics::Test(backpack_entity.get<Physics::SphereCollider>());
+
+        const auto query = ECS::GetWorld().query_builder<Transform>().build();
+
+        query.each([](const ECS::Entity entity, const Transform&) {
+            constexpr ImGuiTreeNodeFlags flags =
+                ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Bullet;
+
+            ImGui::TreeNodeEx(entity.name().c_str(), flags);
+        });
     }
     ImGui::End();
 
