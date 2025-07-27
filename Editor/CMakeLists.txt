@@ -1,12 +1,16 @@
-file(GLOB editor_source "src/*.cpp")
-file(GLOB imgui_source "${EXTERNAL}/imgui/*.cpp")
-
 add_executable(
         Editor
-        "${editor_source}"
-        "${imgui_source}"
+        "src/Editor.cpp"
+        "src/ImGuiExtra.cpp"
+        "src/ImGuiPlatform.cpp"
         "Implementation/OpenGL/ImGuiPlatform.cpp"
         "Implementation/SDL3GPU/ImGuiPlatform.cpp"
+
+        "${EXTERNAL}/imgui/imgui.cpp"
+        "${EXTERNAL}/imgui/imgui_demo.cpp"
+        "${EXTERNAL}/imgui/imgui_draw.cpp"
+        "${EXTERNAL}/imgui/imgui_tables.cpp"
+        "${EXTERNAL}/imgui/imgui_widgets.cpp"
         "${EXTERNAL}/imgui/backends/imgui_impl_sdl3.cpp"
         "${EXTERNAL}/imgui/backends/imgui_impl_opengl3.cpp"
         "${EXTERNAL}/imgui/backends/imgui_impl_sdlgpu3.cpp"
@@ -15,7 +19,14 @@ add_executable(
 
 set_target_properties(Editor PROPERTIES CXX_STANDARD 20)
 
-target_link_libraries(Editor Core)
-target_include_directories(Editor PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(Editor PUBLIC "${EXTERNAL}/imgui")
-target_include_directories(Editor PUBLIC "${EXTERNAL}/imgui/misc/cpp")
+target_include_directories(
+        Editor
+        PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${EXTERNAL}/imgui"
+        "${EXTERNAL}/imgui/misc/cpp"
+)
+
+target_link_libraries(Editor "Core")
+
+

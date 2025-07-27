@@ -11,13 +11,15 @@ set(SHADERS "${ASSETS}/Shaders")
 set(PLATFORM "PC")
 set(RENDER_BACKEND "SDL3GPU")
 
-add_compile_definitions(RENDER_BACKEND_${RENDER_BACKEND})
-add_compile_definitions($<$<CONFIG:Debug>:DEBUG>)
-
 add_subdirectory("${EXTERNAL}/SDL" EXCLUDE_FROM_ALL)
 add_subdirectory("${EXTERNAL}/assimp" EXCLUDE_FROM_ALL)
 add_subdirectory("${EXTERNAL}/flecs" EXCLUDE_FROM_ALL)
 add_subdirectory("${EXTERNAL}/JoltPhysics/Build" EXCLUDE_FROM_ALL)
+
+add_compile_definitions(
+        "RENDER_BACKEND_${RENDER_BACKEND}"
+        "$<$<CONFIG:Debug>:DEBUG>"
+)
 
 add_subdirectory(Core)
 add_subdirectory(Editor)
