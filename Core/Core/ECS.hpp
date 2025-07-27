@@ -20,20 +20,20 @@ class Transform
     }
 
     float3 position{0.0f, 0.0f, 0.0f};
-    Quat rotation = Math::Identity<Quat>();
+    Quat rotation{Math::Identity<Quat>()};
     float3 scale{1.0f, 1.0f, 1.0f};
 
   private:
-    Matrix4 matrix = Math::Identity<Matrix4>();
+    Matrix4 matrix{Math::Identity<Matrix4>()};
 };
 
 namespace ECS
 {
     using Entity = flecs::entity;
 
-    inline flecs::world& GetWorld()
-    {
-        static flecs::world world;
-        return world;
-    }
+    void Init();
+
+    void Exit();
+
+    [[nodiscard]] flecs::world& GetWorld();
 } // namespace ECS

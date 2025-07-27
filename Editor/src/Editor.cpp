@@ -37,15 +37,19 @@ int main(int, char* args[])
     Renderer::SetupBackend(args[1]);
 
     Window::Init(&ImGui::PlatformProcessEvent);
+
     Renderer::Instance().Init();
     Renderer::Instance().OnResize(1, 1);
+
     Physics::Init();
     Editor::Init();
+    ECS::Init();
 
-    const auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
+    auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
     backpack_entity = ECS::GetWorld().entity("Backpack").add<Transform>().set<Handle<Mesh>>(handle).add<Physics::SphereCollider>();
     camera_entity = ECS::GetWorld().entity("Camera").add<Transform>().add<Camera>();
     camera_entity.get_mut<Transform>().position = float3{0.0f, 0.0f, 7.0f};
+    handle.reset();
 
     while (!Window::PollEvents())
     {
@@ -57,6 +61,7 @@ int main(int, char* args[])
         Renderer::Instance().SwapBuffer();
     }
 
+    ECS::Exit();
     Physics::Exit();
     Resource::CleanResources(true);
 

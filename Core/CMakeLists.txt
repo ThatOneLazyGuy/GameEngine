@@ -3,6 +3,7 @@ add_library(
         STATIC
         "Core/Physics/Physics.cpp"
         "Core/Physics/DebugRenderer.cpp"
+        "Core/ECS.cpp"
         "Core/Input.cpp"
         "Core/Model.cpp"
         "Core/Time.cpp"
