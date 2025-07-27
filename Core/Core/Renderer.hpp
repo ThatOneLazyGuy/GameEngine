@@ -210,9 +210,9 @@ class Camera
   public:
     Camera() = default;
 
-    static Matrix4 GetView(const ECS::Entity entity)
+    static Matrix4 GetView(const ECS::Entity& entity)
     {
-        Transform& transform = entity.get_mut<Transform>();
+        const Transform& transform = entity.GetComponent<Transform>();
         const Matrix4& transform_matrix = transform.GetMatrix();
 
         return Math::Inverse(transform_matrix);

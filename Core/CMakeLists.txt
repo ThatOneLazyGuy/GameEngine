@@ -43,6 +43,7 @@ target_compile_definitions(Core
         "FLECS_CUSTOM_BUILD"
         "FLECS_CPP"
         "JPH_DEBUG_RENDERER"
+        "EIGEN_MAX_ALIGN_BYTES=0"
 )
 
 add_custom_command(TARGET Core POST_BUILD

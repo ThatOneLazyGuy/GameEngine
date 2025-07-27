@@ -167,13 +167,13 @@ void SDL3GPURenderer::Update()
     SDL_BindGPUGraphicsPipeline(render_pass, Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.sdl3gpu);
 
     const ECS::Entity camera_entity = ECS::GetWorld().query_builder<Transform, Camera>().build().first();
-    const Camera& camera = camera_entity.get<Camera>();
+    const Camera& camera = camera_entity.GetComponent<Camera>();
 
     SDL_PushGPUVertexUniformData(command_buffer, 1, Camera::GetView(camera_entity).data(), sizeof(Matrix4));
     SDL_PushGPUVertexUniformData(command_buffer, 2, camera.GetProjection().data(), sizeof(Matrix4));
 
-    const auto query = ECS::GetWorld().query_builder<Transform, Handle<Mesh>>().build();
-    query.each([command_buffer, render_pass](Transform& transform, const Handle<Mesh>& mesh_handle) {
+    const auto query = ECS::GetWorld().query_builder<const Transform, const Handle<Mesh>>().build();
+    query.each([command_buffer, render_pass](const Transform& transform, const Handle<Mesh>& mesh_handle) {
         SDL_PushGPUVertexUniformData(command_buffer, 0, transform.GetMatrix().data(), sizeof(Matrix4));
 
         uint32 diffuse_count = 0;
@@ -209,7 +209,7 @@ void SDL3GPURenderer::Update()
         SDL_DrawGPUIndexedPrimitives(render_pass, static_cast<uint32>(mesh_handle->indices.size()), 1, 0, 0, 0);
     });
 
-    for (const auto& [model, mesh] : Physics::RenderDebug(camera_entity.get<Transform>().position))
+    for (const auto& [model, mesh] : Physics::RenderDebug(camera_entity.GetComponent<Transform>().GetPosition()))
     {
         SDL_PushGPUVertexUniformData(command_buffer, 0, &model, sizeof(Matrix4));
 

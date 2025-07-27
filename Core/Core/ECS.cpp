@@ -13,5 +13,10 @@ namespace ECS
 
     void Exit() { delete world; }
 
+    Entity CreateEntity(const std::string& string)
+    {
+        return Entity{world->entity(string.c_str())}.AddComponent<Transform>();
+    }
+
     flecs::world& GetWorld() { return *world; }
 } // namespace ECS

@@ -140,7 +140,7 @@ void OpenGLRenderer::Update()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     const ECS::Entity camera_entity = ECS::GetWorld().query_builder<Transform, Camera>().build().first();
-    const Camera& camera = camera_entity.get<Camera>();
+    const Camera& camera = camera_entity.GetComponent<Camera>();
 
     glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
 
@@ -149,8 +149,8 @@ void OpenGLRenderer::Update()
     SetUniform<Matrix4>(1, view);
     SetUniform<Matrix4>(2, projection);
 
-    const auto query = ECS::GetWorld().query_builder<Transform, Handle<Mesh>>().build();
-    query.each([](Transform& transform, const Handle<Mesh>& mesh_handle) {
+    const auto query = ECS::GetWorld().query_builder<const Transform, const Handle<Mesh>>().build();
+    query.each([](const Transform& transform, const Handle<Mesh>& mesh_handle) {
         const auto model = transform.GetMatrix();
         SetUniform<Matrix4>(0, model);
 
@@ -177,7 +177,7 @@ void OpenGLRenderer::Update()
         glBindVertexArray(0);
     });
 
-    for (const auto& [model, mesh] : Physics::RenderDebug(camera_entity.get<Transform>().position))
+    for (const auto& [model, mesh] : Physics::RenderDebug(camera_entity.GetComponent<Transform>().GetPosition()))
     {
         SetUniform<Matrix4>(0, model);
 

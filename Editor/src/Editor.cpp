@@ -46,9 +46,13 @@ int main(int, char* args[])
     ECS::Init();
 
     auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
-    backpack_entity = ECS::GetWorld().entity("Backpack").add<Transform>().set<Handle<Mesh>>(handle).add<Physics::SphereCollider>();
-    camera_entity = ECS::GetWorld().entity("Camera").add<Transform>().add<Camera>();
-    camera_entity.get_mut<Transform>().position = float3{0.0f, 0.0f, 7.0f};
+    backpack_entity = ECS::CreateEntity("Backpack");
+    backpack_entity.AddComponent<Handle<Mesh>>(handle);
+    backpack_entity.AddComponent<Physics::SphereCollider>();
+
+    camera_entity = ECS::CreateEntity("Camera");
+    camera_entity.AddComponent<Camera>();
+    camera_entity.GetComponent<Transform>().SetPosition(float3{0.0f, 0.0f, 7.0f});
     handle.reset();
 
     while (!Window::PollEvents())
@@ -118,8 +122,8 @@ void Editor::Update()
                 pitch = Math::Clamp(pitch + delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
                 yaw += delta.x * 0.01f;
 
-                auto& camera_transform = camera_entity.get_mut<Transform>();
-                camera_transform.rotation = Eigen::AngleAxisf{pitch, Math::RIGHT} * Eigen::AngleAxisf{yaw, Math::UP};
+                auto& camera_transform = camera_entity.GetComponent<Transform>();
+                camera_transform.SetRotation(Eigen::AngleAxisf{pitch, Math::RIGHT} * Eigen::AngleAxisf{yaw, Math::UP});
 
                 const Matrix4 camera_matrix = camera_transform.GetMatrix();
 
@@ -129,8 +133,10 @@ void Editor::Update()
                 const auto forward_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_W) - ImGui::IsKeyDown(ImGuiKey_S));
                 const auto up_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_E) - ImGui::IsKeyDown(ImGuiKey_Q));
                 const auto right_move = static_cast<float>(ImGui::IsKeyDown(ImGuiKey_D) - ImGui::IsKeyDown(ImGuiKey_A));
-                camera_transform.position +=
-                    (right_move * right + float3{0.0f, up_move, 0.0f} + forward_move * forward) * 40.0f * Time::GetDeltaTime();
+                camera_transform.SetPosition(
+                    camera_transform.GetPosition() +
+                    (right_move * right + float3{0.0f, up_move, 0.0f} + forward_move * forward) * 40.0f * Time::GetDeltaTime()
+                );
             }
             else if (ImGui::IsMouseLocked()) ImGui::LockMouse(false);
         }
@@ -153,7 +159,7 @@ void Editor::Update()
             constexpr ImGuiTreeNodeFlags flags =
                 ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Bullet;
 
-            ImGui::TreeNodeEx(entity.name().c_str(), flags);
+            ImGui::TreeNodeEx(entity.Name().data(), flags);
         });
     }
     ImGui::End();
@@ -162,14 +168,17 @@ void Editor::Update()
     static const std::vector<std::string> items{"item0", "item1", "item2", "item3", "item4", "item5", "item6", "item7", "item8", "item9"};
     if (ImGui::Begin("Item window", nullptr, ImGuiWindowFlags_NoCollapse))
     {
-        auto& transform = camera_entity.get_mut<Transform>();
+        auto& transform = camera_entity.GetComponent<Transform>();
 
         ImGui::Text("Delta time: %f", Time::GetDeltaTime());
         ImGui::NewLine();
 
         ImGui::Text("Camera");
-        ImGui::DragFloat3("Translation", transform.position.data(), 0.1f);
-        ImGui::DragFloat4("Rotation", &transform.rotation.x());
+        float3 position = transform.GetPosition();
+        if (ImGui::DragFloat3("Translation", position.data(), 0.1f)) transform.SetPosition(position);
+
+        Quat rotation = transform.GetRotation();
+        if (ImGui::DragFloat4("Rotation", &rotation.x())) transform.SetRotation(rotation);
 
         constexpr ImGuiMultiSelectFlags flags = ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_ClearOnClickVoid |
                                                 ImGuiMultiSelectFlags_BoxSelect1d | ImGuiMultiSelectFlags_SelectOnClickRelease;

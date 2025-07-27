@@ -19,9 +19,9 @@ namespace Physics
 
                 auto& vertex = batch->mesh.vertices.emplace_back();
 
-                vertex.position = *reinterpret_cast<const float3*>(&position);
+                vertex.position = float3{position.x, position.y, position.z};
                 const JPH::Vec4 float_color = color.ToVec4();
-                vertex.color = *reinterpret_cast<const float3*>(&float_color);
+                vertex.color = float3{float_color.mF32};
             }
         }
 
@@ -44,9 +44,9 @@ namespace Physics
 
             auto& vertex = batch->mesh.vertices[i];
 
-            vertex.position = *reinterpret_cast<const float3*>(&position);
+            vertex.position = float3{position.x, position.y, position.z};
             const JPH::Vec4 float_color = color.ToVec4();
-            vertex.color = *reinterpret_cast<const float3*>(&float_color);
+            vertex.color = float3{float_color.mF32};
         }
 
         batch->mesh.indices.assign(inIndices, inIndices + inIndexCount);
@@ -64,7 +64,9 @@ namespace Physics
         const LOD* lod = &inGeometry->GetLOD(JPH::Vec3{mCameraPos}, inWorldSpaceBounds, inLODScaleSq);
         const BatchImpl* batch = static_cast<const BatchImpl*>(lod->mTriangleBatch.GetPtr());
 
-        const auto model = *reinterpret_cast<const Matrix4*>(&inModelMatrix);
+        Matrix4 model;
+        std::memcpy(&model, &inModelMatrix, sizeof(model));
+
         render_data.emplace_back(model, &batch->mesh);
     }
 

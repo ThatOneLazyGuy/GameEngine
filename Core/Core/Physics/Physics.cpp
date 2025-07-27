@@ -305,14 +305,6 @@ namespace Physics
         // Add it to the world
         body_interface.AddBody(floor->GetID(), JPH::EActivation::DontActivate);
 
-        // Now create a dynamic body to bounce on the floor
-        // Note that this uses the shorthand version of creating and adding a body to the world
-        //JPH::BodyCreationSettings sphere_settings(
-        //    new JPH::SphereShape(0.5f), JPH::RVec3(0.0, 2.0, 0.0), JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic, Layers::MOVING
-        //);
-        //sphere_id = body_interface.CreateAndAddBody(sphere_settings, JPH::EActivation::Activate);
-
-
         physics_system.OptimizeBroadPhase();
 
         debug_renderer = new DebugRenderer();
@@ -330,8 +322,8 @@ namespace Physics
 
             body_interface.GetPositionAndRotation(collider.GetBodyID(), position, rotation);
 
-            transform.position = *reinterpret_cast<float3*>(&position);
-            transform.rotation = *reinterpret_cast<::Quat*>(&rotation);
+            transform.SetPosition(float3{position.mF32});
+            transform.SetRotation(Quat{rotation.mValue.mF32});
         });
 
         physics_system.Update(delta_time, COLLISION_STEPS, temp_allocator, job_system);
@@ -364,7 +356,7 @@ namespace Physics
     std::vector<RenderData> RenderDebug(const float3& camera_position)
     {
         static constexpr JPH::BodyManager::DrawSettings draw_settings{};
-        debug_renderer->mCameraPos = *reinterpret_cast<const JPH::RVec3*>(&camera_position);
+        debug_renderer->mCameraPos = JPH::RVec3{camera_position.x(), camera_position.y(), camera_position.z()};
 
         physics_system.DrawBodies(draw_settings, debug_renderer);
 
