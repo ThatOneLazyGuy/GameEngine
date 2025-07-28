@@ -58,7 +58,7 @@ namespace Window
                 {
                     width = window_event.data1;
                     height = window_event.data2;
-                    Renderer::Instance().OnResize(width, height);
+                    Renderer::Instance().main_target->Resize(width, height);
                 }
                 break;
             }

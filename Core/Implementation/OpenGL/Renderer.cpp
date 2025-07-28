@@ -101,6 +101,92 @@ namespace
         glActiveTexture(GL_TEXTURE0 + binding);
         glBindTexture(TextureType, texture);
     }
+
+    void RenderMesh(const Transform& transform, const Handle<Mesh>& mesh_handle)
+    {
+        const auto model = transform.GetMatrix();
+        SetUniform<Matrix4>(0, model);
+
+        glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
+
+        uint32 diffuse_count = 0;
+        uint32 specular_count = 0;
+        for (const auto& texture : mesh_handle->textures)
+        {
+            switch (texture->type)
+            {
+            case Texture::Type::DIFFUSE:
+                glActiveTexture(GL_TEXTURE0 + diffuse_count++);
+                break;
+
+            case Texture::Type::SPECULAR:
+                glActiveTexture(GL_TEXTURE3 + specular_count++);
+                break;
+            }
+
+            glBindTexture(GL_TEXTURE_2D, texture->texture.opengl);
+        }
+
+        glBindVertexArray(mesh_handle->bind);
+        glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh_handle->indices.size()), GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(0);
+    }
+
+    void RenderCamera(const Transform& camera_transform, const Camera& camera)
+    {
+        const Handle<RenderTarget>& render_target = camera.render_target;
+
+        glBindFramebuffer(GL_FRAMEBUFFER, render_target->sampler.opengl);
+        constexpr unsigned int buffers[2] = {GL_COLOR_ATTACHMENT0, GL_DEPTH_STENCIL_ATTACHMENT};
+        glDrawBuffers(2, buffers);
+
+        glViewport(0, 0, render_target->GetWidth(), render_target->GetHeight());
+
+        if (render_target->clear)
+        {
+            const float4 color = render_target->clear_color;
+            glClearColor(color.x(), color.y(), color.z(), color.w());
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
+
+        const Matrix4 view = Math::Inverse(camera_transform.GetMatrix());
+        SetUniform<Matrix4>(1, view);
+
+        const Matrix4 projection = camera.GetProjection(*render_target);
+        SetUniform<Matrix4>(2, projection);
+        
+        const auto mesh_query = ECS::GetWorld().query_builder<const Transform, const Handle<Mesh>>().build();
+        mesh_query.each(&RenderMesh);
+
+        for (const auto& [model, mesh] : Physics::RenderDebug(camera_transform.GetPosition()))
+        {
+            SetUniform<Matrix4>(0, model);
+
+            uint32 diffuse_count = 0;
+            uint32 specular_count = 0;
+            for (const auto& texture : mesh->textures)
+            {
+                switch (texture->type)
+                {
+                case Texture::Type::DIFFUSE:
+                    glActiveTexture(GL_TEXTURE0 + diffuse_count++);
+                    break;
+
+                case Texture::Type::SPECULAR:
+                    glActiveTexture(GL_TEXTURE3 + specular_count++);
+                    break;
+                }
+
+                glBindTexture(GL_TEXTURE_2D, texture->texture.opengl);
+            }
+
+            glBindVertexArray(mesh->bind);
+            glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh->indices.size()), GL_UNSIGNED_INT, nullptr);
+            glBindVertexArray(0);
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
 } // namespace
 
 void OpenGLRenderer::Init()
@@ -136,73 +222,8 @@ void OpenGLRenderer::Exit() {}
 
 void OpenGLRenderer::Update()
 {
-    glClearColor(0.75f, 0.81f, 0.4f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    const ECS::Entity camera_entity = ECS::GetWorld().query_builder<Transform, Camera>().build().first();
-    const Camera& camera = camera_entity.GetComponent<Camera>();
-
-    glUseProgram(Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.opengl);
-
-    const auto view = Camera::GetView(camera_entity);
-    const auto projection = camera.GetProjection();
-    SetUniform<Matrix4>(1, view);
-    SetUniform<Matrix4>(2, projection);
-
-    const auto query = ECS::GetWorld().query_builder<const Transform, const Handle<Mesh>>().build();
-    query.each([](const Transform& transform, const Handle<Mesh>& mesh_handle) {
-        const auto model = transform.GetMatrix();
-        SetUniform<Matrix4>(0, model);
-
-        uint32 diffuse_count = 0;
-        uint32 specular_count = 0;
-        for (const auto& texture : mesh_handle->textures)
-        {
-            switch (texture->type)
-            {
-            case Texture::Type::DIFFUSE:
-                glActiveTexture(GL_TEXTURE0 + diffuse_count++);
-                break;
-
-            case Texture::Type::SPECULAR:
-                glActiveTexture(GL_TEXTURE3 + specular_count++);
-                break;
-            }
-
-            glBindTexture(GL_TEXTURE_2D, texture->texture.opengl);
-        }
-
-        glBindVertexArray(mesh_handle->bind);
-        glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh_handle->indices.size()), GL_UNSIGNED_INT, nullptr);
-        glBindVertexArray(0);
-    });
-
-    for (const auto& [model, mesh] : Physics::RenderDebug(camera_entity.GetComponent<Transform>().GetPosition()))
-    {
-        SetUniform<Matrix4>(0, model);
-
-        uint32 diffuse_count = 0;
-        uint32 specular_count = 0;
-        for (const auto& texture : mesh->textures)
-        {
-            switch (texture->type)
-            {
-            case Texture::Type::DIFFUSE:
-                glActiveTexture(GL_TEXTURE0 + diffuse_count++);
-                break;
-
-            case Texture::Type::SPECULAR:
-                glActiveTexture(GL_TEXTURE3 + specular_count++);
-                break;
-            }
-
-            glBindTexture(GL_TEXTURE_2D, texture->texture.opengl);
-        }
-
-        glBindVertexArray(mesh->bind);
-        glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh->indices.size()), GL_UNSIGNED_INT, nullptr);
-        glBindVertexArray(0);
-    }
+    const auto camera_query = ECS::GetWorld().query_builder<const Transform, const Camera>().build();
+    camera_query.each(&RenderCamera);
 }
 
 void OpenGLRenderer::SwapBuffer()
@@ -211,9 +232,76 @@ void OpenGLRenderer::SwapBuffer()
     SDL_GL_SwapWindow(window);
 }
 
-void OpenGLRenderer::OnResize(const uint32 width, const uint32 height) { glViewport(0, 0, width, height); }
-
 void* OpenGLRenderer::GetContext() { return &context; }
+
+void OpenGLRenderer::CreateRenderTarget(RenderTarget& target)
+{
+    glGenFramebuffers(1, &target.sampler.opengl);
+    glGenTextures(1, &target.render_texture.opengl);
+    glGenRenderbuffers(1, &target.depth_texture.opengl);
+
+    RecreateRenderTarget(target);
+}
+
+void OpenGLRenderer::RecreateRenderTarget(RenderTarget& target)
+{
+    if (target.sampler.opengl == 0) return;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, target.sampler.opengl);
+    glBindTexture(GL_TEXTURE_2D, target.render_texture.opengl);
+    glBindRenderbuffer(GL_RENDERBUFFER, target.depth_texture.opengl);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, target.GetWidth(), target.GetHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target.render_texture.opengl, 0);
+
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, target.GetWidth(), target.GetHeight());
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, target.depth_texture.opengl);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+void OpenGLRenderer::DestroyRenderTarget(RenderTarget& target)
+{
+    glDeleteRenderbuffers(1, &target.depth_texture.opengl);
+    glDeleteTextures(1, &target.render_texture.opengl);
+    glDeleteFramebuffers(1, &target.sampler.opengl);
+}
+
+void OpenGLRenderer::CreateTexture(Texture& texture)
+{
+    glGenTextures(1, &texture.texture.opengl);
+    ReloadTexture(texture);
+}
+
+
+void OpenGLRenderer::ReloadTexture(Texture& texture)
+{
+    glBindTexture(GL_TEXTURE_2D, texture.texture.opengl);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        static_cast<sint32>(texture.width),
+        static_cast<sint32>(texture.height),
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        texture.colors.data()
+    );
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void OpenGLRenderer::DestroyTexture(Texture& mesh) { glDeleteTextures(1, &mesh.texture.opengl); }
 
 void OpenGLRenderer::CreateMesh(Mesh& mesh)
 {
@@ -262,39 +350,6 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
         ReloadTexture(*texture);
     }
 }
-
-void OpenGLRenderer::CreateTexture(Texture& texture)
-{
-    glGenTextures(1, &texture.texture.opengl);
-    ReloadTexture(texture);
-}
-
-
-void OpenGLRenderer::ReloadTexture(Texture& texture)
-{
-    glBindTexture(GL_TEXTURE_2D, texture.texture.opengl);
-    glTexImage2D(
-        GL_TEXTURE_2D,
-        0,
-        GL_RGBA,
-        static_cast<sint32>(texture.width),
-        static_cast<sint32>(texture.height),
-        0,
-        GL_RGBA,
-        GL_UNSIGNED_BYTE,
-        texture.colors.data()
-    );
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void OpenGLRenderer::DestroyTexture(Texture& mesh) { glDeleteTextures(1, &mesh.texture.opengl); }
 
 void OpenGLRenderer::CreateShader(Shader& shader)
 {

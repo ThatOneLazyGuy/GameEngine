@@ -3,8 +3,7 @@
 #include <imgui.h>
 #include <string>
 
-#include <Tools/Types.hpp>
-
+class RenderTarget;
 
 namespace ImGui
 {
@@ -17,8 +16,7 @@ namespace ImGui
         virtual void NewFrame() = 0;
         virtual void EndFrame() = 0;
 
-        virtual void RescaleFramebuffer(sint32 width, sint32 height) = 0;
-        virtual ImTextureID GetFramebuffer() = 0;
+        virtual ImTextureID GetTextureID(RenderTarget& target) = 0;
     };
 
     void PlatformInit(const std::string& backend_name);
@@ -30,7 +28,8 @@ namespace ImGui
     void LockMouse(bool lock);
     bool IsMouseLocked();
 
-    void RescaleFramebuffer(ImVec2 viewport_size);
-    ImTextureID GetFramebuffer();
+    ImTextureID GetPlatformTextureID(RenderTarget& target);
+
+    void PlatformRescaleGameWindow(ImVec2 viewport_size);
     bool PlatformProcessEvent(const void* event);
 } // namespace ImGui

@@ -8,12 +8,11 @@ namespace ImGui
     {
       public:
         PlatformOpenGL();
-        virtual ~PlatformOpenGL() override;
+        ~PlatformOpenGL() override;
 
-        virtual void NewFrame();
-        virtual void EndFrame();
+        void NewFrame() override;
+        void EndFrame() override;
 
-        virtual void RescaleFramebuffer(int width, int height);
-        virtual ImTextureID GetFramebuffer();
+        ImTextureID GetTextureID(RenderTarget& target) override;
     };
 } // namespace ImGui

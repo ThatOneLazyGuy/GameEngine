@@ -14,9 +14,7 @@
 
 namespace
 {
-    std::vector<Handle<Texture>> loadMaterialTextures(
-        const aiMaterial& material, const aiTextureType type, const std::string& mesh_path
-    )
+    std::vector<Handle<Texture>> loadMaterialTextures(const aiMaterial& material, const aiTextureType type, const std::string& mesh_path)
     {
         std::vector<Handle<Texture>> textures;
         for (uint32 i = 0; i < material.GetTextureCount(type); i++)
@@ -24,8 +22,7 @@ namespace
             aiString string;
             material.GetTexture(type, i, &string);
 
-            const Texture::Type real_type =
-                (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR);
+            const Texture::Type real_type = (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR);
 
             const std::string full_path = mesh_path + string.C_Str();
             auto texture_handle = FileResource::Load<Texture>(full_path, real_type);
@@ -34,6 +31,22 @@ namespace
         return textures;
     }
 } // namespace
+
+RenderTarget::RenderTarget(const std::string& name) : name{name} { Renderer::Instance().CreateRenderTarget(*this); }
+
+RenderTarget::~RenderTarget() { Renderer::Instance().DestroyRenderTarget(*this); }
+
+bool RenderTarget::Resize(const sint32 width, const sint32 height)
+{
+    if (this->width == width && this->height == height) return false;
+
+    this->width = width;
+    this->height = height;
+
+    Renderer::Instance().RecreateRenderTarget(*this);
+
+    return true;
+}
 
 Texture::Texture(const std::string& path, const Type type) : type{type}
 {
@@ -97,8 +110,7 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     }
 
     const size last_separator = path.find_last_of('/');
-    const std::string mesh_path =
-        path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
+    const std::string mesh_path = path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
 
     const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
     auto diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, mesh_path);
@@ -117,8 +129,7 @@ Shader::Shader(const std::string& path, const Type type) : type{type}
     if (type == VERTEX) uniform_count = 3;
     else sampler_count = 1;
 
-    const std::ifstream::openmode open_mode =
-        (Renderer::GetBackendName() == "OpenGL" ? std::ios::ate : std::ios::ate | std::ios::binary);
+    const std::ifstream::openmode open_mode = (Renderer::GetBackendName() == "OpenGL" ? std::ios::ate : std::ios::ate | std::ios::binary);
 
     std::ifstream shader_file{path.c_str(), open_mode};
     if (!shader_file.is_open())
@@ -166,4 +177,6 @@ void Renderer::SetupBackend(const std::string& backend_name)
     }
 
     renderer = new SDL3GPURenderer;
+
+    main_target = std::make_shared<RenderTarget>();
 }

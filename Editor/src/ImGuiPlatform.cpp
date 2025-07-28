@@ -20,11 +20,8 @@ namespace ImGui
     namespace
     {
         Platform* platform;
-        sint32 frame_buffer_width{0};
-        sint32 frame_buffer_height{0};
-
-
         ImVec2 mouse_move_delta{};
+
     } // namespace
 
     void PlatformInit(const std::string& backend_name)
@@ -32,7 +29,8 @@ namespace ImGui
         if (backend_name == "OpenGL") platform = new PlatformOpenGL;
         else if (backend_name == "SDL3GPU") platform = new PlatformSDL3GPU;
 
-        RescaleFramebuffer(ImVec2{1.0f, 1.0f});
+        Renderer::main_target = Resource::Load<RenderTarget>("EditorWindow");
+        Renderer::main_target->clear_color = float4{0.75f, 0.81f, 0.4f, 1.0f};
     }
 
     void PlatformExit()
@@ -73,16 +71,15 @@ namespace ImGui
         return SDL_GetWindowRelativeMouseMode(window);
     }
 
-    void RescaleFramebuffer(const ImVec2 viewport_size)
+    ImTextureID GetPlatformTextureID(RenderTarget& target) {return platform->GetTextureID(target); }
+
+    void PlatformRescaleGameWindow(const ImVec2 viewport_size)
     {
         const auto width = static_cast<sint32>(viewport_size.x);
         const auto height = static_cast<sint32>(viewport_size.y);
 
-        if (frame_buffer_width == width && frame_buffer_height == height) return;
+        if (width == Window::GetWidth() && height == Window::GetHeight()) return;
         if (width <= 0 || height <= 0) return;
-
-        frame_buffer_width = width;
-        frame_buffer_width = height;
 
         SDL_WindowEvent window_resize_event{
             .type = SDL_EVENT_WINDOW_RESIZED,
@@ -92,11 +89,7 @@ namespace ImGui
             .data2 = height
         };
         SDL_PushEvent(reinterpret_cast<SDL_Event*>(&window_resize_event));
-
-        platform->RescaleFramebuffer(width, height);
     }
-
-    ImTextureID GetFramebuffer() { return platform->GetFramebuffer(); }
 
     bool PlatformProcessEvent(const void* event)
     {

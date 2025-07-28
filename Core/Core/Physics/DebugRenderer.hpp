@@ -19,30 +19,29 @@ namespace Physics
         DebugRenderer();
 
         void DrawTriangle(
-            JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor, ECastShadow inCastShadow
+            JPH::RVec3Arg vertex1, JPH::RVec3Arg vertex2, JPH::RVec3Arg vertex3, JPH::ColorArg color, ECastShadow cast_shadow
         ) override
         {
-            DrawLine(inV1, inV2, inColor);
-            DrawLine(inV2, inV3, inColor);
-            DrawLine(inV3, inV1, inColor);
+            DrawLine(vertex1, vertex2, color);
+            DrawLine(vertex2, vertex3, color);
+            DrawLine(vertex3, vertex1, color);
         }
 
-        Batch CreateTriangleBatch(const Triangle* inTriangles, int inTriangleCount) override;
-        Batch CreateTriangleBatch(const Vertex* inVertices, int inVertexCount, const uint32* inIndices, int inIndexCount) override;
+        Batch CreateTriangleBatch(const Triangle* triangles, int triangle_count) override;
+        Batch CreateTriangleBatch(const Vertex* vertices, int vertices_count, const uint32* indices, int inIndexCount) override;
         void DrawGeometry(
-            JPH::RMat44Arg inModelMatrix, const JPH::AABox& inWorldSpaceBounds, float inLODScaleSq, JPH::ColorArg inModelColor,
-            const GeometryRef& inGeometry, ECullMode inCullMode, ECastShadow inCastShadow, EDrawMode inDrawMode
+            JPH::RMat44Arg model_matrix, const JPH::AABox& world_space_bounds, float lod_scale_sq, JPH::ColorArg model_color,
+            const GeometryRef& geometry, ECullMode cull_mode, ECastShadow cast_shadow, EDrawMode draw_mode
         ) override;
 
-        void DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) override;
-
-        void DrawText3D(JPH::RVec3Arg inPosition, const std::string_view& inString, JPH::ColorArg inColor, float inHeight) override;
+        void DrawLine(JPH::RVec3Arg from, JPH::RVec3Arg to, JPH::ColorArg color) override {};
+        void DrawText3D(JPH::RVec3Arg position, const std::string_view& string, JPH::ColorArg color, float height) override {};
 
         JPH::RVec3 mCameraPos;
         std::vector<RenderData> render_data;
 
       private:
-        class BatchImpl : public JPH::RefTargetVirtual
+        class BatchMesh final : public JPH::RefTargetVirtual
         {
           public:
             JPH_OVERRIDE_NEW_DELETE

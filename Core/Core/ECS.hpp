@@ -45,8 +45,8 @@ class Transform
     }
 
   private:
-    void SetDirty() const { matrix(3, 3) = 1.0f; }
-    [[nodiscard]] bool IsDirty() const { return matrix(3, 3) != 0.0f; }
+    void SetDirty() const { matrix(3, 3) = 0.0f; }
+    [[nodiscard]] bool IsDirty() const { return matrix(3, 3) == 0.0f; }
 
     float3 position{0.0f, 0.0f, 0.0f};
     Quat rotation{Math::Identity<Quat>()};

@@ -39,7 +39,6 @@ int main(int, char* args[])
     Window::Init(&ImGui::PlatformProcessEvent);
 
     Renderer::Instance().Init();
-    Renderer::Instance().OnResize(1, 1);
 
     Physics::Init();
     Editor::Init();
@@ -67,6 +66,7 @@ int main(int, char* args[])
 
     ECS::Exit();
     Physics::Exit();
+    Renderer::main_target.reset();
     Resource::CleanResources(true);
 
     ImGui::PlatformExit();
@@ -143,11 +143,11 @@ void Editor::Update()
         ImVec2 window_content_area = ImGui::GetWindowSize();
         window_content_area.y -= ImGui::GetFrameHeight();
 
-        ImGui::RescaleFramebuffer(window_content_area);
+        ImGui::PlatformRescaleGameWindow(window_content_area);
         Renderer::Instance().Update();
 
         ImGui::SetCursorPos(ImVec2{0.0f, ImGui::GetFrameHeight()});
-        ImGui::Image(ImGui::GetFramebuffer(), window_content_area);
+        ImGui::Image(ImGui::GetPlatformTextureID(*Renderer::main_target), window_content_area);
     }
     ImGui::End();
 

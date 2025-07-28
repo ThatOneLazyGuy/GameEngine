@@ -16,11 +16,14 @@ class OpenGLRenderer final : public Renderer
 
     void Update() override;
     void SwapBuffer() override;
-    void OnResize(uint32 width, uint32 height) override;
 
     void* GetContext() override;
 
   private:
+    void CreateRenderTarget(RenderTarget& target) override;
+    void RecreateRenderTarget(RenderTarget& target) override;
+    void DestroyRenderTarget(RenderTarget& target) override;
+
     void CreateTexture(Texture& texture) override;
     void ReloadTexture(Texture& texture) override;
     void DestroyTexture(Texture& texture) override;

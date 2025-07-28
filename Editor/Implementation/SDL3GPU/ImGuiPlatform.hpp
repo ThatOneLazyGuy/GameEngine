@@ -6,14 +6,13 @@ namespace ImGui
 {
     class PlatformSDL3GPU final : public Platform
     {
-    public:
+      public:
         PlatformSDL3GPU();
-        virtual ~PlatformSDL3GPU() override;
+        ~PlatformSDL3GPU() override;
 
-        virtual void NewFrame();
-        virtual void EndFrame();
+        void NewFrame() override;
+        void EndFrame() override;
 
-        virtual void RescaleFramebuffer(int width, int height);
-        virtual ImTextureID GetFramebuffer();
+        ImTextureID GetTextureID(RenderTarget& target) override;
     };
 } // namespace ImGui

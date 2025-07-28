@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Core/Renderer.hpp"
-#include "SDL3/SDL_gpu.h"
+
+struct SDL_GPUCommandBuffer;
 
 class SDL3GPURenderer final : public Renderer
 {
@@ -16,13 +17,16 @@ class SDL3GPURenderer final : public Renderer
 
     void Update() override;
     void SwapBuffer() override;
-    void OnResize(uint32 width, uint32 height) override;
 
     void* GetContext() override;
 
-    static SDL_GPUColorTargetInfo& GetColorTarget();
+    static SDL_GPUCommandBuffer* GetCommandBuffer();
 
   private:
+    void CreateRenderTarget(RenderTarget& target) override;
+    void RecreateRenderTarget(RenderTarget& target) override;
+    void DestroyRenderTarget(RenderTarget& target) override;
+
     void CreateTexture(Texture& texture) override;
     void ReloadTexture(Texture& texture) override;
     void DestroyTexture(Texture& texture) override;

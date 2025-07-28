@@ -18,9 +18,6 @@
 #include <iostream>
 #include <thread>
 
-template <typename>
-extern void SetUniform(int binding, const Matrix4& value);
-
 // Callback for traces, connect this to your own trace function if you have one
 static void TraceImpl(const char* inFMT, ...)
 {

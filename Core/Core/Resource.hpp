@@ -19,13 +19,13 @@ struct Resource
     [[nodiscard]] uint64 GetID() const { return id; }
 
     template <typename ResourceType, typename... Args>
-    static Handle<ResourceType> Load(Args... args);
+    static Handle<ResourceType> Load(Args&&... args);
 
     template <typename ResourceType = Resource>
     [[nodiscard]] static Handle<ResourceType> Find(uint64 id);
 
     template <typename ResourceType = Resource, typename... Args>
-    [[nodiscard]] static Handle<ResourceType> Find(Args... args);
+    [[nodiscard]] static Handle<ResourceType> Find(Args&&... args);
 
     template <typename ResourceType>
     [[nodiscard]] static std::vector<Handle<ResourceType>> GetResources();
@@ -69,7 +69,7 @@ inline bool Resource::TryDestroyResource(const uint64 id)
 }
 
 template <typename ResourceType, typename... Args>
-Handle<ResourceType> Resource::Load(Args... args)
+Handle<ResourceType> Resource::Load(Args&&... args)
 {
     const uint64 id = ResourceType::GetID(std::forward<Args>(args)...);
 
@@ -94,7 +94,7 @@ Handle<ResourceType> Resource::Find(const uint64 id)
 }
 
 template <typename ResourceType, typename... Args>
-Handle<ResourceType> Resource::Find(Args... args)
+Handle<ResourceType> Resource::Find(Args&&... args)
 {
     const uint64 id = ResourceType::GetID(std::forward<Args>(args)...);
     return Find<ResourceType>(id);
@@ -122,7 +122,7 @@ struct FileResource : Resource
     [[nodiscard]] const std::string& GetPath() const { return path; }
 
     template <typename ResourceType, typename... Args>
-    static Handle<ResourceType> Load(const std::string& path, Args... args);
+    static Handle<ResourceType> Load(const std::string& path, Args&&... args);
     template <typename ResourceType>
     static Handle<ResourceType> Find(const std::string& path);
 
@@ -131,7 +131,7 @@ struct FileResource : Resource
 };
 
 template <typename ResourceType, typename... Args>
-Handle<ResourceType> FileResource::Load(const std::string& path, Args... args)
+Handle<ResourceType> FileResource::Load(const std::string& path, Args&&... args)
 {
     constexpr std::hash<std::string> hasher;
     const uint64 id = hasher(path);

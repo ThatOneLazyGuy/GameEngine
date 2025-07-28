@@ -7,15 +7,15 @@ namespace Physics
 {
     DebugRenderer::DebugRenderer() { Initialize(); }
 
-    JPH::DebugRenderer::Batch DebugRenderer::CreateTriangleBatch(const Triangle* inTriangles, int inTriangleCount)
+    JPH::DebugRenderer::Batch DebugRenderer::CreateTriangleBatch(const Triangle* triangles, int triangle_count)
     {
-        BatchImpl* batch = new BatchImpl;
+        BatchMesh* batch = new BatchMesh;
 
-        for (size triangle_index = 0; triangle_index < inTriangleCount; ++triangle_index)
+        for (size triangle_index = 0; triangle_index < triangle_count; ++triangle_index)
         {
             for (size i = 0; i < 3; i++)
             {
-                auto& [position, normal, ui, color] = inTriangles[triangle_index].mV[i];
+                auto& [position, normal, ui, color] = triangles[triangle_index].mV[i];
 
                 auto& vertex = batch->mesh.vertices.emplace_back();
 
@@ -32,15 +32,15 @@ namespace Physics
     }
 
     JPH::DebugRenderer::Batch DebugRenderer::CreateTriangleBatch(
-        const Vertex* inVertices, int inVertexCount, const uint32* inIndices, int inIndexCount
+        const Vertex* vertices, const int vertices_count, const uint32* indices, const int inIndexCount
     )
     {
-        BatchImpl* batch = new BatchImpl;
+        BatchMesh* batch = new BatchMesh;
 
-        batch->mesh.vertices.resize(inVertexCount);
-        for (size i = 0; i < inVertexCount; i++)
+        batch->mesh.vertices.resize(vertices_count);
+        for (size i = 0; i < vertices_count; i++)
         {
-            auto& [position, normal, ui, color] = inVertices[i];
+            auto& [position, normal, ui, color] = vertices[i];
 
             auto& vertex = batch->mesh.vertices[i];
 
@@ -49,7 +49,7 @@ namespace Physics
             vertex.color = float3{float_color.mF32};
         }
 
-        batch->mesh.indices.assign(inIndices, inIndices + inIndexCount);
+        batch->mesh.indices.assign(indices, indices + inIndexCount);
 
         Renderer::Instance().CreateMesh(batch->mesh);
         return batch;
@@ -57,20 +57,16 @@ namespace Physics
 
 
     void DebugRenderer::DrawGeometry(
-        JPH::RMat44Arg inModelMatrix, const JPH::AABox& inWorldSpaceBounds, float inLODScaleSq, JPH::ColorArg inModelColor,
-        const GeometryRef& inGeometry, ECullMode inCullMode, ECastShadow inCastShadow, EDrawMode inDrawMode
+        JPH::RMat44Arg model_matrix, const JPH::AABox& world_space_bounds, float lod_scale_sq, JPH::ColorArg model_color,
+        const GeometryRef& geometry, ECullMode cull_mode, ECastShadow cast_shadow, EDrawMode draw_mode
     )
     {
-        const LOD* lod = &inGeometry->GetLOD(JPH::Vec3{mCameraPos}, inWorldSpaceBounds, inLODScaleSq);
-        const BatchImpl* batch = static_cast<const BatchImpl*>(lod->mTriangleBatch.GetPtr());
+        const LOD* lod = &geometry->GetLOD(JPH::Vec3{mCameraPos}, world_space_bounds, lod_scale_sq);
+        const BatchMesh* batch = static_cast<const BatchMesh*>(lod->mTriangleBatch.GetPtr());
 
         Matrix4 model;
-        std::memcpy(&model, &inModelMatrix, sizeof(model));
+        std::memcpy(&model, &model_matrix, sizeof(model));
 
         render_data.emplace_back(model, &batch->mesh);
     }
-
-    void DebugRenderer::DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) { }
-
-    void DebugRenderer::DrawText3D(JPH::RVec3Arg inPosition, const std::string_view& inString, JPH::ColorArg inColor, float inHeight) {}
 }
