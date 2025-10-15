@@ -3,6 +3,8 @@
 #include "Physics.hpp"
 #include "Core/Renderer.hpp"
 
+#include <numeric>
+
 namespace Physics
 {
     DebugRenderer::DebugRenderer() { Initialize(); }
@@ -11,12 +13,10 @@ namespace Physics
     {
         BatchMesh* batch = new BatchMesh;
 
-        for (size triangle_index = 0; triangle_index < triangle_count; ++triangle_index)
+        for (int triangle_index = 0; triangle_index < triangle_count; ++triangle_index)
         {
-            for (size i = 0; i < 3; i++)
+            for (auto [position, normal, ui, color] : triangles[triangle_index].mV)
             {
-                auto& [position, normal, ui, color] = triangles[triangle_index].mV[i];
-
                 auto& vertex = batch->mesh.vertices.emplace_back();
 
                 vertex.position = float3{position.x, position.y, position.z};
@@ -35,10 +35,10 @@ namespace Physics
         const Vertex* vertices, const int vertices_count, const uint32* indices, const int inIndexCount
     )
     {
-        BatchMesh* batch = new BatchMesh;
+        BatchMesh* batch = new BatchMesh{};
 
         batch->mesh.vertices.resize(vertices_count);
-        for (size i = 0; i < vertices_count; i++)
+        for (int i = 0; i < vertices_count; i++)
         {
             auto& [position, normal, ui, color] = vertices[i];
 
@@ -62,7 +62,7 @@ namespace Physics
     )
     {
         const LOD* lod = &geometry->GetLOD(JPH::Vec3{mCameraPos}, world_space_bounds, lod_scale_sq);
-        const BatchMesh* batch = static_cast<const BatchMesh*>(lod->mTriangleBatch.GetPtr());
+        const BatchMesh* batch = dynamic_cast<const BatchMesh*>(lod->mTriangleBatch.GetPtr());
 
         Matrix4 model;
         std::memcpy(&model, &model_matrix, sizeof(model));

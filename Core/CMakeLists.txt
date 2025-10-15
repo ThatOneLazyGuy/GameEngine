@@ -15,7 +15,7 @@ add_library(
         "${EXTERNAL}/glad/src/glad.c"
 )
 
-set_target_properties(Core PROPERTIES CXX_STANDARD 20)
+set_target_properties(Core PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
 target_include_directories(
         Core
@@ -34,7 +34,7 @@ target_link_libraries(
         Core
         "SDL3::SDL3"
         "assimp::assimp"
-        "flecs::flecs_static"
+        "flecs::flecs"
         "Jolt::Jolt"
 )
 

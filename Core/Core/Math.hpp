@@ -173,10 +173,10 @@ namespace Math
     {
         inline void PrintMatrix(const Matrix4& matrix)
         {
-            for (size_t y = 0; y < 4; y++)
+            for (sint32 y = 0; y < 4; y++)
             {
                 std::cout << "[ ";
-                for (size_t x = 0; x < 4; x++)
+                for (sint32 x = 0; x < 4; x++)
                 {
                     std::cout << std::format("{: >5.2f}", matrix(y, x));
                     std::cout << ", ";

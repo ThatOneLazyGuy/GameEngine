@@ -195,7 +195,7 @@ class Renderer
     Renderer(Renderer& other) = delete;
     void operator=(const Renderer&) = delete;
 
-    static void SetupBackend(const std::string& backend_name);
+    static void SetupBackend(const char* backend_name);
     static Renderer& Instance() { return *renderer; }
     static const std::string& GetBackendName() { return backend_name; }
 

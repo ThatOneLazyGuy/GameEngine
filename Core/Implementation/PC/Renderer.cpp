@@ -14,7 +14,7 @@
 
 namespace
 {
-    std::vector<Handle<Texture>> loadMaterialTextures(const aiMaterial& material, const aiTextureType type, const std::string& mesh_path)
+    std::vector<Handle<Texture>> LoadMaterialTextures(const aiMaterial& material, const aiTextureType type, const std::string& mesh_path)
     {
         std::vector<Handle<Texture>> textures;
         for (uint32 i = 0; i < material.GetTextureCount(type); i++)
@@ -113,10 +113,10 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     const std::string mesh_path = path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
 
     const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
-    auto diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, mesh_path);
+    auto diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, mesh_path);
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
-    auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, mesh_path);
+    auto specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, mesh_path);
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
     Renderer::Instance().CreateMesh(*this);
@@ -166,17 +166,23 @@ ShaderPipeline::ShaderPipeline(const Handle<Shader>& vertex_shader, const Handle
 
 ShaderPipeline::~ShaderPipeline() { Renderer::Instance().DestroyShaderPipeline(*this); }
 
-void Renderer::SetupBackend(const std::string& backend_name)
+void Renderer::SetupBackend(const char* backend_name)
 {
-    Renderer::backend_name = backend_name;
+    if (backend_name == nullptr) Renderer::backend_name = "SDL3GPU";
+    else Renderer::backend_name = backend_name;
 
-    if (backend_name == "OpenGL")
+    main_target = std::make_shared<RenderTarget>();
+
+    if (Renderer::backend_name == "OpenGL")
     {
         renderer = new OpenGLRenderer;
         return;
     }
 
-    renderer = new SDL3GPURenderer;
+    if (Renderer::backend_name == "SDL3GPU")
+    {
+        renderer = new SDL3GPURenderer;
+        return;
+    }
 
-    main_target = std::make_shared<RenderTarget>();
 }

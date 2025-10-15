@@ -1,0 +1,45 @@
+﻿{
+	"version": 3,
+	"configurePresets": [
+		{
+			"name": "config-base",
+			"description": "The base config for all other configs",
+			"hidden": true,
+			"binaryDir": "${sourceDir}/bin/${presetName}",
+			"installDir": "${sourceDir}/bin/${presetName}"
+		},
+		{
+			"name": "windows-base",
+			"description": "The base config for windows configs",
+			"inherits": "config-base",
+			"hidden": true,
+			"generator": "Ninja",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "cl.exe",
+				"CMAKE_CXX_COMPILER": "cl.exe"
+			},
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Windows"
+			}
+		},
+		{
+			"name": "x64-debug",
+			"displayName": "x64 Debug",
+			"inherits": "windows-base",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			},
+			"cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+		},
+		{
+			"name": "x64-release",
+			"displayName": "x64 Release",
+			"description": "Release bulid including debug info",
+			"inherits": "x64-debug",
+			"cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+		}
+	]
+}

@@ -4,7 +4,6 @@
 #include "ImGuiExtra.hpp"
 #include "ImGuiPlatform.hpp"
 
-#include <algorithm>
 #include <filesystem>
 #include <ranges>
 

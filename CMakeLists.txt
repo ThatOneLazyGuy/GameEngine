@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.10.0)
-project(Engine VERSION 0.1.0 LANGUAGES CXX C)
+cmake_minimum_required(VERSION 3.15)
+project(Engine VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/$<CONFIG>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/$<CONFIG>")
@@ -9,18 +9,33 @@ set(EXTERNAL "${CMAKE_SOURCE_DIR}/External")
 set(ASSETS "${CMAKE_SOURCE_DIR}/Assets")
 set(SHADERS "${ASSETS}/Shaders")
 set(PLATFORM "PC")
-set(RENDER_BACKEND "SDL3GPU")
 
+option(SDL_TEST_LIBRARY OFF)
+option(SDL_RENDER OFF)
+option(SDL_POWER OFF)
+option(SDL_AUDIO OFF)
+option(SDL_CAMERA OFF)
 add_subdirectory("${EXTERNAL}/SDL" EXCLUDE_FROM_ALL)
+
+option(ASSIMP_BUILD_TESTS OFF)
+option(ASSIMP_INSTALL ON)
+option(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF)
+option(ASSIMP_NO_EXPORT ON)
+option(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF)
+set(ASSIMP_BUILD_OBJ_IMPORTER TRUE)
+option(ASSIMP_WARNINGS_AS_ERRORS OFF)
 add_subdirectory("${EXTERNAL}/assimp" EXCLUDE_FROM_ALL)
+
 add_subdirectory("${EXTERNAL}/flecs" EXCLUDE_FROM_ALL)
 add_subdirectory("${EXTERNAL}/JoltPhysics/Build" EXCLUDE_FROM_ALL)
 
-add_compile_definitions(
-        "RENDER_BACKEND_${RENDER_BACKEND}"
-        "$<$<CONFIG:Debug>:DEBUG>"
-)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(Core)
 add_subdirectory(Editor)
-

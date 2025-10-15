@@ -17,7 +17,7 @@ add_executable(
         "${EXTERNAL}/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 
-set_target_properties(Editor PROPERTIES CXX_STANDARD 20)
+set_target_properties(Editor PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
 target_include_directories(
         Editor

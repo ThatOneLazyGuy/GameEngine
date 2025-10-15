@@ -10,11 +10,13 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+CMakeSettings.json
+/out
 
+.vs
 .vscode
 .idea
-bin
-cmake-build-debug
+/bin
 imgui.ini
 
 # shaders
