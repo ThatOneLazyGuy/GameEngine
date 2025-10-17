@@ -237,7 +237,11 @@ void SDL3GPURenderer::Init()
         return;
     }
 
-    SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX);
+    if (!SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX))
+    {
+        // If we fail to set mailbox (v-sync with less visual latency) we use regular v-sync.
+        SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
+    }
     Resource::Load<ShaderPipeline>("Assets/Shaders/Shader.vert.spv", "Assets/Shaders/Shader.frag.spv");
 }
 

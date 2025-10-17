@@ -201,7 +201,11 @@ void OpenGLRenderer::Init()
         SDL_Log("Failed to initialize GLAD");
     }
 
-    SDL_GL_SetSwapInterval(1);
+    if (!SDL_GL_SetSwapInterval(-1)) 
+    {
+        // If we fail to set adaptive v-sync we use regular v-sync.
+        SDL_GL_SetSwapInterval(1);
+    }
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -218,7 +222,10 @@ void OpenGLRenderer::Init()
     CreateUniformBuffer<Matrix4>(2);
 }
 
-void OpenGLRenderer::Exit() {}
+void OpenGLRenderer::Exit() 
+{
+    if (!SDL_GL_DestroyContext(context)) SDL_Log("Failed to destroy GL context: %s", SDL_GetError());
+}
 
 void OpenGLRenderer::Update()
 {

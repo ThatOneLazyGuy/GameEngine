@@ -4,9 +4,6 @@
 #include "ImGuiExtra.hpp"
 #include "ImGuiPlatform.hpp"
 
-#include <filesystem>
-#include <ranges>
-
 #include <Core/Input.hpp>
 #include <Core/Renderer.hpp>
 #include <Core/Resource.hpp>
@@ -17,6 +14,7 @@
 #include <SDL3/SDL_mouse.h>
 
 #include <imgui.h>
+#include <numeric>
 
 namespace Editor
 {
@@ -106,20 +104,28 @@ void Editor::Update()
     static bool open_window = true;
     if (ImGui::Begin("Game viewport", &open_window, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
     {
-        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ImGui::SetWindowFocus();
-
-        if (ImGui::IsWindowFocused())
+        if (ImGui::IsWindowHovered())
         {
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            {
+                ImGui::SetWindowFocus();
+                ImGui::LockMouse(true);
+            }
+            else if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            {
+                ImGui::LockMouse(false);
+            }
+
             if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
             {
-                if (!ImGui::IsMouseLocked()) ImGui::LockMouse(true);
+                ImGui::SetNextFrameWantCaptureMouse(false);
 
-                const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                const float2 delta = Input::GetMouseDeltaPos();
 
                 static float pitch = 0.0f;
                 static float yaw = 0.0f;
-                pitch = Math::Clamp(pitch + delta.y * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
-                yaw += delta.x * 0.01f;
+                pitch = Math::Clamp(pitch + delta.y() * 0.01f, -Math::PI<> / 2.0f, Math::PI<> / 2.0f);
+                yaw += delta.x() * 0.01f;
 
                 auto& camera_transform = camera_entity.GetComponent<Transform>();
                 camera_transform.SetRotation(Eigen::AngleAxisf{pitch, Math::RIGHT} * Eigen::AngleAxisf{yaw, Math::UP});
@@ -137,7 +143,6 @@ void Editor::Update()
                     (right_move * right + float3{0.0f, up_move, 0.0f} + forward_move * forward) * 40.0f * Time::GetDeltaTime()
                 );
             }
-            else if (ImGui::IsMouseLocked()) ImGui::LockMouse(false);
         }
         ImVec2 window_content_area = ImGui::GetWindowSize();
         window_content_area.y -= ImGui::GetFrameHeight();
@@ -170,6 +175,8 @@ void Editor::Update()
         auto& transform = camera_entity.GetComponent<Transform>();
 
         ImGui::Text("Delta time: %f", Time::GetDeltaTime());
+        const sint32 frame_rate = static_cast<int>(1.0f / Time::GetDeltaTime());
+        ImGui::Text("Frame rate: %i", frame_rate);
         ImGui::NewLine();
 
         ImGui::Text("Camera");
@@ -184,7 +191,8 @@ void Editor::Update()
 
         ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, static_cast<int>(selected.size()), static_cast<int>(items.size()));
         ImGui::ApplyRequests(ms_io, selected, items);
-        for (int i = 0; i < items.size(); i++)
+        const int item_count = static_cast<int>(items.size());
+        for (int i = 0; i < item_count; i++)
         {
             ImGui::PushID(i);
             const bool item_is_selected = std::ranges::find(selected, items[i]) != selected.end();

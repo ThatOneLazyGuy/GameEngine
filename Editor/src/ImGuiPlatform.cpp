@@ -20,7 +20,7 @@ namespace ImGui
     namespace
     {
         Platform* platform;
-        ImVec2 mouse_move_delta{};
+        //ImVec2 mouse_move_delta{};
 
     } // namespace
 
@@ -44,11 +44,12 @@ namespace ImGui
         ImGui_ImplSDL3_NewFrame();
         platform->NewFrame();
         NewFrame();
-
-        GetIO().MouseDelta = mouse_move_delta;
     }
 
-    void PlatformEndFrame() { platform->EndFrame(); }
+    void PlatformEndFrame() 
+    { 
+        platform->EndFrame(); 
+    }
 
     void LockMouse(const bool lock)
     {
@@ -95,7 +96,6 @@ namespace ImGui
     {
         const auto* sdl_event = static_cast<const SDL_Event*>(event);
 
-        mouse_move_delta = ImVec2{0.0f, 0.0f};
         bool block_event = true;
         switch (sdl_event->type)
         {
@@ -107,7 +107,6 @@ namespace ImGui
             break;
 
         case SDL_EVENT_MOUSE_MOTION:
-            mouse_move_delta = ImVec2{sdl_event->motion.xrel, sdl_event->motion.yrel};
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_WHEEL:

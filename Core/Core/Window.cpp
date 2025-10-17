@@ -39,7 +39,7 @@ namespace Window
 
     bool PollEvents()
     {
-        float2 mouse_pos_delta{};
+        float2 mouse_pos_delta{0.0f, 0.0f};
 
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -58,7 +58,7 @@ namespace Window
                 {
                     width = window_event.data1;
                     height = window_event.data2;
-                    Renderer::Instance().main_target->Resize(width, height);
+                    Renderer::main_target->Resize(width, height);
                 }
                 break;
             }
@@ -74,7 +74,7 @@ namespace Window
             case SDL_EVENT_MOUSE_MOTION:
             {
                 const SDL_MouseMotionEvent& motion_event = event.motion;
-                mouse_pos_delta = float2{motion_event.xrel, motion_event.yrel};
+                mouse_pos_delta += float2{motion_event.xrel, motion_event.yrel};
                 Input::SetMousePos(motion_event.x, motion_event.y);
 
                 break;
