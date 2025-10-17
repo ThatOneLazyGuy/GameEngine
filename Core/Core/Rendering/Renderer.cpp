@@ -1,7 +1,7 @@
-#include "Core/Renderer.hpp"
+#include "Core/Rendering/Renderer.hpp"
 
-#include "Implementation/OpenGL/Renderer.hpp"
-#include "Implementation/SDL3/Renderer.hpp"
+#include "Platform/OpenGL/Rendering/Renderer.hpp"
+#include "Platform/PC/SDL3GPU/Rendering/Renderer.hpp"
 
 #include "Core/Model.hpp"
 

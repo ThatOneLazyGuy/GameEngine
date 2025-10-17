@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ECS.hpp"
-#include "Math.hpp"
-#include "Resource.hpp"
-#include "Window.hpp"
+#include "Core/ECS.hpp"
+#include "Core/Math.hpp"
+#include "Core/Resource.hpp"
+#include "Core/Window.hpp"
 
 #include <memory>
 #include <string>

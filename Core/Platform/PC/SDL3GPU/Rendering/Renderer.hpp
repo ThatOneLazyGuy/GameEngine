@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Renderer.hpp"
+#include "Core/Rendering/Renderer.hpp"
 
 struct SDL_GPUCommandBuffer;
 

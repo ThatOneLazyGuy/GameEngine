@@ -9,9 +9,9 @@ add_library(
         "Core/Time.cpp"
         "Core/Window.cpp"
 
-        "Implementation/PC/Renderer.cpp"
-        "Implementation/SDL3/Renderer.cpp"
-        "Implementation/OpenGL/Renderer.cpp"
+        "Core/Rendering/Renderer.cpp"
+        "Platform/PC/SDL3GPU/Rendering/Renderer.cpp"
+        "Platform/OpenGL/Rendering/Renderer.cpp"
         "${EXTERNAL}/glad/src/glad.c"
 )
 

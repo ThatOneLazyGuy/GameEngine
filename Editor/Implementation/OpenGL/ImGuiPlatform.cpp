@@ -1,6 +1,6 @@
 #include "ImGuiPlatform.hpp"
 
-#include "Core/Renderer.hpp"
+#include "Core/Rendering/Renderer.hpp"
 #include "Core/Window.hpp"
 
 #include <SDL3/SDL_video.h>

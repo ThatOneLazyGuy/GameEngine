@@ -4,7 +4,7 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 
-#include "Core/Renderer.hpp"
+#include "Core/Rendering/Renderer.hpp"
 #include "Core/Window.hpp"
 
 #include "Implementation/OpenGL/ImGuiPlatform.hpp"

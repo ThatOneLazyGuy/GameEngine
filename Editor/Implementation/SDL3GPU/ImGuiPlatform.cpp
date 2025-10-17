@@ -1,15 +1,15 @@
 #include "ImGuiPlatform.hpp"
 
-#include "Core/Renderer.hpp"
-#include "Core/Window.hpp"
-#include "Implementation/SDL3/Renderer.hpp"
+#include <Core/Rendering/Renderer.hpp>
+#include <Core/Window.hpp>
+#include <Platform/PC/SDL3GPU/Rendering/Renderer.hpp>
 
-#include "SDL3/SDL_gpu.h"
-#include "SDL3/SDL_log.h"
-#include "SDL3/SDL_render.h"
+#include <SDL3/SDL_gpu.h>
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_render.h>
 
-#include "backends/imgui_impl_sdl3.h"
-#include "backends/imgui_impl_sdlgpu3.h"
+#include <backends/imgui_impl_sdl3.h>
+#include <backends/imgui_impl_sdlgpu3.h>
 
 namespace ImGui
 {

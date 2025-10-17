@@ -5,7 +5,7 @@
 #include "ImGuiPlatform.hpp"
 
 #include <Core/Input.hpp>
-#include <Core/Renderer.hpp>
+#include <Core/Rendering/Renderer.hpp>
 #include <Core/Resource.hpp>
 #include <Core/Time.hpp>
 #include <Core/Window.hpp>

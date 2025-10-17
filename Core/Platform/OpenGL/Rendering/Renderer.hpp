@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Renderer.hpp"
+#include "Core/Rendering/Renderer.hpp"
 #include "SDL3/SDL_video.h"
 
 class OpenGLRenderer final : public Renderer

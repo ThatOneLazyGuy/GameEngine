@@ -1,7 +1,7 @@
 #include "DebugRenderer.hpp"
 
 #include "Physics.hpp"
-#include "Core/Renderer.hpp"
+#include "Core/Rendering/Renderer.hpp"
 
 #include <numeric>
 

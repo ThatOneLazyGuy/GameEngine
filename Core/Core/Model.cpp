@@ -1,5 +1,8 @@
 #include "Model.hpp"
 
+#include "Tools/Types.hpp"
+#include "Resource.hpp"
+
 #include <SDL3/SDL_log.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>

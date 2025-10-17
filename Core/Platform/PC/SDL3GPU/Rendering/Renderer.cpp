@@ -1,4 +1,4 @@
-#include "Core/Renderer.hpp"
+#include "Core/Rendering/Renderer.hpp"
 #include "Renderer.hpp"
 
 #include "Core/ECS.hpp"

@@ -1,7 +1,7 @@
 #include "Window.hpp"
 
 #include "Input.hpp"
-#include "Renderer.hpp"
+#include "Rendering/Renderer.hpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_log.h>

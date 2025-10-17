@@ -4,7 +4,7 @@
 
 #include <assimp/Importer.hpp>
 
-#include "Renderer.hpp"
+#include "Rendering/Renderer.hpp"
 
 struct ModelParser final : FileResource
 {

@@ -1,8 +1,8 @@
 add_executable(
         Editor
-        "src/Editor.cpp"
-        "src/ImGuiExtra.cpp"
-        "src/ImGuiPlatform.cpp"
+        "Editor/Editor.cpp"
+        "Editor/ImGuiExtra.cpp"
+        "Editor/ImGuiPlatform.cpp"
         "Implementation/OpenGL/ImGuiPlatform.cpp"
         "Implementation/SDL3GPU/ImGuiPlatform.cpp"
 
