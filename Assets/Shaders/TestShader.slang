@@ -6,12 +6,22 @@
         #define Sampler 2
         #define Uniform 3
     #endif
-#else // defined(OPENGL)
+#elif defined(DX12)
+    #if defined(VERTEX)
+        #define Sampler 0
+        #define Uniform 1
+    #elif defined(FRAGMENT)
+        #define Sampler 2
+        #define Uniform 3
+    #endif
+#else//if defined(OPENGL)
     #define Uniform 1
     #define Sampler 0
 #endif
 
 #define Bind(bind, type) [vk::binding(bind, type)]
+//#define RegisterSampler(bind, type) register(bind, type)
+//#define RegisterUniform(bind, type) register(bind, type)
 
 struct Vertex
 {
@@ -20,14 +30,14 @@ struct Vertex
 };
 
 Bind(0, Uniform)
-ConstantBuffer<matrix> model;
+ConstantBuffer<matrix> model : register(b0, space1);
 Bind(1, Uniform)
-ConstantBuffer<matrix> view;
+ConstantBuffer<matrix> view : register(b1, space1);
 Bind(2, Uniform)
-ConstantBuffer<matrix> projection;
+ConstantBuffer<matrix> projection : register(b2, space1);
 
 [shader("vertex")]
-float4 VertexMain(float3 position, float3 color, float2 texCoord, out Vertex data) : SV_Position
+float4 VertexMain(in float3 position: TEXCOORD0, in float3 color: TEXCOORD1, in float2 texCoord : TEXCOORD2, out Vertex data : VERTEXDATA) : SV_Position
 {
     data.color = color;
     data.texCoord = texCoord;
@@ -36,18 +46,18 @@ float4 VertexMain(float3 position, float3 color, float2 texCoord, out Vertex dat
 }
 
 Bind(0, Sampler)
-Sampler2D<float4> texture_diffuse0;
+Sampler2D<float4> texture_diffuse0 : register(t0, space2);
 Bind(1, Sampler)
-Sampler2D<float4> texture_diffuse1;
+Sampler2D<float4> texture_diffuse1 : register(t1, space2);
 Bind(2, Sampler)
-Sampler2D<float4> texture_diffuse2;
+Sampler2D<float4> texture_diffuse2 : register(t2, space2);
 Bind(3, Sampler)
-Sampler2D<float4> texture_specular0;
+Sampler2D<float4> texture_specular0 : register(t3, space2);
 Bind(4, Sampler)
-Sampler2D<float4> texture_specular1;
+Sampler2D<float4> texture_specular1 : register(t4, space2);
 
 [shader("fragment")]
-float4 FragmentMain(float4 position: SV_Position, in Vertex data) : SV_Target
+float4 FragmentMain(in float4 position : SV_Position, in Vertex data : VERTEXDATA) : SV_Target
 {
     return texture_diffuse0.Sample(data.texCoord);
     //return float4(data.color, 1.0);

@@ -223,7 +223,7 @@ void SDL3GPURenderer::Init()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
 
-    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, nullptr);
+    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL, true, "vulkan");
 
     if (device == nullptr)
     {
@@ -517,7 +517,6 @@ void SDL3GPURenderer::CreateShaderPipeline(
         .enable_blend = true
     };
 
-    // Create the pipelines
     const SDL_GPUColorTargetDescription color_target_description{
         .format = SDL_GetGPUSwapchainTextureFormat(device, window), .blend_state = blend_state
     };
@@ -529,21 +528,21 @@ void SDL3GPURenderer::CreateShaderPipeline(
         .has_depth_stencil_target = true
     };
 
-    constexpr SDL_GPUVertexBufferDescription vertex_buffer_description{
+    static constexpr SDL_GPUVertexBufferDescription vertex_buffer_description{
         .slot = 0, .pitch = sizeof(float) * 8, .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX
     };
 
-    constexpr SDL_GPUVertexAttribute vertex_attributes[3]{
+    static constexpr SDL_GPUVertexAttribute vertex_attributes[3]{
         {.location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = 0                },
         {.location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = sizeof(float) * 3},
         {.location = 2, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .offset = sizeof(float) * 6}
     };
 
-    const SDL_GPUVertexInputState vertex_input_state{
+    constexpr SDL_GPUVertexInputState vertex_input_state{
         .vertex_buffer_descriptions = &vertex_buffer_description,
         .num_vertex_buffers = 1,
         .vertex_attributes = vertex_attributes,
-        .num_vertex_attributes = 3
+        .num_vertex_attributes = sizeof(vertex_attributes) / sizeof(SDL_GPUVertexAttribute)
     };
 
     constexpr SDL_GPUDepthStencilState depth_stencil_state{
@@ -569,7 +568,7 @@ void SDL3GPURenderer::CreateShaderPipeline(
     };
 
     pipeline.shader_pipeline.sdl3gpu = SDL_CreateGPUGraphicsPipeline(device, &pipeline_create_info);
-    if (pipeline.shader_pipeline.sdl3gpu == nullptr) SDL_Log("Failed to create shader pipeline!");
+    if (pipeline.shader_pipeline.sdl3gpu == nullptr) SDL_Log("Failed to create shader pipeline: %s", SDL_GetError());
 }
 
 void SDL3GPURenderer::DestroyShaderPipeline(ShaderPipeline& shader)
