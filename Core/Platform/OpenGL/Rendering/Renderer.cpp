@@ -6,7 +6,6 @@
 #include "Core/Physics/Physics.hpp"
 #include "Core/Rendering/RenderPassInterface.hpp"
 
-
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
@@ -85,15 +84,18 @@ void OpenGLRenderer::InitBackend()
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
 
-    const auto graphics_pipeline = Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/Shader.vert", "Assets/Shaders/Shader.frag");
+    const Handle<Shader> vertex_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.vert", ShaderSettings{Shader::VERTEX, 0, 0, 3});
+    const Handle<Shader> fragment_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.frag", ShaderSettings{Shader::FRAGMENT, 1, 0, 0});
+    const auto graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
 
     glUseProgram(graphics_pipeline->shader_pipeline.opengl);
     CreateUniformBuffer<Matrix4>(0);
     CreateUniformBuffer<Matrix4>(1);
     CreateUniformBuffer<Matrix4>(2);
+    glUseProgram(0);
 }
 
-void OpenGLRenderer::Exit()
+void OpenGLRenderer::ExitBackend()
 {
     if (!SDL_GL_DestroyContext(context)) SDL_Log("Failed to destroy GL context: %s", SDL_GetError());
 }
@@ -157,7 +159,7 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 
         index++;
 
-        if (!render_buffer.clear) continue;
+        if (!render_pass.clear_render_targets) continue;
 
         const float4 color = render_buffer.clear_color;
         glClearColor(color.x(), color.y(), color.z(), color.w());
@@ -167,8 +169,7 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
     }
 
     // If the target has a valid depth buffer clear the frame buffer's depth bit (you shouldn't set draw buffers to GL_DEPTH_ATTACHMENT for some reason).
-    const RenderBuffer& depth_buffer = render_target->depth_buffer;
-    if (depth_buffer.GetTexture() != nullptr && depth_buffer.clear)
+    if (render_pass.clear_render_targets && render_target->depth_buffer.GetTexture() != nullptr)
     {
         glClear(GL_DEPTH_BUFFER_BIT);
     }

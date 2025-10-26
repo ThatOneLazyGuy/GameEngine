@@ -20,8 +20,6 @@ namespace ImGui
     namespace
     {
         Platform* platform;
-        //ImVec2 mouse_move_delta{};
-
     } // namespace
 
     void PlatformInit(const std::string& backend_name)
@@ -45,11 +43,10 @@ namespace ImGui
             .format = Texture::DEPTH_24,
             .flags = static_cast<Texture::Flags>(Texture::DEPTH_TARGET | Texture::SAMPLER),
         };
-        Handle<Texture> depth_buffer = std::make_shared<Texture>(depth_buffer_settings, SamplerSettings{});
+        const Handle<Texture> depth_buffer = std::make_shared<Texture>(depth_buffer_settings, SamplerSettings{});
 
-        Renderer::main_target->AddRenderBuffer(render_buffer, true, float4{0.75f, 0.81f, 0.4f, 1.0f});
+        Renderer::main_target->AddRenderBuffer(render_buffer, float4{0.75f, 0.81f, 0.4f, 1.0f});
         Renderer::main_target->SetDepthBuffer(depth_buffer);
-        //Renderer::main_target->clear_color = float4{0.75f, 0.81f, 0.4f, 1.0f};
     }
 
     void PlatformExit()

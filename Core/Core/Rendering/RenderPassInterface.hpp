@@ -14,6 +14,8 @@ class RenderPassInterface
     Handle<GraphicsShaderPipeline> graphics_pipeline;
     Handle<RenderTarget> render_target;
 
+    bool clear_render_targets{true};
+
     virtual void Render() = 0;
 };
 

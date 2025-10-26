@@ -13,8 +13,6 @@
 #include <fstream>
 #include <assimp/scene.h>
 
-
-
 namespace
 {
     std::vector<uint8> LoadTextureImage(const std::string& path, sint32& out_width, sint32& out_height)
@@ -81,19 +79,17 @@ void RenderTarget::Resize(const sint32 new_width, const sint32 new_height)
     if (depth_buffer.GetTexture() != nullptr) { depth_buffer.GetTexture()->Resize(width, height); }
 }
 
-void RenderTarget::AddRenderBuffer(const Handle<Texture>& render_texture, const bool clear, const float4& clear_color)
+void RenderTarget::AddRenderBuffer(const Handle<Texture>& render_texture, const float4& clear_color)
 {
     RenderBuffer& render_buffer = render_buffers.emplace_back(render_texture);
-    render_buffer.clear = clear;
     render_buffer.clear_color = clear_color;
 
     Renderer::Instance().UpdateRenderBuffer(*this, render_buffers.size() - 1);
 }
 
-void RenderTarget::SetDepthBuffer(const Handle<Texture>& depth_texture, bool clear)
+void RenderTarget::SetDepthBuffer(const Handle<Texture>& depth_texture)
 {
     depth_buffer = RenderBuffer{depth_texture};
-    depth_buffer.clear = clear;
 
     Renderer::Instance().UpdateDepthBuffer(*this);
 }
@@ -170,22 +166,21 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     const std::string mesh_path = path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
 
     const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
-    auto diffuseMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, mesh_path);
-    textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+    auto diffuse_maps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, mesh_path);
+    textures.insert(textures.end(), diffuse_maps.begin(), diffuse_maps.end());
 
-    auto specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, mesh_path);
-    textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+    auto specular_maps = LoadMaterialTextures(material, aiTextureType_SPECULAR, mesh_path);
+    textures.insert(textures.end(), specular_maps.begin(), specular_maps.end());
 
     Renderer::Instance().CreateMesh(*this);
 }
 
 Mesh::~Mesh() { Renderer::Instance().DestroyMesh(*this); }
 
-Shader::Shader(const std::string& path, const Type type) : type{type}
+Shader::Shader(const std::string& path, const ShaderSettings& shader_info) :
+    type{shader_info.type}, sampler_count{shader_info.sampler_count}, storage_count{shader_info.storage_count},
+    uniform_count{shader_info.uniform_count}
 {
-    if (type == VERTEX) uniform_count = 3;
-    else sampler_count = 1;
-
     const std::ifstream::openmode open_mode = (Renderer::GetBackendName() == "OpenGL" ? std::ios::ate : std::ios::ate | std::ios::binary);
 
     std::ifstream shader_file{path.c_str(), open_mode};
@@ -210,8 +205,8 @@ Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& vertex_shader_path, const std::string& fragment_shader_path) :
     vertex_path{vertex_shader_path}, fragment_path{fragment_shader_path}
 {
-    const auto vertex_shader = FileResource::Load<Shader>(vertex_shader_path, Shader::VERTEX);
-    const auto fragment_shader = FileResource::Load<Shader>(fragment_shader_path, Shader::FRAGMENT);
+    const auto vertex_shader = FileResource::Load<Shader>(vertex_shader_path, ShaderSettings{Shader::VERTEX});
+    const auto fragment_shader = FileResource::Load<Shader>(fragment_shader_path, ShaderSettings{Shader::FRAGMENT});
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
 }
 
@@ -243,13 +238,21 @@ void Renderer::SetupBackend(const char* backend_argument)
     }
 }
 
-void Renderer::Init() { Instance().InitBackend(); }
+void Renderer::Init() { renderer->InitBackend(); }
+
+void Renderer::Exit()
+{
+    main_target.reset();
+    render_passes.clear();
+
+    renderer->ExitBackend();
+}
 
 void Renderer::Render()
 {
     Instance().Update();
 
-    for (RenderPassInterface* render_pass : render_passes)
+    for (Handle<RenderPassInterface>& render_pass : render_passes)
     {
         Instance().BeginRenderPass(*render_pass);
         render_pass->Render();

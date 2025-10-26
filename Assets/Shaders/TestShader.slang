@@ -1,27 +1,4 @@
-#if defined(SDL3GPU)
-    #if defined(VERTEX)
-        #define Sampler 0
-        #define Uniform 1
-    #elif defined(FRAGMENT)
-        #define Sampler 2
-        #define Uniform 3
-    #endif
-#elif defined(DX12)
-    #if defined(VERTEX)
-        #define Sampler 0
-        #define Uniform 1
-    #elif defined(FRAGMENT)
-        #define Sampler 2
-        #define Uniform 3
-    #endif
-#else//if defined(OPENGL)
-    #define Uniform 1
-    #define Sampler 0
-#endif
-
-#define Bind(bind, type) [vk::binding(bind, type)]
-//#define RegisterSampler(bind, type) register(bind, type)
-//#define RegisterUniform(bind, type) register(bind, type)
+#include "Common.slang"
 
 struct Vertex
 {
@@ -37,7 +14,7 @@ Bind(2, Uniform)
 ConstantBuffer<matrix> projection : register(b2, space1);
 
 [shader("vertex")]
-float4 VertexMain(in float3 position: TEXCOORD0, in float3 color: TEXCOORD1, in float2 texCoord : TEXCOORD2, out Vertex data : VERTEXDATA) : SV_Position
+float4 VertexMain(in float3 position: TEXCOORD0, in float3 color: TEXCOORD1, in float2 texCoord: TEXCOORD2, out Vertex data: TEXCOORD3) : SV_Position
 {
     data.color = color;
     data.texCoord = texCoord;
@@ -57,7 +34,7 @@ Bind(4, Sampler)
 Sampler2D<float4> texture_specular1 : register(t4, space2);
 
 [shader("fragment")]
-float4 FragmentMain(in float4 position : SV_Position, in Vertex data : VERTEXDATA) : SV_Target
+float4 FragmentMain(in float4 position: SV_Position, in Vertex data: TEXCOORD3) : SV_Target
 {
     return texture_diffuse0.Sample(data.texCoord);
     //return float4(data.color, 1.0);

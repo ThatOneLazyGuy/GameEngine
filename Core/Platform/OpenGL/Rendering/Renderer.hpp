@@ -12,7 +12,7 @@ class OpenGLRenderer final : public Renderer
     constexpr size WindowFlags() override { return SDL_WINDOW_OPENGL; }
 
     void InitBackend() override;
-    void Exit() override;
+    void ExitBackend() override;
 
     void Update() override;
     void SwapBuffer() override;

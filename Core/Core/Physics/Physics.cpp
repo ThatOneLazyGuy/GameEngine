@@ -151,16 +151,14 @@ class ContactListenerImpl final : public JPH::ContactListener
         return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
     }
 
-    void OnContactAdded(
-        const JPH::Body& a, const JPH::Body& b, const JPH::ContactManifold& manifold, JPH::ContactSettings& io_settings
-    ) override
+    void OnContactAdded(const JPH::Body& a, const JPH::Body& b, const JPH::ContactManifold& manifold, JPH::ContactSettings& io_settings)
+        override
     {
         std::cout << "A contact was added" << '\n';
     }
 
-    void OnContactPersisted(
-        const JPH::Body& a, const JPH::Body& b, const JPH::ContactManifold& manifold, JPH::ContactSettings& io_settings
-    ) override
+    void OnContactPersisted(const JPH::Body& a, const JPH::Body& b, const JPH::ContactManifold& manifold, JPH::ContactSettings& io_settings)
+        override
     {
         std::cout << "A contact was persisted" << '\n';
     }
@@ -230,16 +228,6 @@ namespace Physics
         body_interface.DestroyBody(body_id);
     }
 
-    void Test(const Collider& collider)
-    {
-        JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
-
-        const JPH::Vec3 velocity = body_interface.GetLinearVelocity(collider.GetBodyID());
-        body_interface.SetLinearVelocity(collider.GetBodyID(), velocity + JPH::Vec3{0.0f, 2.0f, 0.0f});
-    }
-
-    DebugRenderer* debug_renderer;
-
     void Init()
     {
         // Register allocation hook. In this example we'll just let Jolt use malloc / free but you can override these if you want (see Memory.h).
@@ -305,13 +293,35 @@ namespace Physics
         physics_system.OptimizeBroadPhase();
 
         debug_renderer = new DebugRenderer();
+
+        Handle<GraphicsShaderPipeline> graphics_pipeline;
+        if (Renderer::GetBackendName() == "OpenGL")
+        {
+            const Handle<Shader> vertex_shader =
+                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.vert", ShaderSettings{Shader::VERTEX, 0, 0, 3});
+            const Handle<Shader> fragment_shader =
+                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.frag", ShaderSettings{Shader::FRAGMENT, 0, 0, 0});
+            graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
+        }
+        else
+        {
+            const Handle<Shader> vertex_shader =
+                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.vert.spv", ShaderSettings{Shader::VERTEX, 0, 0, 3});
+            const Handle<Shader> fragment_shader =
+                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.frag.spv", ShaderSettings{Shader::FRAGMENT, 0, 0, 0});
+            graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
+        }
+
+        Handle<RenderPassInterface> debug_render_pass = std::make_shared<PhysicsDebugRenderPass>(graphics_pipeline, Renderer::main_target);
+        debug_render_pass->clear_render_targets = false;
+        Renderer::render_passes.push_back(debug_render_pass);
     }
 
     void Update(const float delta_time)
     {
         JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
 
-        auto query = ECS::GetWorld().query_builder<Transform, const SphereCollider>().build();
+        const auto query = ECS::GetWorld().query_builder<Transform, const SphereCollider>().build();
 
         query.each([&body_interface](Transform& transform, const SphereCollider& collider) {
             JPH::RVec3 position;
@@ -324,6 +334,8 @@ namespace Physics
         });
 
         physics_system.Update(delta_time, COLLISION_STEPS, temp_allocator, job_system);
+
+        if (debug_renderer != nullptr) { physics_system.DrawBodies(JPH::BodyManager::DrawSettings{}, debug_renderer); }
     }
 
     void Exit()
@@ -348,20 +360,5 @@ namespace Physics
 
         delete job_system;
         job_system = nullptr;
-    }
-
-    std::vector<RenderData> RenderDebug(const float3& camera_position)
-    {
-        static constexpr JPH::BodyManager::DrawSettings draw_settings{};
-        debug_renderer->mCameraPos = JPH::RVec3{camera_position.x(), camera_position.y(), camera_position.z()};
-
-        physics_system.DrawBodies(draw_settings, debug_renderer);
-
-        debug_renderer->NextFrame();
-
-        std::vector<RenderData> render_data{std::move(debug_renderer->render_data)};
-        debug_renderer->render_data.clear();
-
-        return std::move(render_data);
     }
 } // namespace Physics

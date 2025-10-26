@@ -74,7 +74,7 @@ Handle<ResourceType> Resource::Load(Args&&... args)
 {
     const uint64 id = ResourceType::GetID(std::forward<Args>(args)...);
 
-    const auto existing_resource = Resource::Find<ResourceType>(id);
+    auto existing_resource = Resource::Find<ResourceType>(id);
     if (existing_resource) return existing_resource;
 
     auto resource_handle = std::make_shared<ResourceType>(std::forward<Args>(args)...);

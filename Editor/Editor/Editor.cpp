@@ -39,10 +39,11 @@ int main(int, char* args[])
 
     Renderer::Init();
 
-    Physics::Init();
     Editor::Init();
     Handle<GraphicsShaderPipeline> graphics_pipeline = Resource::GetResources<GraphicsShaderPipeline>()[0];
-    Renderer::render_passes.emplace_back(new DefaultRenderPass{graphics_pipeline, Renderer::main_target});
+    Renderer::render_passes.emplace_back(std::make_shared<DefaultRenderPass>(graphics_pipeline, Renderer::main_target));
+    graphics_pipeline.reset();
+    Physics::Init();
     ECS::Init();
 
     auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
@@ -67,11 +68,9 @@ int main(int, char* args[])
 
     ECS::Exit();
     Physics::Exit();
-    Renderer::main_target.reset();
     Resource::CleanResources(true);
-
     ImGui::PlatformExit();
-    Renderer::Instance().Exit();
+    Renderer::Exit();
     Window::Exit();
 
     return 0;
@@ -79,7 +78,6 @@ int main(int, char* args[])
 
 void Editor::Init()
 {
-    // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();

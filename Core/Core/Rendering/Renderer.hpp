@@ -62,12 +62,6 @@ struct SamplerSettings;
 class Texture
 {
   public:
-    static uint64 GetID(const std::string& name)
-    {
-        constexpr std::hash<std::string> hasher{};
-        return hasher(name);
-    }
-
     enum ColorFormat : uint32
     {
         COLOR_RGBA_32,
@@ -76,11 +70,11 @@ class Texture
 
     enum Flags : uint32
     {
-        SAMPLER = (1 << 0),
-        COLOR_TARGET = (1 << 1),
-        DEPTH_TARGET = (1 << 2),
-        DIFFUSE = (1 << 3),
-        SPECULAR = (1 << 4)
+        SAMPLER =       (1 << 0),
+        COLOR_TARGET =  (1 << 1),
+        DEPTH_TARGET =  (1 << 2),
+        DIFFUSE =       (1 << 3),
+        SPECULAR =      (1 << 4)
     };
 
     Texture() = default;
@@ -98,7 +92,7 @@ class Texture
     [[nodiscard]] sint32 GetHeight() const { return height; }
 
     [[nodiscard]] ColorFormat GetFormat() const { return format; }
-    [[nodiscard]] uint32 GetFlags() const { return flags; }
+    [[nodiscard]] Flags GetFlags() const { return flags; }
 
     TextureID texture{};
     SamplerID sampler{};
@@ -108,7 +102,7 @@ class Texture
     sint32 height{0};
 
     ColorFormat format{0};
-    uint32 flags{SAMPLER};
+    Flags flags{SAMPLER};
 };
 
 struct TextureSettings
@@ -133,11 +127,10 @@ class RenderBuffer
 {
   public:
     RenderBuffer() = default;
-    RenderBuffer(Handle<Texture> texture) : texture{std::move(texture)} {}
+    RenderBuffer(const Handle<Texture>& texture) : texture{texture} {}
 
     [[nodiscard]] Handle<Texture> GetTexture() const { return texture; }
 
-    bool clear{true};
     float4 clear_color{};
 
   private:
@@ -161,8 +154,8 @@ class RenderTarget final : public Resource
     [[nodiscard]] sint32 GetWidth() const { return width; }
     [[nodiscard]] sint32 GetHeight() const { return height; }
 
-    void AddRenderBuffer(const Handle<Texture>& render_texture, bool clear = true, const float4& clear_color = {});
-    void SetDepthBuffer(const Handle<Texture>& depth_texture, bool clear = true);
+    void AddRenderBuffer(const Handle<Texture>& render_texture, const float4& clear_color = {});
+    void SetDepthBuffer(const Handle<Texture>& depth_texture);
 
     std::vector<RenderBuffer> render_buffers;
     RenderBuffer depth_buffer;
@@ -202,27 +195,38 @@ class Mesh final : public Resource
     uint32 index; // Mesh index in the model it was loaded from.
 };
 
+struct ShaderSettings;
+
 class Shader final : public FileResource
 {
   public:
     enum Type
     {
         VERTEX,
-        FRAGMENT
+        FRAGMENT,
+        COMPUTER,
     };
 
     Shader() = default;
-    Shader(const std::string& path, Type type);
+    Shader(const std::string& path, const ShaderSettings& shader_info);
     ~Shader() override;
 
     Type type{VERTEX};
-
     uint32 sampler_count{0};
     uint32 storage_count{0};
     uint32 uniform_count{0};
+
     std::vector<char> code;
 
     ShaderID shader;
+};
+
+struct ShaderSettings
+{
+    Shader::Type type{Shader::VERTEX};
+    uint32 sampler_count{0};
+    uint32 storage_count{0};
+    uint32 uniform_count{0};
 };
 
 class RenderPassInterface;
@@ -249,11 +253,15 @@ class GraphicsShaderPipeline final : public Resource
     const std::string& GetVertexPath() const { return vertex_path; }
     const std::string& GetFragmentPath() const { return fragment_path; }
 
+    bool IsWireframe() const { return wireframe; }
+
     GraphicsShaderPipelineID shader_pipeline;
 
   private:
     std::string vertex_path;
     std::string fragment_path;
+
+    bool wireframe{false};
 };
 
 class Renderer
@@ -266,12 +274,12 @@ class Renderer
     static Renderer& Instance() { return *renderer; }
     static const std::string& GetBackendName() { return backend_name; }
 
-    static inline std::vector<RenderPassInterface*> render_passes;
+    static inline std::vector<Handle<RenderPassInterface>> render_passes;
 
     virtual constexpr std::size_t WindowFlags() = 0;
 
     static void Init();
-    virtual void Exit() = 0;
+    static void Exit();
 
     static void Render();
     virtual void SwapBuffer() = 0;
@@ -301,6 +309,7 @@ class Renderer
     static inline std::string backend_name;
 
     virtual void InitBackend() = 0;
+    virtual void ExitBackend() = 0;
     virtual void Update() = 0;
 
     virtual void BeginRenderPass(const RenderPassInterface& render_pass) = 0;

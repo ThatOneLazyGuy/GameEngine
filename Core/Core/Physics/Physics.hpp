@@ -75,5 +75,6 @@ namespace Physics
 
     void Exit();
 
-    std::vector<RenderData> RenderDebug(const float3& camera_position);
+    class DebugRenderer;
+    inline DebugRenderer* debug_renderer = nullptr;
 } // namespace Physics

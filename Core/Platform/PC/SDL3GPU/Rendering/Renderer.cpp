@@ -127,10 +127,12 @@ void SDL3GPURenderer::InitBackend()
         SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
     }
 
-    Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/Shader.vert.spv", "Assets/Shaders/Shader.frag.spv");
+    const Handle<Shader> vertex_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.vert.spv", ShaderSettings{Shader::VERTEX, 0, 0, 3});
+    const Handle<Shader> fragment_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.frag.spv", ShaderSettings{Shader::FRAGMENT, 1, 0, 0});
+    Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
 }
 
-void SDL3GPURenderer::Exit()
+void SDL3GPURenderer::ExitBackend()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
 
@@ -188,9 +190,9 @@ void SDL3GPURenderer::SetUniform(const uint32 slot, const void* data, const size
 
 SDL_GPUCommandBuffer* SDL3GPURenderer::GetCommandBuffer() { return render_command_buffer; }
 
-void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass_interface)
+void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 {
-    Handle<RenderTarget> render_target = render_pass_interface.render_target;
+    Handle<RenderTarget> render_target = render_pass.render_target;
     std::vector<SDL_GPUColorTargetInfo> color_target_infos;
 
     if (render_target->render_buffers.empty())
@@ -225,7 +227,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass_int
                 .texture = render_buffer.GetTexture()->texture.sdl3gpu,
                 .layer_or_depth_plane = 0,
                 .clear_color = SDL_FColor{clear_color.x(), clear_color.y(), clear_color.z(), clear_color.w()},
-                .load_op = (render_buffer.clear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
+                .load_op = (render_pass.clear_render_targets ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
                 .store_op = SDL_GPU_STOREOP_STORE
             };
 
@@ -242,7 +244,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass_int
 
             .texture = depth_texture->texture.sdl3gpu,
             .clear_depth = 1.0f,
-            .load_op = (render_target->depth_buffer.clear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
+            .load_op = (render_pass.clear_render_targets ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
             .store_op = SDL_GPU_STOREOP_STORE,
         };
     }
@@ -252,7 +254,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass_int
     );
     delete depth_stencil_target_info;
 
-    SDL_BindGPUGraphicsPipeline(active_render_pass, render_pass_interface.graphics_pipeline->shader_pipeline.sdl3gpu);
+    SDL_BindGPUGraphicsPipeline(active_render_pass, render_pass.graphics_pipeline->shader_pipeline.sdl3gpu);
 }
 
 void SDL3GPURenderer::EndRenderPass()
@@ -270,7 +272,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
     const uint32 height = texture.GetHeight();
 
     const SDL_GPUTextureFormat format =
-        texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+        texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM;
     const SDL_GPUTextureCreateInfo texture_create_info{
         .type = SDL_GPU_TEXTURETYPE_2D,
         .format = format,
@@ -321,7 +323,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
 void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, const sint32 new_height)
 {
     const SDL_GPUTextureFormat format =
-        texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+        texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM;
     const SDL_GPUTextureCreateInfo texture_create_info{
         .type = SDL_GPU_TEXTURETYPE_2D,
         .format = format,
@@ -485,8 +487,6 @@ void SDL3GPURenderer::CreateShaderPipeline(
     GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
 )
 {
-    auto* window = static_cast<SDL_Window*>(Window::GetHandle());
-
     constexpr SDL_GPUColorTargetBlendState blend_state{
         .src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA,
         .dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
@@ -497,11 +497,11 @@ void SDL3GPURenderer::CreateShaderPipeline(
         .enable_blend = true
     };
 
-    const SDL_GPUColorTargetDescription color_target_description{
-        .format = SDL_GetGPUSwapchainTextureFormat(device, window), .blend_state = blend_state
+    static constexpr SDL_GPUColorTargetDescription color_target_description{
+        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, .blend_state = blend_state
     };
 
-    const SDL_GPUGraphicsPipelineTargetInfo target_info{
+    constexpr SDL_GPUGraphicsPipelineTargetInfo target_info{
         .color_target_descriptions = &color_target_description,
         .num_color_targets = 1,
         .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,

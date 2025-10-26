@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Rendering/Renderer.hpp"
+
 struct SDL_GPUCommandBuffer;
 
 class SDL3GPURenderer final : public Renderer
@@ -12,7 +13,7 @@ class SDL3GPURenderer final : public Renderer
     constexpr size WindowFlags() override { return 0; }
 
     void InitBackend() override;
-    void Exit() override;
+    void ExitBackend() override;
 
     void Update() override;
     void SwapBuffer() override;
