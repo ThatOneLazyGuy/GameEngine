@@ -30,7 +30,26 @@ namespace ImGui
         else if (backend_name == "SDL3GPU") platform = new PlatformSDL3GPU;
 
         Renderer::main_target = Resource::Load<RenderTarget>("EditorWindow");
-        Renderer::main_target->clear_color = float4{0.75f, 0.81f, 0.4f, 1.0f};
+
+        constexpr TextureSettings render_buffer_settings{
+            .width = 1,
+            .height = 1,
+            .format = Texture::COLOR_RGBA_32,
+            .flags = static_cast<Texture::Flags>(Texture::COLOR_TARGET | Texture::SAMPLER),
+        };
+        const Handle<Texture> render_buffer = std::make_shared<Texture>(render_buffer_settings, SamplerSettings{});
+
+        constexpr TextureSettings depth_buffer_settings{
+            .width = 1,
+            .height = 1,
+            .format = Texture::DEPTH_24,
+            .flags = static_cast<Texture::Flags>(Texture::DEPTH_TARGET | Texture::SAMPLER),
+        };
+        Handle<Texture> depth_buffer = std::make_shared<Texture>(depth_buffer_settings, SamplerSettings{});
+
+        Renderer::main_target->AddRenderBuffer(render_buffer, true, float4{0.75f, 0.81f, 0.4f, 1.0f});
+        Renderer::main_target->SetDepthBuffer(depth_buffer);
+        //Renderer::main_target->clear_color = float4{0.75f, 0.81f, 0.4f, 1.0f};
     }
 
     void PlatformExit()
@@ -46,10 +65,7 @@ namespace ImGui
         NewFrame();
     }
 
-    void PlatformEndFrame() 
-    { 
-        platform->EndFrame(); 
-    }
+    void PlatformEndFrame() { platform->EndFrame(); }
 
     void LockMouse(const bool lock)
     {
@@ -72,7 +88,7 @@ namespace ImGui
         return SDL_GetWindowRelativeMouseMode(window);
     }
 
-    ImTextureID GetPlatformTextureID(RenderTarget& target) {return platform->GetTextureID(target); }
+    ImTextureID GetPlatformTextureID(RenderTarget& target) { return platform->GetTextureID(target); }
 
     void PlatformRescaleGameWindow(const ImVec2 viewport_size)
     {

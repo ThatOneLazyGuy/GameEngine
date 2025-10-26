@@ -3,6 +3,7 @@
 #include <memory>
 #include <ranges>
 #include <unordered_map>
+#include <string>
 
 #include "Tools/TypeNames.hpp"
 

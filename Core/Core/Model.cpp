@@ -7,10 +7,15 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+namespace
+{
+} // namespace
+
 ModelParser::ModelParser(const std::string& path)
 {
     importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices);
 }
+
 Handle<Mesh> ModelParser::GetMesh(const uint32 index) const
 {
     if (index >= importer.GetScene()->mNumMeshes)

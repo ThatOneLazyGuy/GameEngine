@@ -19,10 +19,9 @@ namespace ImGui
         auto* device = static_cast<SDL_GPUDevice*>(Renderer::Instance().GetContext());
 
         ImGui_ImplSDL3_InitForSDLGPU(window);
-        ImGui_ImplSDLGPU3_InitInfo init_info = {};
-        init_info.Device = device;
-        init_info.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(device, window);
-        init_info.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
+        ImGui_ImplSDLGPU3_InitInfo init_info{
+            .Device = device, .ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(device, window), .MSAASamples = SDL_GPU_SAMPLECOUNT_1
+        };
         ImGui_ImplSDLGPU3_Init(&init_info);
     }
 
@@ -75,5 +74,8 @@ namespace ImGui
         RenderPlatformWindowsDefault();
     }
 
-    ImTextureID PlatformSDL3GPU::GetTextureID(RenderTarget& target) { return reinterpret_cast<ImTextureID>(&target.render_texture); }
+    ImTextureID PlatformSDL3GPU::GetTextureID(RenderTarget& target)
+    {
+        return reinterpret_cast<ImTextureID>(&target.render_buffers[0].GetTexture()->texture.sdl3gpu);
+    }
 } // namespace ImGui

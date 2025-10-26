@@ -4,16 +4,37 @@
 #include "Platform/PC/SDL3GPU/Rendering/Renderer.hpp"
 
 #include "Core/Model.hpp"
+#include "RenderPassInterface.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 #include <SDL3/SDL_log.h>
-#include <assimp/scene.h>
 #include <filesystem>
 #include <fstream>
-#include <stb_image.h>
+#include <assimp/scene.h>
+
+
 
 namespace
 {
+    std::vector<uint8> LoadTextureImage(const std::string& path, sint32& out_width, sint32& out_height)
+    {
+        sint32 component_count;
+        uint8* data = stbi_load(path.c_str(), &out_width, &out_height, &component_count, 4);
+        if (data == nullptr)
+        {
+            SDL_Log("Failed to load image: %s", stbi_failure_reason());
+            return {};
+        }
+
+        const size data_size = static_cast<size>(out_width * out_height) * 4;
+
+        std::vector<uint8_t> return_data{data, data + data_size};
+        stbi_image_free(data);
+
+        return return_data;
+    }
+
     std::vector<Handle<Texture>> LoadMaterialTextures(const aiMaterial& material, const aiTextureType type, const std::string& mesh_path)
     {
         std::vector<Handle<Texture>> textures;
@@ -22,10 +43,21 @@ namespace
             aiString string;
             material.GetTexture(type, i, &string);
 
-            const Texture::Type real_type = (type == aiTextureType_DIFFUSE ? Texture::Type::DIFFUSE : Texture::Type::SPECULAR);
+            Texture::Flags flags = (type == aiTextureType_DIFFUSE ? Texture::Flags::DIFFUSE : Texture::Flags::SPECULAR);
 
+            sint32 width, height;
             const std::string full_path = mesh_path + string.C_Str();
-            auto texture_handle = FileResource::Load<Texture>(full_path, real_type);
+            std::vector<uint8> data = LoadTextureImage(full_path, width, height);
+
+            const TextureSettings texture_settings{
+                .width = width,
+                .height = height,
+                .format = Texture::COLOR_RGBA_32,
+                .flags = static_cast<Texture::Flags>(Texture::Flags::SAMPLER | flags),
+                .color_data = data.data()
+            };
+
+            auto texture_handle = std::make_shared<Texture>(texture_settings, SamplerSettings{});
             textures.push_back(texture_handle);
         }
         return textures;
@@ -34,43 +66,68 @@ namespace
 
 RenderTarget::RenderTarget(const std::string& name) : name{name} { Renderer::Instance().CreateRenderTarget(*this); }
 
-RenderTarget::~RenderTarget() { Renderer::Instance().DestroyRenderTarget(*this); }
-
-bool RenderTarget::Resize(const sint32 width, const sint32 height)
+void RenderTarget::Resize(const sint32 new_width, const sint32 new_height)
 {
-    if (this->width == width && this->height == height) return false;
+    if (width == new_width && height == new_height) return;
 
-    this->width = width;
-    this->height = height;
+    width = new_width;
+    height = new_height;
 
-    Renderer::Instance().RecreateRenderTarget(*this);
-
-    return true;
-}
-
-Texture::Texture(const std::string& path, const Type type) : type{type}
-{
-    sint32 image_width, image_height, component_count;
-    void* data = stbi_load(path.c_str(), &image_width, &image_height, &component_count, 4);
-
-    const uint32 pixel_count = image_width * image_height;
-    if (data != nullptr)
+    for (RenderBuffer& buffer : render_buffers)
     {
-        const auto* pixel_data = static_cast<const uint32*>(data);
-        colors.insert(colors.end(), pixel_data, pixel_data + pixel_count);
-        stbi_image_free(data);
-
-        width = static_cast<uint32>(image_width);
-        height = static_cast<uint32>(image_height);
-
-        Renderer::Instance().CreateTexture(*this);
-        return;
+        buffer.GetTexture()->Resize(width, height);
     }
 
-    SDL_Log("Failed to load image: %s", stbi_failure_reason());
+    if (depth_buffer.GetTexture() != nullptr) { depth_buffer.GetTexture()->Resize(width, height); }
+}
+
+void RenderTarget::AddRenderBuffer(const Handle<Texture>& render_texture, const bool clear, const float4& clear_color)
+{
+    RenderBuffer& render_buffer = render_buffers.emplace_back(render_texture);
+    render_buffer.clear = clear;
+    render_buffer.clear_color = clear_color;
+
+    Renderer::Instance().UpdateRenderBuffer(*this, render_buffers.size() - 1);
+}
+
+void RenderTarget::SetDepthBuffer(const Handle<Texture>& depth_texture, bool clear)
+{
+    depth_buffer = RenderBuffer{depth_texture};
+    depth_buffer.clear = clear;
+
+    Renderer::Instance().UpdateDepthBuffer(*this);
+}
+
+Texture::Texture(const TextureSettings& texture_settings, const SamplerSettings& sampler_settings) :
+    width{texture_settings.width}, height{texture_settings.height}, format{texture_settings.format}, flags{texture_settings.flags}
+{
+    Renderer::Instance().CreateTexture(*this, texture_settings.color_data, sampler_settings);
+}
+
+Texture::Texture(Texture&& other) noexcept
+{
+    std::swap(other.texture, texture);
+    std::swap(other.sampler, sampler);
+
+    std::swap(other.width, width);
+    std::swap(other.height, height);
+
+    std::swap(other.format, format);
+    std::swap(other.flags, flags);
 }
 
 Texture::~Texture() { Renderer::Instance().DestroyTexture(*this); }
+
+void Texture::Resize(const sint32 new_width, const sint32 new_height)
+{
+    if (width == new_width && height == new_height) return;
+
+    Renderer::Instance().ResizeTexture(*this, new_width, new_height);
+
+    // Make sure to manually set the new width and height *after*, since the renderer can't access these and needs both the new and old size.
+    width = new_width;
+    height = new_height;
+}
 
 Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 {
@@ -150,7 +207,7 @@ Shader::Shader(const std::string& path, const Type type) : type{type}
 
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
-ShaderPipeline::ShaderPipeline(const std::string& vertex_shader_path, const std::string& fragment_shader_path) :
+GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& vertex_shader_path, const std::string& fragment_shader_path) :
     vertex_path{vertex_shader_path}, fragment_path{fragment_shader_path}
 {
     const auto vertex_shader = FileResource::Load<Shader>(vertex_shader_path, Shader::VERTEX);
@@ -158,31 +215,44 @@ ShaderPipeline::ShaderPipeline(const std::string& vertex_shader_path, const std:
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
 }
 
-ShaderPipeline::ShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader) :
+GraphicsShaderPipeline::GraphicsShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader) :
     vertex_path{vertex_shader->GetPath()}, fragment_path{fragment_shader->GetPath()}
 {
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
 }
 
-ShaderPipeline::~ShaderPipeline() { Renderer::Instance().DestroyShaderPipeline(*this); }
+GraphicsShaderPipeline::~GraphicsShaderPipeline() { Renderer::Instance().DestroyShaderPipeline(*this); }
 
-void Renderer::SetupBackend(const char* backend_name)
+void Renderer::SetupBackend(const char* backend_argument)
 {
-    if (backend_name == nullptr) Renderer::backend_name = "SDL3GPU";
-    else Renderer::backend_name = backend_name;
+    if (backend_argument == nullptr) backend_name = "SDL3GPU";
+    else backend_name = backend_argument;
 
     main_target = std::make_shared<RenderTarget>();
 
-    if (Renderer::backend_name == "OpenGL")
+    if (backend_name == "OpenGL")
     {
         renderer = new OpenGLRenderer;
         return;
     }
 
-    if (Renderer::backend_name == "SDL3GPU")
+    if (backend_name == "SDL3GPU")
     {
         renderer = new SDL3GPURenderer;
         return;
     }
+}
 
+void Renderer::Init() { Instance().InitBackend(); }
+
+void Renderer::Render()
+{
+    Instance().Update();
+
+    for (RenderPassInterface* render_pass : render_passes)
+    {
+        Instance().BeginRenderPass(*render_pass);
+        render_pass->Render();
+        Instance().EndRenderPass();
+    }
 }

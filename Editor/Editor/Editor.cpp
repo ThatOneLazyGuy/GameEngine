@@ -16,6 +16,8 @@
 #include <imgui.h>
 #include <numeric>
 
+#include "Core/Rendering/RenderPassInterface.hpp"
+
 namespace Editor
 {
     void InitFonts()
@@ -35,10 +37,12 @@ int main(int, char* args[])
 
     Window::Init(&ImGui::PlatformProcessEvent);
 
-    Renderer::Instance().Init();
+    Renderer::Init();
 
     Physics::Init();
     Editor::Init();
+    Handle<GraphicsShaderPipeline> graphics_pipeline = Resource::GetResources<GraphicsShaderPipeline>()[0];
+    Renderer::render_passes.emplace_back(new DefaultRenderPass{graphics_pipeline, Renderer::main_target});
     ECS::Init();
 
     auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
@@ -111,10 +115,7 @@ void Editor::Update()
                 ImGui::SetWindowFocus();
                 ImGui::LockMouse(true);
             }
-            else if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-            {
-                ImGui::LockMouse(false);
-            }
+            else if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) { ImGui::LockMouse(false); }
 
             if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
             {
@@ -148,7 +149,7 @@ void Editor::Update()
         window_content_area.y -= ImGui::GetFrameHeight();
 
         ImGui::PlatformRescaleGameWindow(window_content_area);
-        Renderer::Instance().Update();
+        Renderer::Render();
 
         ImGui::SetCursorPos(ImVec2{0.0f, ImGui::GetFrameHeight()});
         ImGui::Image(ImGui::GetPlatformTextureID(*Renderer::main_target), window_content_area);

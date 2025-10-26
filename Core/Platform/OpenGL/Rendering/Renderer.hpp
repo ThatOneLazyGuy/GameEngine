@@ -11,7 +11,7 @@ class OpenGLRenderer final : public Renderer
 
     constexpr size WindowFlags() override { return SDL_WINDOW_OPENGL; }
 
-    void Init() override;
+    void InitBackend() override;
     void Exit() override;
 
     void Update() override;
@@ -19,14 +19,22 @@ class OpenGLRenderer final : public Renderer
 
     void* GetContext() override;
 
-  private:
-    void CreateRenderTarget(RenderTarget& target) override;
-    void RecreateRenderTarget(RenderTarget& target) override;
-    void DestroyRenderTarget(RenderTarget& target) override;
+    void RenderMesh(const Mesh& mesh) override;
+    void SetTextureSampler(uint32 slot, const Texture& texture) override;
+    void SetUniform(uint32 slot, const void* data, size size) override;
 
-    void CreateTexture(Texture& texture) override;
-    void ReloadTexture(Texture& texture) override;
+  private:
+    void BeginRenderPass(const RenderPassInterface& render_pass) override;
+    void EndRenderPass() override;
+
+    void CreateTexture(Texture& texture, const uint8* data, const SamplerSettings& sampler_settings) override;
+    void ResizeTexture(Texture& texture, sint32 new_width, sint32 new_height) override;
     void DestroyTexture(Texture& texture) override;
+
+    void CreateRenderTarget(RenderTarget& target) override;
+    void UpdateRenderBuffer(const RenderTarget& target, size index) override;
+    void UpdateDepthBuffer(const RenderTarget& target) override;
+    void DestroyRenderTarget(RenderTarget& target) override;
 
     void CreateMesh(Mesh& mesh) override;
     void ReloadMesh(Mesh& mesh) override;
@@ -35,8 +43,7 @@ class OpenGLRenderer final : public Renderer
     void CreateShader(Shader& shader) override;
     void DestroyShader(Shader& shader) override;
 
-    void CreateShaderPipeline(
-        ShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
-    ) override;
-    void DestroyShaderPipeline(ShaderPipeline& shader) override;
+    void CreateShaderPipeline(GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader)
+        override;
+    void DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) override;
 };

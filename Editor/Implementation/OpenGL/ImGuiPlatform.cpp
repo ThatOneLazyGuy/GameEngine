@@ -39,5 +39,5 @@ namespace ImGui
         SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
     }
 
-    ImTextureID PlatformOpenGL::GetTextureID(RenderTarget& target) { return target.render_texture.opengl; }
+    ImTextureID PlatformOpenGL::GetTextureID(RenderTarget& target) { return target.render_buffers[0].GetTexture()->texture.opengl; }
 } // namespace ImGui

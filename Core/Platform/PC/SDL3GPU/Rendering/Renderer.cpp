@@ -2,19 +2,19 @@
 #include "Renderer.hpp"
 
 #include "Core/ECS.hpp"
-#include "Core/Model.hpp"
 #include "Core/Window.hpp"
 #include "Core/Physics/Physics.hpp"
 #include "Core/Physics/DebugRenderer.hpp"
+#include "Core/Rendering/RenderPassInterface.hpp"
 
 #include <SDL3/SDL.h>
 
 #include <filesystem>
-#include <string>
 
 namespace
 {
-    SDL_GPUCommandBuffer* render_command_buffer;
+    SDL_GPUCommandBuffer* render_command_buffer = nullptr;
+    SDL_GPURenderPass* active_render_pass = nullptr;
 
     struct TextureCopyInfo
     {
@@ -31,7 +31,6 @@ namespace
     std::vector<BufferCopyInfo> buffer_copies;
 
     SDL_GPUDevice* device = nullptr;
-    std::vector<SDL_GPUTexture*> global_textures;
 
     SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size data_size)
     {
@@ -92,134 +91,19 @@ namespace
         if (!SDL_SubmitGPUCommandBuffer(command_buffer)) { SDL_Log("Failed to submit copy command buffer: %s", SDL_GetError()); }
     }
 
-    void RenderMesh(SDL_GPURenderPass* render_pass, const Transform& transform, const Handle<Mesh>& mesh_handle)
+    SDL_GPUTextureUsageFlags ToUsageFlags(const uint32 in_flags)
     {
-        SDL_PushGPUVertexUniformData(render_command_buffer, 0, transform.GetMatrix().data(), sizeof(Matrix4));
+        SDL_GPUTextureUsageFlags out_flags = 0;
 
-        uint32 diffuse_count = 0;
-        uint32 specular_count = 0;
-        for (const auto& texture : mesh_handle->textures)
-        {
-            uint32 sampler_slot = 0;
-            switch (texture->type)
-            {
-            case Texture::Type::DIFFUSE:
-                sampler_slot = diffuse_count++;
-                break;
+        if (in_flags & Texture::SAMPLER) out_flags |= SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        if (in_flags & Texture::COLOR_TARGET) out_flags |= SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+        if (in_flags & Texture::DEPTH_TARGET) out_flags |= SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
 
-            case Texture::Type::SPECULAR:
-                sampler_slot = 3 + specular_count++;
-                break;
-            }
-
-            const SDL_GPUTextureSamplerBinding binding{
-                .texture = texture->texture.sdl3gpu,
-                .sampler = texture->sampler.sdl3gpu,
-            };
-
-            SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
-        }
-
-        const SDL_GPUBufferBinding vertex_binding{.buffer = mesh_handle->vertices_buffer.sdl3gpu};
-        SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
-
-        const SDL_GPUBufferBinding index_binding{.buffer = mesh_handle->indices_buffer.sdl3gpu};
-        SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-
-        SDL_DrawGPUIndexedPrimitives(render_pass, static_cast<uint32>(mesh_handle->indices.size()), 1, 0, 0, 0);
-    }
-
-    void RenderCamera(const Transform& camera_transform, const Camera& camera)
-    {
-        auto* window = static_cast<SDL_Window*>(Window::GetHandle());
-        const Handle<RenderTarget>& render_target = camera.render_target;
-
-        SDL_GPUColorTargetInfo color_target_info{
-            .texture = render_target->render_texture.sdl3gpu,
-            .layer_or_depth_plane = 0,
-            .load_op = SDL_GPU_LOADOP_LOAD,
-            .store_op = SDL_GPU_STOREOP_STORE
-        };
-
-        if (color_target_info.texture == nullptr &&
-            !SDL_WaitAndAcquireGPUSwapchainTexture(render_command_buffer, window, &color_target_info.texture, nullptr, nullptr))
-        {
-            SDL_Log("Failed to acquire swapchain texture: %s", SDL_GetError());
-            return;
-        }
-
-        SDL_GPUDepthStencilTargetInfo depth_stencil_target_info{
-            .texture = render_target->depth_texture.sdl3gpu,
-            .clear_depth = 1.0f,
-            .load_op = SDL_GPU_LOADOP_LOAD,
-            .store_op = SDL_GPU_STOREOP_STORE,
-        };
-
-        if (render_target->clear)
-        {
-            // Memory copy the clear color (identical memory layout)
-            std::memcpy(&color_target_info.clear_color, render_target->clear_color.data(), sizeof(float4));
-
-            color_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-            depth_stencil_target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-        }
-
-        SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(render_command_buffer, &color_target_info, 1, &depth_stencil_target_info);
-        SDL_BindGPUGraphicsPipeline(render_pass, Resource::GetResources<ShaderPipeline>()[0]->shader_pipeline.sdl3gpu);
-
-        const Matrix4 view = Math::Inverse(camera_transform.GetMatrix());
-        SDL_PushGPUVertexUniformData(render_command_buffer, 1, view.data(), sizeof(Matrix4));
-
-        const Matrix4 projection = camera.GetProjection(*render_target);
-        SDL_PushGPUVertexUniformData(render_command_buffer, 2, projection.data(), sizeof(Matrix4));
-
-        const auto mesh_query = ECS::GetWorld().query_builder<const Transform, const Handle<Mesh>>().build();
-        mesh_query.each([render_pass](const Transform& transform, const Handle<Mesh>& mesh_handle) {
-            RenderMesh(render_pass, transform, mesh_handle);
-        });
-
-        for (const auto& [model, mesh] : Physics::RenderDebug(camera_transform.GetPosition()))
-        {
-            SDL_PushGPUVertexUniformData(render_command_buffer, 0, &model, sizeof(Matrix4));
-
-            uint32 diffuse_count = 0;
-            uint32 specular_count = 0;
-            for (const auto& texture : mesh->textures)
-            {
-                uint32 sampler_slot = 0;
-                switch (texture->type)
-                {
-                case Texture::Type::DIFFUSE:
-                    sampler_slot = diffuse_count++;
-                    break;
-
-                case Texture::Type::SPECULAR:
-                    sampler_slot = 3 + specular_count++;
-                    break;
-                }
-
-                const SDL_GPUTextureSamplerBinding binding{
-                    .texture = texture->texture.sdl3gpu,
-                    .sampler = texture->sampler.sdl3gpu,
-                };
-
-                SDL_BindGPUFragmentSamplers(render_pass, sampler_slot, &binding, 1);
-            }
-
-            const SDL_GPUBufferBinding vertex_binding{.buffer = mesh->vertices_buffer.sdl3gpu};
-            SDL_BindGPUVertexBuffers(render_pass, 0, &vertex_binding, 1);
-
-            const SDL_GPUBufferBinding index_binding{.buffer = mesh->indices_buffer.sdl3gpu};
-            SDL_BindGPUIndexBuffer(render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-
-            SDL_DrawGPUIndexedPrimitives(render_pass, static_cast<uint32>(mesh->indices.size()), 1, 0, 0, 0);
-        }
-
-        SDL_EndGPURenderPass(render_pass);
+        return out_flags;
     }
 } // namespace
 
-void SDL3GPURenderer::Init()
+void SDL3GPURenderer::InitBackend()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
 
@@ -242,7 +126,8 @@ void SDL3GPURenderer::Init()
         // If we fail to set mailbox (v-sync with less visual latency) we use regular v-sync.
         SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
     }
-    Resource::Load<ShaderPipeline>("Assets/Shaders/Shader.vert.spv", "Assets/Shaders/Shader.frag.spv");
+
+    Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/Shader.vert.spv", "Assets/Shaders/Shader.frag.spv");
 }
 
 void SDL3GPURenderer::Exit()
@@ -263,137 +148,232 @@ void SDL3GPURenderer::Update()
         SDL_Log("Failed to acquire render command buffer: %s", SDL_GetError());
         return;
     }
-
-    const auto camera_query = ECS::GetWorld().query_builder<const Transform, const Camera>().build();
-    camera_query.each(&RenderCamera);
 }
 
 void SDL3GPURenderer::SwapBuffer()
 {
-    if (!SDL_SubmitGPUCommandBuffer(render_command_buffer))
-    {
-        SDL_Log("Failed to submit render command buffer: %s", SDL_GetError());
-    }
+    if (!SDL_SubmitGPUCommandBuffer(render_command_buffer)) { SDL_Log("Failed to submit render command buffer: %s", SDL_GetError()); }
     render_command_buffer = nullptr;
 }
 
 void* SDL3GPURenderer::GetContext() { return device; }
 
+void SDL3GPURenderer::RenderMesh(const Mesh& mesh)
+{
+    const SDL_GPUBufferBinding vertex_binding{.buffer = mesh.vertices_buffer.sdl3gpu};
+    SDL_BindGPUVertexBuffers(active_render_pass, 0, &vertex_binding, 1);
+
+    const SDL_GPUBufferBinding index_binding{.buffer = mesh.indices_buffer.sdl3gpu};
+    SDL_BindGPUIndexBuffer(active_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+    SDL_DrawGPUIndexedPrimitives(active_render_pass, static_cast<uint32>(mesh.indices.size()), 1, 0, 0, 0);
+}
+
+void SDL3GPURenderer::SetTextureSampler(const uint32 slot, const Texture& texture)
+{
+    const SDL_GPUTextureSamplerBinding binding{
+        .texture = texture.texture.sdl3gpu,
+        .sampler = texture.sampler.sdl3gpu,
+    };
+
+    SDL_BindGPUFragmentSamplers(active_render_pass, slot, &binding, 1);
+}
+
+void SDL3GPURenderer::SetUniform(const uint32 slot, const void* data, const size size)
+{
+    SDL_PushGPUVertexUniformData(render_command_buffer, slot, data, static_cast<uint32>(size));
+    SDL_PushGPUFragmentUniformData(render_command_buffer, slot, data, static_cast<uint32>(size));
+    SDL_PushGPUComputeUniformData(render_command_buffer, slot, data, static_cast<uint32>(size));
+}
+
 SDL_GPUCommandBuffer* SDL3GPURenderer::GetCommandBuffer() { return render_command_buffer; }
 
-void SDL3GPURenderer::CreateRenderTarget(RenderTarget& target)
+void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass_interface)
 {
-    constexpr SDL_GPUSamplerCreateInfo sampler_info{
-        SDL_GPU_FILTER_NEAREST,
-        SDL_GPU_FILTER_NEAREST,
-        SDL_GPU_SAMPLERMIPMAPMODE_NEAREST,
-        SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-        SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-        SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
-    };
+    Handle<RenderTarget> render_target = render_pass_interface.render_target;
+    std::vector<SDL_GPUColorTargetInfo> color_target_infos;
 
-    target.sampler.sdl3gpu = SDL_CreateGPUSampler(device, &sampler_info);
-    if (target.sampler.sdl3gpu == nullptr) SDL_Log("Failed creating sampler for render target: %s", SDL_GetError());
-
-    RecreateRenderTarget(target);
-}
-
-void SDL3GPURenderer::RecreateRenderTarget(RenderTarget& target)
-{
-    if (target.sampler.sdl3gpu != nullptr)
+    if (render_target->render_buffers.empty())
     {
-        SDL_ReleaseGPUTexture(device, target.render_texture.sdl3gpu);
+        auto* window = static_cast<SDL_Window*>(Window::GetHandle());
 
-        static SDL_GPUTextureCreateInfo render_texture_info{
-            .type = SDL_GPU_TEXTURETYPE_2D,
-            .format = SDL_GetGPUSwapchainTextureFormat(device, static_cast<SDL_Window*>(Window::GetHandle())),
-            .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
-            .layer_count_or_depth = 1,
-            .num_levels = 1
+        SDL_GPUTexture* swapchain_texture = nullptr;
+        if (!SDL_WaitAndAcquireGPUSwapchainTexture(render_command_buffer, window, &swapchain_texture, nullptr, nullptr))
+        {
+            SDL_Log("Failed to acquire swapchain texture: %s", SDL_GetError());
+            return;
+        }
+
+        const SDL_GPUColorTargetInfo color_target_info{
+            .texture = swapchain_texture,
+            .layer_or_depth_plane = 0,
+            .clear_color = SDL_FColor{},
+            .load_op = SDL_GPU_LOADOP_CLEAR,
+            .store_op = SDL_GPU_STOREOP_STORE
         };
 
-        render_texture_info.width = target.GetWidth();
-        render_texture_info.height = target.GetHeight();
+        color_target_infos.push_back(color_target_info);
+    }
+    else
+    {
+        color_target_infos.reserve(render_target->render_buffers.size());
+        for (RenderBuffer& render_buffer : render_target->render_buffers)
+        {
+            const float4& clear_color = render_buffer.clear_color;
 
-        target.render_texture.sdl3gpu = SDL_CreateGPUTexture(device, &render_texture_info);
-        if (target.render_texture.sdl3gpu == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the render texture");
+            const SDL_GPUColorTargetInfo color_target_info{
+                .texture = render_buffer.GetTexture()->texture.sdl3gpu,
+                .layer_or_depth_plane = 0,
+                .clear_color = SDL_FColor{clear_color.x(), clear_color.y(), clear_color.z(), clear_color.w()},
+                .load_op = (render_buffer.clear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
+                .store_op = SDL_GPU_STOREOP_STORE
+            };
+
+            color_target_infos.push_back(color_target_info);
+        }
     }
 
-    SDL_ReleaseGPUTexture(device, target.depth_texture.sdl3gpu);
+    const Handle<Texture> depth_texture = render_target->depth_buffer.GetTexture();
+    SDL_GPUDepthStencilTargetInfo* depth_stencil_target_info = nullptr;
 
-    static SDL_GPUTextureCreateInfo depth_texture_info{
-        .format = SDL_GPU_TEXTUREFORMAT_D24_UNORM,
-        .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
-        .layer_count_or_depth = 1,
-        .num_levels = 1
-    };
+    if (depth_texture != nullptr)
+    {
+        depth_stencil_target_info = new SDL_GPUDepthStencilTargetInfo{
 
-    depth_texture_info.width = target.GetWidth();
-    depth_texture_info.height = target.GetHeight();
+            .texture = depth_texture->texture.sdl3gpu,
+            .clear_depth = 1.0f,
+            .load_op = (render_target->depth_buffer.clear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
+            .store_op = SDL_GPU_STOREOP_STORE,
+        };
+    }
 
-    target.depth_texture.sdl3gpu = SDL_CreateGPUTexture(device, &depth_texture_info);
-    if (target.depth_texture.sdl3gpu == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the depth texture");
+    active_render_pass = SDL_BeginGPURenderPass(
+        render_command_buffer, color_target_infos.data(), static_cast<uint32>(color_target_infos.size()), depth_stencil_target_info
+    );
+    delete depth_stencil_target_info;
+
+    SDL_BindGPUGraphicsPipeline(active_render_pass, render_pass_interface.graphics_pipeline->shader_pipeline.sdl3gpu);
 }
 
-void SDL3GPURenderer::DestroyRenderTarget(RenderTarget& target)
+void SDL3GPURenderer::EndRenderPass()
 {
-    SDL_ReleaseGPUTexture(device, target.depth_texture.sdl3gpu);
-    SDL_ReleaseGPUTexture(device, target.render_texture.sdl3gpu);
-    SDL_ReleaseGPUSampler(device, target.sampler.sdl3gpu);
+    if (active_render_pass != nullptr)
+    {
+        SDL_EndGPURenderPass(active_render_pass);
+        active_render_pass = nullptr;
+    }
 }
 
-void SDL3GPURenderer::CreateTexture(Texture& texture)
+void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const SamplerSettings& sampler_settings)
 {
-    constexpr SDL_GPUSamplerCreateInfo sampler_info{
-        SDL_GPU_FILTER_NEAREST,
-        SDL_GPU_FILTER_NEAREST,
-        SDL_GPU_SAMPLERMIPMAPMODE_NEAREST,
-        SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-        SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-        SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
-    };
-    texture.sampler.sdl3gpu = SDL_CreateGPUSampler(device, &sampler_info);
-    if (texture.sampler.sdl3gpu == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the texture sampler");
+    const uint32 width = texture.GetWidth();
+    const uint32 height = texture.GetHeight();
 
-    ReloadTexture(texture);
-}
-void SDL3GPURenderer::ReloadTexture(Texture& texture)
-{
-    if (texture.texture.sdl3gpu != nullptr) SDL_ReleaseGPUTexture(device, texture.texture.sdl3gpu);
-
-    const SDL_GPUTextureCreateInfo texture_info{
+    const SDL_GPUTextureFormat format =
+        texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+    const SDL_GPUTextureCreateInfo texture_create_info{
         .type = SDL_GPU_TEXTURETYPE_2D,
-        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
-        .width = texture.width,
-        .height = texture.height,
+        .format = format,
+        .usage = ToUsageFlags(texture.GetFlags()),
+        .width = width,
+        .height = height,
         .layer_count_or_depth = 1,
-        .num_levels = 1
+        .num_levels = 1,
     };
 
-    texture.texture.sdl3gpu = SDL_CreateGPUTexture(device, &texture_info);
+    texture.texture.sdl3gpu = SDL_CreateGPUTexture(device, &texture_create_info);
     if (texture.texture.sdl3gpu == nullptr)
     {
-        SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the target texture");
+        SDL_Log("Failed to create GPU texture: %s", SDL_GetError());
         return;
     }
 
-    global_textures.push_back(texture.texture.sdl3gpu);
+    const SDL_GPUSamplerCreateInfo sampler_info{
+        .min_filter = static_cast<SDL_GPUFilter>(sampler_settings.down_filter),
+        .mag_filter = static_cast<SDL_GPUFilter>(sampler_settings.up_filter),
+        .mipmap_mode = static_cast<SDL_GPUSamplerMipmapMode>(sampler_settings.mipmap_mode),
+        .address_mode_u = static_cast<SDL_GPUSamplerAddressMode>(sampler_settings.wrap_mode_u),
+        .address_mode_v = static_cast<SDL_GPUSamplerAddressMode>(sampler_settings.wrap_mode_v),
+        .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    };
 
-    SDL_GPUTransferBuffer* texture_transfer_buffer =
-        CreateUploadTransferBuffer(texture.colors.data(), texture.colors.size() * sizeof(uint32));
+    texture.sampler.sdl3gpu = SDL_CreateGPUSampler(device, &sampler_info);
+    if (texture.sampler.sdl3gpu == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the texture sampler");
+
+    // If there is no data to upload, we return.
+    if (data == nullptr) return;
+
+    const uint32 data_size = SDL_CalculateGPUTextureFormatSize(format, width, height, 1);
+    SDL_GPUTransferBuffer* texture_transfer_buffer = CreateUploadTransferBuffer(data, data_size);
 
     auto& [texture_transfer_info, texture_destination] = texture_copies.emplace_back();
 
     texture_transfer_info.transfer_buffer = texture_transfer_buffer;
     texture_transfer_info.offset = 0;
-    texture_transfer_info.pixels_per_row = texture.width;
-    texture_transfer_info.rows_per_layer = texture.height;
+    texture_transfer_info.pixels_per_row = width;
+    texture_transfer_info.rows_per_layer = height;
 
     texture_destination.texture = texture.texture.sdl3gpu;
-    texture_destination.w = texture.width;
-    texture_destination.h = texture.height;
+    texture_destination.w = width;
+    texture_destination.h = height;
     texture_destination.d = 1;
+}
+void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, const sint32 new_height)
+{
+    const SDL_GPUTextureFormat format =
+        texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+    const SDL_GPUTextureCreateInfo texture_create_info{
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = format,
+        .usage = ToUsageFlags(texture.GetFlags()),
+        .width = static_cast<uint32>(new_width),
+        .height = static_cast<uint32>(new_height),
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+    };
+
+    SDL_GPUTexture* new_texture = SDL_CreateGPUTexture(device, &texture_create_info);
+    if (new_texture == nullptr)
+    {
+        SDL_Log("Failed to recreate GPU texture: %s", SDL_GetError());
+        return;
+    }
+
+    if (texture.texture.sdl3gpu != nullptr && texture.GetFlags() & Texture::COLOR_RGBA_32)
+    {
+        const SDL_GPUBlitRegion source_region{
+            .texture = texture.texture.sdl3gpu,
+            .mip_level = 0,
+            .x = 0,
+            .y = 0,
+            .w = static_cast<uint32>(texture.GetWidth()),
+            .h = static_cast<uint32>(texture.GetHeight()),
+        };
+
+        const SDL_GPUBlitRegion destination_region{
+            .texture = new_texture,
+            .mip_level = 0,
+            .x = 0,
+            .y = 0,
+            .w = static_cast<uint32>(new_width),
+            .h = static_cast<uint32>(new_height),
+        };
+
+        const SDL_GPUBlitInfo blit_info{
+            .source = source_region,
+            .destination = destination_region,
+            .load_op = SDL_GPU_LOADOP_DONT_CARE,
+            .filter = SDL_GPU_FILTER_NEAREST
+        };
+
+        SDL_GPUCommandBuffer* blit_command_buffer = SDL_AcquireGPUCommandBuffer(device);
+        SDL_BlitGPUTexture(blit_command_buffer, &blit_info);
+        SDL_SubmitGPUCommandBuffer(blit_command_buffer);
+
+        SDL_ReleaseGPUTexture(device, texture.texture.sdl3gpu);
+    }
+
+    texture.texture.sdl3gpu = new_texture;
 }
 
 void SDL3GPURenderer::DestroyTexture(Texture& texture)
@@ -460,7 +440,7 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
     const auto stage = static_cast<SDL_GPUShaderStage>(shader.type);
 
     const SDL_GPUShaderFormat backendFormats = SDL_GetGPUShaderFormats(device);
-    SDL_GPUShaderFormat format = SDL_GPU_SHADERFORMAT_INVALID;
+    SDL_GPUShaderFormat format;
     const char* entrypoint;
 
     if (backendFormats & SDL_GPU_SHADERFORMAT_SPIRV)
@@ -502,7 +482,7 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
 void SDL3GPURenderer::DestroyShader(Shader& shader) { SDL_ReleaseGPUShader(device, shader.shader.sdl3gpu); }
 
 void SDL3GPURenderer::CreateShaderPipeline(
-    ShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
+    GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
 )
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
@@ -571,7 +551,7 @@ void SDL3GPURenderer::CreateShaderPipeline(
     if (pipeline.shader_pipeline.sdl3gpu == nullptr) SDL_Log("Failed to create shader pipeline: %s", SDL_GetError());
 }
 
-void SDL3GPURenderer::DestroyShaderPipeline(ShaderPipeline& shader)
+void SDL3GPURenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline)
 {
-    SDL_ReleaseGPUGraphicsPipeline(device, shader.shader_pipeline.sdl3gpu);
+    SDL_ReleaseGPUGraphicsPipeline(device, pipeline.shader_pipeline.sdl3gpu);
 }
