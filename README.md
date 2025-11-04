@@ -1,2 +1,3 @@
-Issues:
-1. EIGEN_MAX_ALIGN_BYTES=0 for perforamance hit on Eiger vectorization
+# Game Engine
+
+A game engine I'm building to learn more about all different kinds of systems.
