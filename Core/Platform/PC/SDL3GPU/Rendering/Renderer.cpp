@@ -127,8 +127,10 @@ void SDL3GPURenderer::InitBackend()
         SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
     }
 
-    const Handle<Shader> vertex_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.vert.spv", ShaderSettings{Shader::VERTEX, 0, 0, 3});
-    const Handle<Shader> fragment_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.frag.spv", ShaderSettings{Shader::FRAGMENT, 1, 0, 0});
+    const Handle<Shader> vertex_shader =
+        FileResource::Load<Shader>("Assets/Shaders/Shader.vert.spv", ShaderSettings{Shader::VERTEX, 0, 0, 3});
+    const Handle<Shader> fragment_shader =
+        FileResource::Load<Shader>("Assets/Shaders/Shader.frag.spv", ShaderSettings{Shader::FRAGMENT, 1, 0, 0});
     Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
 }
 
@@ -320,6 +322,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
     texture_destination.h = height;
     texture_destination.d = 1;
 }
+
 void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, const sint32 new_height)
 {
     const SDL_GPUTextureFormat format =
@@ -341,36 +344,39 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
         return;
     }
 
-    if (texture.texture.sdl3gpu != nullptr && texture.GetFlags() & Texture::COLOR_RGBA_32)
+    if (texture.texture.sdl3gpu != nullptr)
     {
-        const SDL_GPUBlitRegion source_region{
-            .texture = texture.texture.sdl3gpu,
-            .mip_level = 0,
-            .x = 0,
-            .y = 0,
-            .w = static_cast<uint32>(texture.GetWidth()),
-            .h = static_cast<uint32>(texture.GetHeight()),
-        };
+        if (static_cast<uint32>(texture.GetFlags()) & Texture::COLOR_RGBA_32)
+        {
+            const SDL_GPUBlitRegion source_region{
+                .texture = texture.texture.sdl3gpu,
+                .mip_level = 0,
+                .x = 0,
+                .y = 0,
+                .w = static_cast<uint32>(texture.GetWidth()),
+                .h = static_cast<uint32>(texture.GetHeight()),
+            };
 
-        const SDL_GPUBlitRegion destination_region{
-            .texture = new_texture,
-            .mip_level = 0,
-            .x = 0,
-            .y = 0,
-            .w = static_cast<uint32>(new_width),
-            .h = static_cast<uint32>(new_height),
-        };
+            const SDL_GPUBlitRegion destination_region{
+                .texture = new_texture,
+                .mip_level = 0,
+                .x = 0,
+                .y = 0,
+                .w = static_cast<uint32>(new_width),
+                .h = static_cast<uint32>(new_height),
+            };
 
-        const SDL_GPUBlitInfo blit_info{
-            .source = source_region,
-            .destination = destination_region,
-            .load_op = SDL_GPU_LOADOP_DONT_CARE,
-            .filter = SDL_GPU_FILTER_NEAREST
-        };
+            const SDL_GPUBlitInfo blit_info{
+                .source = source_region,
+                .destination = destination_region,
+                .load_op = SDL_GPU_LOADOP_DONT_CARE,
+                .filter = SDL_GPU_FILTER_NEAREST
+            };
 
-        SDL_GPUCommandBuffer* blit_command_buffer = SDL_AcquireGPUCommandBuffer(device);
-        SDL_BlitGPUTexture(blit_command_buffer, &blit_info);
-        SDL_SubmitGPUCommandBuffer(blit_command_buffer);
+            SDL_GPUCommandBuffer* blit_command_buffer = SDL_AcquireGPUCommandBuffer(device);
+            SDL_BlitGPUTexture(blit_command_buffer, &blit_info);
+            SDL_SubmitGPUCommandBuffer(blit_command_buffer);
+        }
 
         SDL_ReleaseGPUTexture(device, texture.texture.sdl3gpu);
     }
@@ -512,6 +518,7 @@ void SDL3GPURenderer::CreateShaderPipeline(
         .slot = 0, .pitch = sizeof(float) * 8, .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX
     };
 
+    // TODO: make this editable per shader pipeline created.
     static constexpr SDL_GPUVertexAttribute vertex_attributes[3]{
         {.location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = 0                },
         {.location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = sizeof(float) * 3},

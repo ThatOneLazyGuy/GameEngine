@@ -1,6 +1,6 @@
 # Game Engine
 
-(better name pending)
+(actual name pending)\
 A game engine I'm building to learn more about all parts of creating a game engine.
 
 

@@ -70,11 +70,11 @@ class Texture
 
     enum Flags : uint32
     {
-        SAMPLER =       (1 << 0),
-        COLOR_TARGET =  (1 << 1),
-        DEPTH_TARGET =  (1 << 2),
-        DIFFUSE =       (1 << 3),
-        SPECULAR =      (1 << 4)
+        SAMPLER = (1 << 0),
+        COLOR_TARGET = (1 << 1),
+        DEPTH_TARGET = (1 << 2),
+        DIFFUSE = (1 << 3),
+        SPECULAR = (1 << 4)
     };
 
     Texture() = default;
@@ -245,6 +245,7 @@ class GraphicsShaderPipeline final : public Resource
         return hasher(vertex_shader->GetPath() + '+' + fragment_shader->GetPath());
     }
 
+    // TODO: Make this able to take in a .slang file and figure out its own vertex and fragment shaders.
     GraphicsShaderPipeline() = default;
     GraphicsShaderPipeline(const std::string& vertex_shader_path, const std::string& fragment_shader_path);
     GraphicsShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader);
