@@ -88,7 +88,7 @@ void OpenGLRenderer::InitBackend()
     const Handle<Shader> fragment_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.frag", ShaderSettings{Shader::FRAGMENT, 1, 0, 0});
     const auto graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
 
-    glUseProgram(graphics_pipeline->shader_pipeline.opengl);
+    glUseProgram(graphics_pipeline->shader_pipeline.id);
     CreateUniformBuffer<Matrix4>(0);
     CreateUniformBuffer<Matrix4>(1);
     CreateUniformBuffer<Matrix4>(2);
@@ -120,7 +120,7 @@ void OpenGLRenderer::RenderMesh(const Mesh& mesh)
 void OpenGLRenderer::SetTextureSampler(const uint32 slot, const Texture& texture)
 {
     glActiveTexture(GL_TEXTURE0 + slot);
-    glBindTexture(GL_TEXTURE_2D, texture.texture.opengl);
+    glBindTexture(GL_TEXTURE_2D, texture.texture.id);
 }
 
 void OpenGLRenderer::SetUniform(const uint32 slot, const void* data, const size size)
@@ -146,7 +146,7 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
     glBindFramebuffer(GL_FRAMEBUFFER, render_target->target_id);
     glViewport(0, 0, render_target->GetWidth(), render_target->GetHeight());
 
-    glUseProgram(render_pass.graphics_pipeline->shader_pipeline.opengl);
+    glUseProgram(render_pass.graphics_pipeline->shader_pipeline.id);
 
     std::vector<uint32> draw_buffers;
     draw_buffers.reserve(render_target->render_buffers.size());
@@ -187,12 +187,12 @@ void OpenGLRenderer::EndRenderPass()
 
 void OpenGLRenderer::CreateTexture(Texture& texture, const uint8* data, const SamplerSettings& sampler_settings)
 {
-    glGenTextures(1, &texture.texture.opengl);
+    glGenTextures(1, &texture.texture.id);
 
     const bool is_color_texture = texture.GetFormat() == Texture::COLOR_RGBA_32;
     const sint32 format = is_color_texture ? GL_RGBA : GL_DEPTH_COMPONENT;
 
-    glBindTexture(GL_TEXTURE_2D, texture.texture.opengl);
+    glBindTexture(GL_TEXTURE_2D, texture.texture.id);
     glTexImage2D(GL_TEXTURE_2D, 0, format, texture.GetWidth(), texture.GetHeight(), 0, format, GL_UNSIGNED_BYTE, data);
 
     if (is_color_texture)
@@ -212,7 +212,7 @@ void OpenGLRenderer::ResizeTexture(Texture& texture, sint32 new_width, sint32 ne
     const bool is_color_texture = texture.GetFormat() == Texture::COLOR_RGBA_32;
     const sint32 format = is_color_texture ? GL_RGBA : GL_DEPTH_COMPONENT;
 
-    glBindTexture(GL_TEXTURE_2D, texture.texture.opengl);
+    glBindTexture(GL_TEXTURE_2D, texture.texture.id);
     glTexImage2D(GL_TEXTURE_2D, 0, format, new_width, new_height, 0, format, GL_UNSIGNED_BYTE, nullptr);
 
     if (is_color_texture)
@@ -227,7 +227,7 @@ void OpenGLRenderer::ResizeTexture(Texture& texture, sint32 new_width, sint32 ne
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void OpenGLRenderer::DestroyTexture(Texture& texture) { glDeleteTextures(1, &texture.texture.opengl); }
+void OpenGLRenderer::DestroyTexture(Texture& texture) { glDeleteTextures(1, &texture.texture.id); }
 
 void OpenGLRenderer::CreateRenderTarget(RenderTarget& target)
 {
@@ -238,7 +238,7 @@ void OpenGLRenderer::UpdateRenderBuffer(const RenderTarget& target, const size i
 {
     glBindFramebuffer(GL_FRAMEBUFFER, target.target_id);
 
-    const uint32 texture_id = target.render_buffers[index].GetTexture()->texture.opengl;
+    const uint32 texture_id = target.render_buffers[index].GetTexture()->texture.id;
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<uint32>(index), GL_TEXTURE_2D, texture_id, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -248,7 +248,7 @@ void OpenGLRenderer::UpdateDepthBuffer(const RenderTarget& target)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, target.target_id);
 
-    const uint32 texture_id = target.depth_buffer.GetTexture()->texture.opengl;
+    const uint32 texture_id = target.depth_buffer.GetTexture()->texture.id;
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture_id, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -259,16 +259,16 @@ void OpenGLRenderer::DestroyRenderTarget(RenderTarget& target) { glDeleteFramebu
 void OpenGLRenderer::CreateMesh(Mesh& mesh)
 {
     glGenVertexArrays(1, &mesh.bind);
-    glGenBuffers(1, &mesh.vertices_buffer.opengl);
-    glGenBuffers(1, &mesh.indices_buffer.opengl);
+    glGenBuffers(1, &mesh.vertices_buffer.id);
+    glGenBuffers(1, &mesh.indices_buffer.id);
 
     ReloadMesh(mesh);
 }
 
 void OpenGLRenderer::DestroyMesh(Mesh& mesh)
 {
-    glDeleteBuffers(1, &mesh.vertices_buffer.opengl);
-    glDeleteBuffers(1, &mesh.indices_buffer.opengl);
+    glDeleteBuffers(1, &mesh.vertices_buffer.id);
+    glDeleteBuffers(1, &mesh.indices_buffer.id);
     glDeleteVertexArrays(1, &mesh.bind);
 }
 
@@ -276,10 +276,10 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
 {
     glBindVertexArray(mesh.bind);
 
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices_buffer.opengl);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices_buffer.id);
     glBufferData(GL_ARRAY_BUFFER, static_cast<sint32>(mesh.vertices.size() * sizeof(Vertex)), mesh.vertices.data(), GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.opengl);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<sint32>(mesh.indices.size() * sizeof(uint32)), mesh.indices.data(), GL_STATIC_DRAW);
 
     uint64 offset = 0;
@@ -303,27 +303,27 @@ void OpenGLRenderer::CreateShader(Shader& shader)
 {
     const GLuint shader_type = (shader.type == Shader::VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
 
-    shader.shader.opengl = glCreateShader(shader_type);
+    shader.shader.id = glCreateShader(shader_type);
     const char* code = shader.code.data();
-    glShaderSource(shader.shader.opengl, 1, &code, nullptr);
-    glCompileShader(shader.shader.opengl);
+    glShaderSource(shader.shader.id, 1, &code, nullptr);
+    glCompileShader(shader.shader.id);
 
     const std::string type_name = (shader.type == Shader::VERTEX ? "vertex" : "fragment");
-    CheckCompileErrors(shader.shader.opengl, type_name);
+    CheckCompileErrors(shader.shader.id, type_name);
 }
-void OpenGLRenderer::DestroyShader(Shader& shader) { glDeleteShader(shader.shader.opengl); }
+void OpenGLRenderer::DestroyShader(Shader& shader) { glDeleteShader(shader.shader.id); }
 
 // Taken from the LearnOpenGL shader class: https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/shader_m.h
 void OpenGLRenderer::CreateShaderPipeline(
     GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
 )
 {
-    pipeline.shader_pipeline.opengl = glCreateProgram();
+    pipeline.shader_pipeline.id = glCreateProgram();
 
-    glAttachShader(pipeline.shader_pipeline.opengl, vertex_shader->shader.opengl);
-    glAttachShader(pipeline.shader_pipeline.opengl, fragment_shader->shader.opengl);
-    glLinkProgram(pipeline.shader_pipeline.opengl);
-    CheckCompileErrors(pipeline.shader_pipeline.opengl, "program");
+    glAttachShader(pipeline.shader_pipeline.id, vertex_shader->shader.id);
+    glAttachShader(pipeline.shader_pipeline.id, fragment_shader->shader.id);
+    glLinkProgram(pipeline.shader_pipeline.id);
+    CheckCompileErrors(pipeline.shader_pipeline.id, "program");
 }
 
-void OpenGLRenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) { glDeleteProgram(pipeline.shader_pipeline.opengl); }
+void OpenGLRenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) { glDeleteProgram(pipeline.shader_pipeline.id); }

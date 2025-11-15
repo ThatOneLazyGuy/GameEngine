@@ -14,39 +14,34 @@ namespace Physics
     class DebugRenderer;
 }
 
-struct SDL_GPUBuffer;
 union BufferID
 {
-    SDL_GPUBuffer* sdl3gpu = nullptr;
-    uint32 opengl;
+    void* pointer = nullptr;
+    uint32 id;
 };
 
-struct SDL_GPUTexture;
 union TextureID
 {
-    SDL_GPUTexture* sdl3gpu = nullptr;
-    uint32 opengl;
+    void* pointer = nullptr;
+    uint32 id;
 };
 
-struct SDL_GPUSampler;
 union SamplerID
 {
-    SDL_GPUSampler* sdl3gpu = nullptr;
-    uint32 opengl;
+    void* pointer = nullptr;
+    uint32 id;
 };
 
-struct SDL_GPUShader;
 union ShaderID
 {
-    SDL_GPUShader* sdl3gpu = nullptr;
-    uint32 opengl;
+    void* pointer = nullptr;
+    uint32 id;
 };
 
-struct SDL_GPUGraphicsPipeline;
 union GraphicsShaderPipelineID
 {
-    SDL_GPUGraphicsPipeline* sdl3gpu = nullptr;
-    uint32 opengl;
+    void* pointer = nullptr;
+    uint32 id;
 };
 
 struct Vertex

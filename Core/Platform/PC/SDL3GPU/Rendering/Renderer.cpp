@@ -164,10 +164,10 @@ void* SDL3GPURenderer::GetContext() { return device; }
 
 void SDL3GPURenderer::RenderMesh(const Mesh& mesh)
 {
-    const SDL_GPUBufferBinding vertex_binding{.buffer = mesh.vertices_buffer.sdl3gpu};
+    const SDL_GPUBufferBinding vertex_binding{.buffer = static_cast<SDL_GPUBuffer*>(mesh.vertices_buffer.pointer)};
     SDL_BindGPUVertexBuffers(active_render_pass, 0, &vertex_binding, 1);
 
-    const SDL_GPUBufferBinding index_binding{.buffer = mesh.indices_buffer.sdl3gpu};
+    const SDL_GPUBufferBinding index_binding{.buffer = static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer)};
     SDL_BindGPUIndexBuffer(active_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
     SDL_DrawGPUIndexedPrimitives(active_render_pass, static_cast<uint32>(mesh.indices.size()), 1, 0, 0, 0);
@@ -176,8 +176,7 @@ void SDL3GPURenderer::RenderMesh(const Mesh& mesh)
 void SDL3GPURenderer::SetTextureSampler(const uint32 slot, const Texture& texture)
 {
     const SDL_GPUTextureSamplerBinding binding{
-        .texture = texture.texture.sdl3gpu,
-        .sampler = texture.sampler.sdl3gpu,
+        .texture = static_cast<SDL_GPUTexture*>(texture.texture.pointer), .sampler = static_cast<SDL_GPUSampler*>(texture.sampler.pointer)
     };
 
     SDL_BindGPUFragmentSamplers(active_render_pass, slot, &binding, 1);
@@ -226,7 +225,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
             const float4& clear_color = render_buffer.clear_color;
 
             const SDL_GPUColorTargetInfo color_target_info{
-                .texture = render_buffer.GetTexture()->texture.sdl3gpu,
+                .texture = static_cast<SDL_GPUTexture*>(render_buffer.GetTexture()->texture.pointer),
                 .layer_or_depth_plane = 0,
                 .clear_color = SDL_FColor{clear_color.x(), clear_color.y(), clear_color.z(), clear_color.w()},
                 .load_op = (render_pass.clear_render_targets ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
@@ -244,7 +243,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
     {
         depth_stencil_target_info = new SDL_GPUDepthStencilTargetInfo{
 
-            .texture = depth_texture->texture.sdl3gpu,
+            .texture = static_cast<SDL_GPUTexture*>(depth_texture->texture.pointer),
             .clear_depth = 1.0f,
             .load_op = (render_pass.clear_render_targets ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
             .store_op = SDL_GPU_STOREOP_STORE,
@@ -256,7 +255,9 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
     );
     delete depth_stencil_target_info;
 
-    SDL_BindGPUGraphicsPipeline(active_render_pass, render_pass.graphics_pipeline->shader_pipeline.sdl3gpu);
+    SDL_BindGPUGraphicsPipeline(
+        active_render_pass, static_cast<SDL_GPUGraphicsPipeline*>(render_pass.graphics_pipeline->shader_pipeline.pointer)
+    );
 }
 
 void SDL3GPURenderer::EndRenderPass()
@@ -285,8 +286,8 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
         .num_levels = 1,
     };
 
-    texture.texture.sdl3gpu = SDL_CreateGPUTexture(device, &texture_create_info);
-    if (texture.texture.sdl3gpu == nullptr)
+    texture.texture.pointer = SDL_CreateGPUTexture(device, &texture_create_info);
+    if (texture.texture.pointer == nullptr)
     {
         SDL_Log("Failed to create GPU texture: %s", SDL_GetError());
         return;
@@ -301,8 +302,8 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
         .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
     };
 
-    texture.sampler.sdl3gpu = SDL_CreateGPUSampler(device, &sampler_info);
-    if (texture.sampler.sdl3gpu == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the texture sampler");
+    texture.sampler.pointer = SDL_CreateGPUSampler(device, &sampler_info);
+    if (texture.sampler.pointer == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the texture sampler");
 
     // If there is no data to upload, we return.
     if (data == nullptr) return;
@@ -317,7 +318,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
     texture_transfer_info.pixels_per_row = width;
     texture_transfer_info.rows_per_layer = height;
 
-    texture_destination.texture = texture.texture.sdl3gpu;
+    texture_destination.texture = static_cast<SDL_GPUTexture*>(texture.texture.pointer);
     texture_destination.w = width;
     texture_destination.h = height;
     texture_destination.d = 1;
@@ -344,12 +345,13 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
         return;
     }
 
-    if (texture.texture.sdl3gpu != nullptr)
+    SDL_GPUTexture* texture_pointer = static_cast<SDL_GPUTexture*>(texture.texture.pointer);
+    if (texture_pointer != nullptr)
     {
         if (static_cast<uint32>(texture.GetFlags()) & Texture::COLOR_RGBA_32)
         {
             const SDL_GPUBlitRegion source_region{
-                .texture = texture.texture.sdl3gpu,
+                .texture = texture_pointer,
                 .mip_level = 0,
                 .x = 0,
                 .y = 0,
@@ -378,16 +380,16 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
             SDL_SubmitGPUCommandBuffer(blit_command_buffer);
         }
 
-        SDL_ReleaseGPUTexture(device, texture.texture.sdl3gpu);
+        SDL_ReleaseGPUTexture(device, texture_pointer);
     }
 
-    texture.texture.sdl3gpu = new_texture;
+    texture.texture.pointer = new_texture;
 }
 
 void SDL3GPURenderer::DestroyTexture(Texture& texture)
 {
-    SDL_ReleaseGPUTexture(device, texture.texture.sdl3gpu);
-    SDL_ReleaseGPUSampler(device, texture.sampler.sdl3gpu);
+    SDL_ReleaseGPUTexture(device, static_cast<SDL_GPUTexture*>(texture.texture.pointer));
+    SDL_ReleaseGPUSampler(device, static_cast<SDL_GPUSampler*>(texture.sampler.pointer));
 }
 
 void SDL3GPURenderer::CreateMesh(Mesh& mesh)
@@ -399,8 +401,8 @@ void SDL3GPURenderer::CreateMesh(Mesh& mesh)
 
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
     buffer_info.size = vertices_size;
-    mesh.vertices_buffer.sdl3gpu = SDL_CreateGPUBuffer(device, &buffer_info);
-    if (mesh.vertices_buffer.sdl3gpu == nullptr)
+    mesh.vertices_buffer.pointer = SDL_CreateGPUBuffer(device, &buffer_info);
+    if (mesh.vertices_buffer.pointer == nullptr)
     {
         SDL_Log("Failed to create vertex buffer");
         return;
@@ -408,8 +410,8 @@ void SDL3GPURenderer::CreateMesh(Mesh& mesh)
 
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_INDEX;
     buffer_info.size = indices_size;
-    mesh.indices_buffer.sdl3gpu = SDL_CreateGPUBuffer(device, &buffer_info);
-    if (mesh.indices_buffer.sdl3gpu == nullptr)
+    mesh.indices_buffer.pointer = SDL_CreateGPUBuffer(device, &buffer_info);
+    if (mesh.indices_buffer.pointer == nullptr)
     {
         SDL_Log("Failed to create index buffer");
         return;
@@ -428,19 +430,19 @@ void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
 
     auto& [vertices_buffer_location, vertices_buffer_region] = buffer_copies.emplace_back();
     vertices_buffer_location.transfer_buffer = vertex_transfer_buffer;
-    vertices_buffer_region.buffer = mesh.vertices_buffer.sdl3gpu;
+    vertices_buffer_region.buffer = static_cast<SDL_GPUBuffer*>(mesh.vertices_buffer.pointer);
     vertices_buffer_region.size = vertices_size;
 
     auto& [indices_buffer_location, indices_buffer_region] = buffer_copies.emplace_back();
     indices_buffer_location.transfer_buffer = index_transfer_buffer;
-    indices_buffer_region.buffer = mesh.indices_buffer.sdl3gpu;
+    indices_buffer_region.buffer = static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer);
     indices_buffer_region.size = indices_size;
 }
 
 void SDL3GPURenderer::DestroyMesh(Mesh& mesh)
 {
-    SDL_ReleaseGPUBuffer(device, mesh.vertices_buffer.sdl3gpu);
-    SDL_ReleaseGPUBuffer(device, mesh.indices_buffer.sdl3gpu);
+    SDL_ReleaseGPUBuffer(device, static_cast<SDL_GPUBuffer*>(mesh.vertices_buffer.pointer));
+    SDL_ReleaseGPUBuffer(device, static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer));
 }
 
 void SDL3GPURenderer::CreateShader(Shader& shader)
@@ -483,11 +485,11 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
         .num_uniform_buffers = shader.uniform_count
     };
 
-    shader.shader.sdl3gpu = SDL_CreateGPUShader(device, &shaderInfo);
-    if (shader.shader.sdl3gpu == nullptr) SDL_Log("Failed to create shader: %s", SDL_GetError());
+    shader.shader.pointer = SDL_CreateGPUShader(device, &shaderInfo);
+    if (shader.shader.pointer == nullptr) SDL_Log("Failed to create shader: %s", SDL_GetError());
 }
 
-void SDL3GPURenderer::DestroyShader(Shader& shader) { SDL_ReleaseGPUShader(device, shader.shader.sdl3gpu); }
+void SDL3GPURenderer::DestroyShader(Shader& shader) { SDL_ReleaseGPUShader(device, static_cast<SDL_GPUShader*>(shader.shader.pointer)); }
 
 void SDL3GPURenderer::CreateShaderPipeline(
     GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
@@ -545,8 +547,8 @@ void SDL3GPURenderer::CreateShaderPipeline(
     };
 
     const SDL_GPUGraphicsPipelineCreateInfo pipeline_create_info{
-        .vertex_shader = vertex_shader->shader.sdl3gpu,
-        .fragment_shader = fragment_shader->shader.sdl3gpu,
+        .vertex_shader = static_cast<SDL_GPUShader*>(vertex_shader->shader.pointer),
+        .fragment_shader = static_cast<SDL_GPUShader*>(fragment_shader->shader.pointer),
         .vertex_input_state = vertex_input_state,
         .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
         .rasterizer_state = rasterizer_state,
@@ -554,11 +556,11 @@ void SDL3GPURenderer::CreateShaderPipeline(
         .target_info = target_info
     };
 
-    pipeline.shader_pipeline.sdl3gpu = SDL_CreateGPUGraphicsPipeline(device, &pipeline_create_info);
-    if (pipeline.shader_pipeline.sdl3gpu == nullptr) SDL_Log("Failed to create shader pipeline: %s", SDL_GetError());
+    pipeline.shader_pipeline.pointer = SDL_CreateGPUGraphicsPipeline(device, &pipeline_create_info);
+    if (pipeline.shader_pipeline.pointer == nullptr) SDL_Log("Failed to create shader pipeline: %s", SDL_GetError());
 }
 
 void SDL3GPURenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline)
 {
-    SDL_ReleaseGPUGraphicsPipeline(device, pipeline.shader_pipeline.sdl3gpu);
+    SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(pipeline.shader_pipeline.pointer));
 }

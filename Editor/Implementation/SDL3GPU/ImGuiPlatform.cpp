@@ -76,6 +76,6 @@ namespace ImGui
 
     ImTextureID PlatformSDL3GPU::GetTextureID(RenderTarget& target)
     {
-        return reinterpret_cast<ImTextureID>(&target.render_buffers[0].GetTexture()->texture.sdl3gpu);
+        return reinterpret_cast<ImTextureID>(&target.render_buffers[0].GetTexture()->texture.pointer);
     }
 } // namespace ImGui
