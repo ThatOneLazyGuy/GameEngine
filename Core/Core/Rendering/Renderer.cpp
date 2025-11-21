@@ -5,10 +5,10 @@
 
 #include "Core/Model.hpp"
 #include "RenderPassInterface.hpp"
+#include "Tools/Logging.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
-#include <SDL3/SDL_log.h>
 #include <filesystem>
 #include <fstream>
 #include <assimp/scene.h>
@@ -21,7 +21,7 @@ namespace
         uint8* data = stbi_load(path.c_str(), &out_width, &out_height, &component_count, 4);
         if (data == nullptr)
         {
-            SDL_Log("Failed to load image: %s", stbi_failure_reason());
+            Log::Error("Failed to load image: {}", stbi_failure_reason());
             return {};
         }
 
@@ -132,7 +132,7 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 
     if (scene == nullptr)
     {
-        SDL_Log("Failed to load asset: %s", path.c_str());
+        Log::Error("Failed to load asset: {}", path);
         return;
     }
 
@@ -155,7 +155,7 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 
     const aiFace* mesh_faces = model_mesh.mFaces;
 
-    const size face_count = static_cast<int>(model_mesh.mNumFaces);
+    const size face_count = model_mesh.mNumFaces;
     indices.resize(face_count * 3);
     for (size i = 0; i < face_count; i++)
     {
@@ -186,7 +186,7 @@ Shader::Shader(const std::string& path, const ShaderSettings& shader_info) :
     std::ifstream shader_file{path.c_str(), open_mode};
     if (!shader_file.is_open())
     {
-        SDL_Log("Failed to open shader file: %s", path.c_str());
+        Log::Error("Failed to open shader file: {}", path);
         return;
     }
 

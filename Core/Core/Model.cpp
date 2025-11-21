@@ -1,15 +1,11 @@
 #include "Model.hpp"
 
+#include "Tools/Logging.hpp"
 #include "Tools/Types.hpp"
 #include "Resource.hpp"
 
-#include <SDL3/SDL_log.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
-
-namespace
-{
-} // namespace
 
 ModelParser::ModelParser(const std::string& path)
 {
@@ -20,7 +16,7 @@ Handle<Mesh> ModelParser::GetMesh(const uint32 index) const
 {
     if (index >= importer.GetScene()->mNumMeshes)
     {
-        SDL_Log("Failed to get mesh at index: %u", index);
+        Log::Error("Failed to get mesh at index: {}", index);
         return nullptr;
     }
     return Resource::Load<Mesh>(GetPath(), index);

@@ -1,12 +1,11 @@
 #include "Input.hpp"
 
+#include "Tools/Logging.hpp"
+#include "Tools/Types.hpp"
 #include "Window.hpp"
 
-#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_rect.h>
-
-#include "Tools/Types.hpp"
 
 namespace Input
 {
@@ -61,7 +60,7 @@ namespace Input
         if (lock)
         {
             const SDL_Rect rect{static_cast<sint32>(mouse_pos.x()), static_cast<sint32>(mouse_pos.y()), 1, 1};
-            if (!SDL_SetWindowMouseRect(window, &rect)) SDL_Log("Failed to set window mouse rect: %s", SDL_GetError());
+            if (!SDL_SetWindowMouseRect(window, &rect)) Log::Error("Failed to set window mouse rect: {}", SDL_GetError());
         }
         else SDL_SetWindowMouseRect(window, nullptr);
 

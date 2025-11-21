@@ -1,5 +1,6 @@
 #include "Physics.hpp"
 
+#include "Tools/Logging.hpp"
 #include "DebugRenderer.hpp"
 #include "Core/ECS.hpp"
 
@@ -18,6 +19,7 @@
 #include <iostream>
 #include <thread>
 
+
 // Callback for traces, connect this to your own trace function if you have one
 static void TraceImpl(const char* inFMT, ...)
 {
@@ -29,7 +31,7 @@ static void TraceImpl(const char* inFMT, ...)
     va_end(list);
 
     // Print to the TTY
-    std::cout << buffer << '\n';
+    Log::Log(buffer);
 }
 
 #ifdef JPH_ENABLE_ASSERTS
@@ -38,7 +40,7 @@ static void TraceImpl(const char* inFMT, ...)
 static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, uint32 inLine)
 {
     // Print to the TTY
-    std::cout << inFile << ":" << inLine << ": (" << inExpression << ") " << (inMessage != nullptr ? inMessage : "") << '\n';
+    Log::Error("{}: {}: ({}) {}", inFile, inLine, inExpression, (inMessage != nullptr ? inMessage : ""));
 
     // Breakpoint
     return true;
@@ -145,7 +147,7 @@ class ContactListenerImpl final : public JPH::ContactListener
         const JPH::Body& a, const JPH::Body& b, JPH::RVec3Arg base_offset, const JPH::CollideShapeResult& collision_result
     ) override
     {
-        std::cout << "Contact validate callback" << '\n';
+        Log::Log("Contact validate callback");
 
         // Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
         return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
@@ -154,25 +156,25 @@ class ContactListenerImpl final : public JPH::ContactListener
     void OnContactAdded(const JPH::Body& a, const JPH::Body& b, const JPH::ContactManifold& manifold, JPH::ContactSettings& io_settings)
         override
     {
-        std::cout << "A contact was added" << '\n';
+        Log::Log("A contact was added");
     }
 
     void OnContactPersisted(const JPH::Body& a, const JPH::Body& b, const JPH::ContactManifold& manifold, JPH::ContactSettings& io_settings)
         override
     {
-        std::cout << "A contact was persisted" << '\n';
+        Log::Log("A contact was persisted");
     }
 
-    void OnContactRemoved(const JPH::SubShapeIDPair& sub_shape_pair) override { std::cout << "A contact was removed" << '\n'; }
+    void OnContactRemoved(const JPH::SubShapeIDPair& sub_shape_pair) override { Log::Log("A contact was removed"); }
 };
 
 // An example activation listener
 class BodyActivationListenerImpl final : public JPH::BodyActivationListener
 {
   public:
-    void OnBodyActivated(const JPH::BodyID& inBodyID, uint64 inBodyUserData) override { std::cout << "A body got activated" << '\n'; }
+    void OnBodyActivated(const JPH::BodyID& inBodyID, uint64 inBodyUserData) override { Log::Log("A body got activated"); }
 
-    void OnBodyDeactivated(const JPH::BodyID& inBodyID, uint64 inBodyUserData) override { std::cout << "A body went to sleep" << '\n'; }
+    void OnBodyDeactivated(const JPH::BodyID& inBodyID, uint64 inBodyUserData) override { Log::Log("A body went to sleep"); }
 };
 
 namespace Physics

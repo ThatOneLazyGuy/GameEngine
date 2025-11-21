@@ -1,12 +1,12 @@
 #include "Renderer.hpp"
 
+#include "Tools/Logging.hpp"
 #include "Core/Math.hpp"
 #include "Core/Model.hpp"
 #include "Core/Window.hpp"
 #include "Core/Physics/Physics.hpp"
 #include "Core/Rendering/RenderPassInterface.hpp"
 
-#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 #include <glad/glad.h>
@@ -31,7 +31,7 @@ namespace
             if (!success)
             {
                 glGetShaderInfoLog(id, 1024, nullptr, infoLog);
-                SDL_Log("Error compiling shader of type: %s", type.c_str());
+                Log::Error("Error compiling shader of type: {}", type);
             }
         }
         else
@@ -40,7 +40,7 @@ namespace
             if (!success)
             {
                 glGetProgramInfoLog(id, 1024, nullptr, infoLog);
-                SDL_Log("Error linking program of type: %s", type.c_str());
+                Log::Error("Error linking program of type: {}", type);
             }
         }
     }
@@ -64,11 +64,11 @@ void OpenGLRenderer::InitBackend()
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
     context = SDL_GL_CreateContext(window);
 
-    if (context == nullptr) SDL_Log("Failed to create GL context: %s", SDL_GetError());
+    if (context == nullptr) Log::Error("Failed to create GL context: %s", SDL_GetError());
 
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(&SDL_GL_GetProcAddress))) // NOLINT(clang-diagnostic-cast-function-type-strict)
     {
-        SDL_Log("Failed to initialize GLAD");
+        Log::Error("Failed to initialize GLAD");
     }
 
     if (!SDL_GL_SetSwapInterval(-1))
@@ -97,7 +97,7 @@ void OpenGLRenderer::InitBackend()
 
 void OpenGLRenderer::ExitBackend()
 {
-    if (!SDL_GL_DestroyContext(context)) SDL_Log("Failed to destroy GL context: %s", SDL_GetError());
+    if (!SDL_GL_DestroyContext(context)) Log::Error("Failed to destroy GL context: %s", SDL_GetError());
 }
 
 void OpenGLRenderer::Update() {}
@@ -128,7 +128,7 @@ void OpenGLRenderer::SetUniform(const uint32 slot, const void* data, const size 
     const auto iterator = uniformBuffers.find(static_cast<sint32>(slot));
     if (iterator == uniformBuffers.end())
     {
-        SDL_Log("Invalid shader uniform buffer");
+        Log::Error("Invalid shader uniform buffer");
         return;
     }
 

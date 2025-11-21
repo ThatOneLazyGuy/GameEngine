@@ -1,10 +1,10 @@
 #include "Window.hpp"
 
+#include "Tools/Logging.hpp"
 #include "Input.hpp"
 #include "Rendering/Renderer.hpp"
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_log.h>
 
 namespace Window
 {
@@ -26,7 +26,7 @@ namespace Window
 
         window = SDL_CreateWindow("Engine", width, height, Renderer::Instance().WindowFlags() | SDL_WINDOW_RESIZABLE);
 
-        if (window == nullptr) SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
+        if (window == nullptr) Log::Error("Could not create window: {}", SDL_GetError());
 
         SDL_ShowWindow(window);
     }

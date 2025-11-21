@@ -1,11 +1,11 @@
 #include "ImGuiPlatform.hpp"
 
+#include <Tools/Logging.hpp>
 #include <Core/Rendering/Renderer.hpp>
 #include <Core/Window.hpp>
 #include <Platform/PC/SDL3GPU/Rendering/Renderer.hpp>
 
 #include <SDL3/SDL_gpu.h>
-#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_render.h>
 
 #include <backends/imgui_impl_sdl3.h>
@@ -47,7 +47,7 @@ namespace ImGui
         SDL_GPUTexture* swapchain_texture;
         if (!SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer, window, &swapchain_texture, nullptr, nullptr))
         {
-            SDL_Log("Failed to acquire ImGui swapchain texture: %s", SDL_GetError());
+            Log::Error("Failed to acquire ImGui swapchain texture: %s", SDL_GetError());
             return;
         }
 
@@ -58,12 +58,11 @@ namespace ImGui
             // This is mandatory: call ImGui_ImplSDLGPU3_PrepareDrawData() to upload the vertex/index buffer!
             ImGui_ImplSDLGPU3_PrepareDrawData(draw_data, command_buffer);
 
-            const SDL_GPUColorTargetInfo target_info{
-                .texture = swapchain_texture,
-                .clear_color = SDL_FColor{1.0f, 0.0f, 0.0f, 1.0f},
-                .load_op = SDL_GPU_LOADOP_CLEAR,
-                .store_op = SDL_GPU_STOREOP_STORE
-            };
+            SDL_GPUColorTargetInfo target_info{};
+            target_info.texture = swapchain_texture;
+            target_info.clear_color = SDL_FColor{1.0f, 0.0f, 0.0f, 1.0f};
+            target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+            target_info.store_op = SDL_GPU_STOREOP_STORE;
 
             SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(command_buffer, &target_info, 1, nullptr);
             ImGui_ImplSDLGPU3_RenderDrawData(draw_data, command_buffer, render_pass);
