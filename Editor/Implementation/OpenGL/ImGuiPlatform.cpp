@@ -12,7 +12,7 @@ namespace ImGui
     PlatformOpenGL::PlatformOpenGL()
     {
         auto* window = static_cast<SDL_Window*>(Window::GetHandle());
-        auto* context = static_cast<SDL_GLContext*>(Renderer::Instance().GetContext());
+        void* context = Renderer::Instance().GetContext();
 
         ImGui_ImplSDL3_InitForOpenGL(window, context);
         ImGui_ImplOpenGL3_Init();
