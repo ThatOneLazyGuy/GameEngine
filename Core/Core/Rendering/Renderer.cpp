@@ -177,13 +177,24 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 
 Mesh::~Mesh() { Renderer::Instance().DestroyMesh(*this); }
 
-Shader::Shader(const std::string& path, const ShaderSettings& shader_info) :
+uint64 Shader::GetID(const std::string& path, const ShaderSettings& shader_info)
+{
+    constexpr std::hash<std::string> hasher{};
+    return hasher(path + (shader_info.type == VERTEX ? ".vert" : ".frag"));
+}
+
+Shader::Shader(std::string path, const ShaderSettings& shader_info) :
     type{shader_info.type}, sampler_count{shader_info.sampler_count}, storage_count{shader_info.storage_count},
     uniform_count{shader_info.uniform_count}
 {
-    const std::ifstream::openmode open_mode = (Renderer::GetBackendName() == "OpenGL" ? std::ios::ate : std::ios::ate | std::ios::binary);
+    const Renderer::BackendShaderInfo& backend_shader_info = Renderer::GetBackendShaderInfo();
+    const std::ifstream::openmode open_mode = std::ios::ate | (backend_shader_info.binary ? std::ios::binary : 0);
 
-    std::ifstream shader_file{path.c_str(), open_mode};
+    path = path.substr(0, path.find_last_of('.'));
+    path += (shader_info.type == VERTEX ? ".vert" : ".frag");
+    path += backend_shader_info.file_extension;
+
+    std::ifstream shader_file{path, open_mode};
     if (!shader_file.is_open())
     {
         Log::Error("Failed to open shader file: {}", path);
@@ -202,12 +213,17 @@ Shader::Shader(const std::string& path, const ShaderSettings& shader_info) :
 
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
-GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& vertex_shader_path, const std::string& fragment_shader_path) :
-    vertex_path{vertex_shader_path}, fragment_path{fragment_shader_path}
+GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings)
 {
-    const auto vertex_shader = FileResource::Load<Shader>(vertex_shader_path, ShaderSettings{Shader::VERTEX});
-    const auto fragment_shader = FileResource::Load<Shader>(fragment_shader_path, ShaderSettings{Shader::FRAGMENT});
+    const Handle<Shader>& vertex_shader = FileResource::Load<Shader>(pipeline_path, vertex_settings);
+    vertex_path = pipeline_path;
+    const Handle<Shader>& fragment_shader = FileResource::Load<Shader>(pipeline_path, fragment_settings);
+    fragment_path = pipeline_path;
+
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
+
+    TryDestroyResource(vertex_shader->Resource::GetID());
+    TryDestroyResource(fragment_shader->Resource::GetID());
 }
 
 GraphicsShaderPipeline::GraphicsShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader) :

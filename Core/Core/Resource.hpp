@@ -127,6 +127,14 @@ struct FileResource : Resource
     template <typename ResourceType>
     static Handle<ResourceType> Find(const std::string& path);
 
+    // TODO: Make this output a string instead of an ID, this allows for storing the string and less repeated code.
+    template <typename... Args>
+    static uint64 GetID(const std::string& path, Args&&...)
+    {
+        constexpr std::hash<std::string> hasher;
+        return hasher(path);
+    }
+
   private:
     std::string path{};
 };
@@ -134,14 +142,13 @@ struct FileResource : Resource
 template <typename ResourceType, typename... Args>
 Handle<ResourceType> FileResource::Load(const std::string& path, Args&&... args)
 {
-    constexpr std::hash<std::string> hasher;
-    const uint64 id = hasher(path);
+    // ResourceType::GetID() is used because it allows for default static GetID() in ResourceType, but if the class itself creates an instance of GetID() it'll use that one.
+    const uint64 id = ResourceType::GetID(path, std::forward<Args>(args)...);
 
-    const auto existing_resource = Resource::Find<ResourceType>(id);
+    auto existing_resource = Resource::Find<ResourceType>(id);
     if (existing_resource) return existing_resource;
 
-    auto resource_handle =
-        std::make_shared<ResourceType>(std::forward<const std::string&>(path), std::forward<Args>(args)...);
+    auto resource_handle = std::make_shared<ResourceType>(path, std::forward<Args>(args)...);
     resource_handle->Resource::id = id;
     resource_handle->Resource::type_name = GetName<ResourceType>();
     resource_handle->FileResource::path = path;

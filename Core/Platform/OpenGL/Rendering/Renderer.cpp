@@ -59,6 +59,14 @@ namespace
 
 } // namespace
 
+OpenGLRenderer::OpenGLRenderer() : Renderer{}
+{
+    backend_shader_info = {
+        .file_extension = ".glsl",
+        .binary = false,
+    };
+}
+
 void OpenGLRenderer::InitBackend()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
@@ -84,9 +92,11 @@ void OpenGLRenderer::InitBackend()
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
 
-    const Handle<Shader> vertex_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.vert", ShaderSettings{Shader::VERTEX, 0, 0, 3});
-    const Handle<Shader> fragment_shader = FileResource::Load<Shader>("Assets/Shaders/Shader.frag", ShaderSettings{Shader::FRAGMENT, 1, 0, 0});
-    const auto graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
+    const Handle<GraphicsShaderPipeline>& graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(
+        "Assets/Shaders/Shader.slang",
+        ShaderSettings{Shader::VERTEX, 0, 0, 3},
+        ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
+    );
 
     glUseProgram(graphics_pipeline->shader_pipeline.id);
     CreateUniformBuffer<Matrix4>(0);
@@ -169,10 +179,7 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
     }
 
     // If the target has a valid depth buffer clear the frame buffer's depth bit (you shouldn't set draw buffers to GL_DEPTH_ATTACHMENT for some reason).
-    if (render_pass.clear_render_targets && render_target->depth_buffer.GetTexture() != nullptr)
-    {
-        glClear(GL_DEPTH_BUFFER_BIT);
-    }
+    if (render_pass.clear_render_targets && render_target->depth_buffer.GetTexture() != nullptr) { glClear(GL_DEPTH_BUFFER_BIT); }
 
     glDrawBuffers(static_cast<sint32>(draw_buffers.size()), draw_buffers.data());
 }
@@ -229,10 +236,7 @@ void OpenGLRenderer::ResizeTexture(Texture& texture, sint32 new_width, sint32 ne
 
 void OpenGLRenderer::DestroyTexture(Texture& texture) { glDeleteTextures(1, &texture.texture.id); }
 
-void OpenGLRenderer::CreateRenderTarget(RenderTarget& target)
-{
-    glGenFramebuffers(1, &target.target_id);
-}
+void OpenGLRenderer::CreateRenderTarget(RenderTarget& target) { glGenFramebuffers(1, &target.target_id); }
 
 void OpenGLRenderer::UpdateRenderBuffer(const RenderTarget& target, const size index)
 {

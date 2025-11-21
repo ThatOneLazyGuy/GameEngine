@@ -195,15 +195,18 @@ struct ShaderSettings;
 class Shader final : public FileResource
 {
   public:
-    enum Type
+    enum Type : uint8
     {
         VERTEX,
         FRAGMENT,
-        COMPUTER,
+        COMPUTE,
     };
 
+    static uint64 GetID(const std::string& path, const ShaderSettings& shader_info);
+
+    // TODO: Make sure that the stored path is the actual file path instead of the given path.
     Shader() = default;
-    Shader(const std::string& path, const ShaderSettings& shader_info);
+    Shader(std::string path, const ShaderSettings& shader_info);
     ~Shader() override;
 
     Type type{VERTEX};
@@ -226,13 +229,13 @@ struct ShaderSettings
 
 class RenderPassInterface;
 
-class GraphicsShaderPipeline final : public Resource
+class GraphicsShaderPipeline final : public FileResource
 {
   public:
-    static uint64 GetID(const std::string& vertex_shader_path, const std::string& fragment_shader_path)
+    static uint64 GetID(const std::string& path, const ShaderSettings&, const ShaderSettings&)
     {
         constexpr std::hash<std::string> hasher{};
-        return hasher(vertex_shader_path + '+' + fragment_shader_path);
+        return hasher(path);
     }
     static uint64 GetID(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader)
     {
@@ -240,9 +243,9 @@ class GraphicsShaderPipeline final : public Resource
         return hasher(vertex_shader->GetPath() + '+' + fragment_shader->GetPath());
     }
 
-    // TODO: Make this able to take in a .slang file and figure out its own vertex and fragment shaders.
+    // TODO: Make sure the pipeline path and the vertex/fragment paths are pointing the used shader files.
     GraphicsShaderPipeline() = default;
-    GraphicsShaderPipeline(const std::string& vertex_shader_path, const std::string& fragment_shader_path);
+    GraphicsShaderPipeline(const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings);
     GraphicsShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader);
     ~GraphicsShaderPipeline() override;
 
@@ -263,6 +266,12 @@ class GraphicsShaderPipeline final : public Resource
 class Renderer
 {
   public:
+      struct BackendShaderInfo
+      {
+          const char* file_extension;
+          bool binary;
+      };
+
     Renderer(Renderer& other) = delete;
     void operator=(const Renderer&) = delete;
 
@@ -292,6 +301,8 @@ class Renderer
         Instance().SetUniform(slot, static_cast<const void*>(&object), sizeof(object));
     }
 
+    static const BackendShaderInfo& GetBackendShaderInfo() { return backend_shader_info; }
+
     static inline Handle<RenderTarget> main_target;
 
   protected:
@@ -302,6 +313,7 @@ class Renderer
     friend class GraphicsShaderPipeline;
     friend class Physics::DebugRenderer;
 
+    static inline BackendShaderInfo backend_shader_info; // Needs to be setup in InitBackend.
     static inline std::string backend_name;
 
     virtual void InitBackend() = 0;

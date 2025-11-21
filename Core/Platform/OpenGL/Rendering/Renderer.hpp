@@ -6,7 +6,7 @@
 class OpenGLRenderer final : public Renderer
 {
   public:
-    OpenGLRenderer() = default;
+    OpenGLRenderer();
     ~OpenGLRenderer() override = default;
 
     constexpr size WindowFlags() override { return SDL_WINDOW_OPENGL; }

@@ -7,7 +7,7 @@ struct SDL_GPUCommandBuffer;
 class SDL3GPURenderer final : public Renderer
 {
   public:
-    SDL3GPURenderer() = default;
+    SDL3GPURenderer();
     ~SDL3GPURenderer() override = default;
 
     constexpr size WindowFlags() override { return 0; }

@@ -16,9 +16,7 @@
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 
 #include <cstdarg>
-#include <iostream>
 #include <thread>
-
 
 // Callback for traces, connect this to your own trace function if you have one
 static void TraceImpl(const char* inFMT, ...)
@@ -296,23 +294,9 @@ namespace Physics
 
         debug_renderer = new DebugRenderer();
 
-        Handle<GraphicsShaderPipeline> graphics_pipeline;
-        if (Renderer::GetBackendName() == "OpenGL")
-        {
-            const Handle<Shader> vertex_shader =
-                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.vert", ShaderSettings{Shader::VERTEX, 0, 0, 3});
-            const Handle<Shader> fragment_shader =
-                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.frag", ShaderSettings{Shader::FRAGMENT, 0, 0, 0});
-            graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
-        }
-        else
-        {
-            const Handle<Shader> vertex_shader =
-                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.vert.spv", ShaderSettings{Shader::VERTEX, 0, 0, 3});
-            const Handle<Shader> fragment_shader =
-                FileResource::Load<Shader>("Assets/Shaders/PhysicsDebug.frag.spv", ShaderSettings{Shader::FRAGMENT, 0, 0, 0});
-            graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
-        }
+        Handle<GraphicsShaderPipeline> graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(
+            "Assets/Shaders/PhysicsDebug.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 0, 0, 0}
+        );
 
         Handle<RenderPassInterface> debug_render_pass = std::make_shared<PhysicsDebugRenderPass>(graphics_pipeline, Renderer::main_target);
         debug_render_pass->clear_render_targets = false;

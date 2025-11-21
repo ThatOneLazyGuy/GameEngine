@@ -1,13 +1,14 @@
 #include "Core/Rendering/Renderer.hpp"
 #include "Renderer.hpp"
 
+#include "Tools/Logging.hpp"
 #include "Core/ECS.hpp"
 #include "Core/Window.hpp"
 #include "Core/Physics/Physics.hpp"
 #include "Core/Physics/DebugRenderer.hpp"
 #include "Core/Rendering/RenderPassInterface.hpp"
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_gpu.h>
 
 #include <filesystem>
 
@@ -41,14 +42,14 @@ namespace
         SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(device, &transfer_buffer_info);
         if (transfer_buffer == nullptr)
         {
-            SDL_Log("Failed to create vertex transfer buffer: %s", SDL_GetError());
+            Log::Error("Failed to create vertex transfer buffer: {}", SDL_GetError());
             return nullptr;
         }
 
         void* buffer_mapping = SDL_MapGPUTransferBuffer(device, transfer_buffer, false);
         if (buffer_mapping == nullptr)
         {
-            SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
+            Log::Error("Failed to map transfer buffer: {}", SDL_GetError());
             return transfer_buffer;
         }
 
@@ -65,7 +66,7 @@ namespace
         SDL_GPUCommandBuffer* command_buffer = SDL_AcquireGPUCommandBuffer(device);
         if (command_buffer == nullptr)
         {
-            SDL_Log("Failed to acquire copy command buffer: %s", SDL_GetError());
+            Log::Error("Failed to acquire copy command buffer: {}", SDL_GetError());
             return;
         }
 
@@ -88,7 +89,7 @@ namespace
         texture_copies.clear();
         buffer_copies.clear();
 
-        if (!SDL_SubmitGPUCommandBuffer(command_buffer)) { SDL_Log("Failed to submit copy command buffer: %s", SDL_GetError()); }
+        if (!SDL_SubmitGPUCommandBuffer(command_buffer)) { Log::Error("Failed to submit copy command buffer: {}", SDL_GetError()); }
     }
 
     SDL_GPUTextureUsageFlags ToUsageFlags(const uint32 in_flags)
@@ -103,6 +104,14 @@ namespace
     }
 } // namespace
 
+SDL3GPURenderer::SDL3GPURenderer() : Renderer{}
+{
+    backend_shader_info = {
+        .file_extension = ".spv",
+        .binary = true,
+    };
+}
+
 void SDL3GPURenderer::InitBackend()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
@@ -111,27 +120,22 @@ void SDL3GPURenderer::InitBackend()
 
     if (device == nullptr)
     {
-        SDL_Log("Failed to create SDL3GPU device: %s", SDL_GetError());
+        Log::Error("Failed to create SDL3GPU device: {}", SDL_GetError());
         return;
     }
 
     if (!SDL_ClaimWindowForGPUDevice(device, window))
     {
-        SDL_Log("Failed to claim window for SDL3GPU: %s", SDL_GetError());
+        Log::Error("Failed to claim window for SDL3GPU: {}", SDL_GetError());
         return;
     }
 
-    if (!SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_MAILBOX))
-    {
-        // If we fail to set mailbox (v-sync with less visual latency) we use regular v-sync.
-        SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
-    }
+    // SDL_GPU_PRESENTMODE_MAILBOX is a non-tearing alternative to SDL_GPU_PRESENTMODE_IMMIDATE, but we want to limit FPS so we choose SDL_GPU_PRESENTMODE_VSYNC.
+    SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
 
-    const Handle<Shader> vertex_shader =
-        FileResource::Load<Shader>("Assets/Shaders/Shader.vert.spv", ShaderSettings{Shader::VERTEX, 0, 0, 3});
-    const Handle<Shader> fragment_shader =
-        FileResource::Load<Shader>("Assets/Shaders/Shader.frag.spv", ShaderSettings{Shader::FRAGMENT, 1, 0, 0});
-    Resource::Load<GraphicsShaderPipeline>(vertex_shader, fragment_shader);
+    Resource::Load<GraphicsShaderPipeline>(
+        "Assets/Shaders/Shader.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
+    );
 }
 
 void SDL3GPURenderer::ExitBackend()
@@ -149,14 +153,13 @@ void SDL3GPURenderer::Update()
     render_command_buffer = SDL_AcquireGPUCommandBuffer(device);
     if (render_command_buffer == nullptr)
     {
-        SDL_Log("Failed to acquire render command buffer: %s", SDL_GetError());
-        return;
+        Log::Error("Failed to acquire render command buffer: {}", SDL_GetError());
     }
 }
 
 void SDL3GPURenderer::SwapBuffer()
 {
-    if (!SDL_SubmitGPUCommandBuffer(render_command_buffer)) { SDL_Log("Failed to submit render command buffer: %s", SDL_GetError()); }
+    if (!SDL_SubmitGPUCommandBuffer(render_command_buffer)) { Log::Error("Failed to submit render command buffer: {}", SDL_GetError()); }
     render_command_buffer = nullptr;
 }
 
@@ -203,7 +206,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
         SDL_GPUTexture* swapchain_texture = nullptr;
         if (!SDL_WaitAndAcquireGPUSwapchainTexture(render_command_buffer, window, &swapchain_texture, nullptr, nullptr))
         {
-            SDL_Log("Failed to acquire swapchain texture: %s", SDL_GetError());
+            Log::Error("Failed to acquire swapchain texture: {}", SDL_GetError());
             return;
         }
 
@@ -289,7 +292,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
     texture.texture.pointer = SDL_CreateGPUTexture(device, &texture_create_info);
     if (texture.texture.pointer == nullptr)
     {
-        SDL_Log("Failed to create GPU texture: %s", SDL_GetError());
+        Log::Error("Failed to create GPU texture: {}", SDL_GetError());
         return;
     }
 
@@ -303,7 +306,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
     };
 
     texture.sampler.pointer = SDL_CreateGPUSampler(device, &sampler_info);
-    if (texture.sampler.pointer == nullptr) SDL_LogError(SDL_LOG_PRIORITY_ERROR, "Error creating the texture sampler");
+    if (texture.sampler.pointer == nullptr) Log::Error("Error creating the texture sampler");
 
     // If there is no data to upload, we return.
     if (data == nullptr) return;
@@ -341,7 +344,7 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
     SDL_GPUTexture* new_texture = SDL_CreateGPUTexture(device, &texture_create_info);
     if (new_texture == nullptr)
     {
-        SDL_Log("Failed to recreate GPU texture: %s", SDL_GetError());
+        Log::Error("Failed to recreate GPU texture: {}", SDL_GetError());
         return;
     }
 
@@ -404,7 +407,7 @@ void SDL3GPURenderer::CreateMesh(Mesh& mesh)
     mesh.vertices_buffer.pointer = SDL_CreateGPUBuffer(device, &buffer_info);
     if (mesh.vertices_buffer.pointer == nullptr)
     {
-        SDL_Log("Failed to create vertex buffer");
+        Log::Error("Failed to create vertex buffer");
         return;
     }
 
@@ -413,7 +416,7 @@ void SDL3GPURenderer::CreateMesh(Mesh& mesh)
     mesh.indices_buffer.pointer = SDL_CreateGPUBuffer(device, &buffer_info);
     if (mesh.indices_buffer.pointer == nullptr)
     {
-        SDL_Log("Failed to create index buffer");
+        Log::Error("Failed to create index buffer");
         return;
     }
 
@@ -470,7 +473,7 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
     }
     else
     {
-        SDL_Log("%s", "Unrecognized backend shader format!");
+        Log::Error("Unrecognized backend shader format!");
         return;
     }
 
@@ -486,7 +489,7 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
     };
 
     shader.shader.pointer = SDL_CreateGPUShader(device, &shaderInfo);
-    if (shader.shader.pointer == nullptr) SDL_Log("Failed to create shader: %s", SDL_GetError());
+    if (shader.shader.pointer == nullptr) Log::Error("Failed to create shader: {}", SDL_GetError());
 }
 
 void SDL3GPURenderer::DestroyShader(Shader& shader) { SDL_ReleaseGPUShader(device, static_cast<SDL_GPUShader*>(shader.shader.pointer)); }
@@ -543,7 +546,7 @@ void SDL3GPURenderer::CreateShaderPipeline(
         .fill_mode = SDL_GPU_FILLMODE_FILL,
         .cull_mode = SDL_GPU_CULLMODE_BACK,
         .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
-        .enable_depth_clip = true
+        .enable_depth_clip = true,
     };
 
     const SDL_GPUGraphicsPipelineCreateInfo pipeline_create_info{
@@ -552,12 +555,14 @@ void SDL3GPURenderer::CreateShaderPipeline(
         .vertex_input_state = vertex_input_state,
         .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
         .rasterizer_state = rasterizer_state,
+        .multisample_state = {},
         .depth_stencil_state = depth_stencil_state,
-        .target_info = target_info
+        .target_info = target_info,
+        .props = 0
     };
 
     pipeline.shader_pipeline.pointer = SDL_CreateGPUGraphicsPipeline(device, &pipeline_create_info);
-    if (pipeline.shader_pipeline.pointer == nullptr) SDL_Log("Failed to create shader pipeline: %s", SDL_GetError());
+    if (pipeline.shader_pipeline.pointer == nullptr) Log::Error("Failed to create shader pipeline: {}", SDL_GetError());
 }
 
 void SDL3GPURenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline)
