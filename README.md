@@ -31,10 +31,9 @@ Shaders are written in the slang shader language and get compiled for either spi
 - JolyPhysics.
 - SDL3: for window creation, input and SDL3GPU rendering.
 - stb: image loading.
+- slang: shader compilation and reflection.
 
 
 ## Requirements
 
-All necessary libraries to build the engine are included in the repository directly or as a submodule.
-
-To compile the slang shaders the slang command line tool (slangc) is required: https://shader-slang.org/
+All necessary libraries to build the engine are included in the repository directly, as a submodule or are installed using CMake.

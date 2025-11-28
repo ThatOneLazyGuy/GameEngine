@@ -15,6 +15,39 @@ namespace
     Slang::ComPtr<IGlobalSession> global_session;
     Slang::ComPtr<ISession> vertex_session;
     Slang::ComPtr<ISession> fragment_session;
+
+    bool TryLog(const Slang::ComPtr<IBlob>& diagnostic)
+    {
+        if (diagnostic) Log::Log("ShaderCompiler: ", static_cast<const char*>(diagnostic->getBufferPointer()));
+
+        return diagnostic;
+    }
+
+    std::vector<uint8> LoadBinary(const std::string& path)
+    {
+        std::vector<uint8> data;
+
+        std::ifstream file{path, std::ios::ate | std::ios::binary};
+        if (!file.is_open()) return data;
+
+        const std::streamsize size = file.tellg();
+        data.resize(size);
+
+        file.seekg(0, std::ios::beg);
+        file.read(reinterpret_cast<char*>(data.data()), size);
+        file.close();
+
+        return data;
+    }
+
+    bool CompareShaderHash(const std::string& path, const Slang::ComPtr<IBlob>& hash)
+    {
+        const std::vector<uint8>& stored_hash = LoadBinary(path);
+        if (stored_hash.size() != hash->getBufferSize()) return false;
+
+        return std::memcmp(stored_hash.data(), hash->getBufferPointer(), stored_hash.size()) == 0;
+    }
+
 } // namespace
 
 namespace ShaderCompiler
@@ -40,7 +73,9 @@ namespace ShaderCompiler
 
         constexpr std::array<const char*, 1> search_paths{{"Assets/Shaders/"}};
 
-        std::array<PreprocessorMacroDesc, 2> preprocessor_macros{{{backend_name.data(), ""}, {"VERTEX", ""}}};
+        std::array<PreprocessorMacroDesc, 2> preprocessor_macros{
+            {{backend_name.data(), ""}, {"VERTEX", ""}}
+        };
 
         const SessionDesc default_session_description{
             .targets = targets.data(),
@@ -62,55 +97,113 @@ namespace ShaderCompiler
     {
         Slang::ComPtr<IBlob> diagnostics;
 
-        Slang::ComPtr<IModule> module{vertex_session->loadModule(path.c_str(), diagnostics.writeRef())};
-        if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
-
-        Slang::ComPtr<IEntryPoint> vertex_entry_point;
-        module->findEntryPointByName("VertexMain", vertex_entry_point.writeRef());
-
-        IComponentType* vertex_components[] = {module, vertex_entry_point};
-        Slang::ComPtr<IComponentType> vertex_program;
-        vertex_session->createCompositeComponentType(vertex_components, 2, vertex_program.writeRef(), diagnostics.writeRef());
-        if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
-
-        Slang::ComPtr<IComponentType> vertex_linked_program;
-        vertex_program->link(vertex_linked_program.writeRef(), diagnostics.writeRef());
-        if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
-
-        Slang::ComPtr<IBlob> vertex_kernal_blob;
-        vertex_linked_program->getEntryPointCode(0, 0, vertex_kernal_blob.writeRef(), diagnostics.writeRef());
-        if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
+        Slang::ComPtr module{vertex_session->loadModule(path.c_str(), diagnostics.writeRef())};
+        if (TryLog(diagnostics)) return;
 
         const Renderer::BackendShaderInfo& backend_shader_info = Renderer::GetBackendShaderInfo();
         const std::string new_path = path.substr(0, path.find_last_of('.'));
+
         const std::string vertex_path = new_path + ".vert" + Renderer::GetBackendShaderInfo().file_extension;
-        std::ofstream vertex_file{vertex_path, std::ios::trunc | (backend_shader_info.binary ? std::ios::binary : 0)};
-        vertex_file.write(static_cast<const char*>(vertex_kernal_blob->getBufferPointer()), vertex_kernal_blob->getBufferSize());
-        vertex_file.close();
+        const SlangInt32 vertex_session_entry_points = module->getDefinedEntryPointCount();
+        for (SlangInt32 i = 0; i < vertex_session_entry_points; i++)
+        {
+            // Get the entry point.
+            Slang::ComPtr<IEntryPoint> entry_point;
+            module->getDefinedEntryPoint(i, entry_point.writeRef());
 
+            EntryPointReflection* entry_point_reflection = entry_point->getLayout()->getEntryPointByIndex(0);
+            if (entry_point_reflection->getStage() != SLANG_STAGE_VERTEX) continue;
 
-        module = Slang::ComPtr<IModule>{fragment_session->loadModule(path.c_str(), diagnostics.writeRef())};
-        if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
+            const std::string hash_file_path = vertex_path + ".hash";
 
-        Slang::ComPtr<IEntryPoint> fragment_entry_point;
-        module->findEntryPointByName("FragmentMain", fragment_entry_point.writeRef());
+            // Create a composite type to correctly compute the hash later.
+            Slang::ComPtr<IComponentType> composite;
+            IComponentType* components[2]{module, entry_point};
+            vertex_session->createCompositeComponentType(components, 2, composite.writeRef());
 
-        IComponentType* fragment_components[] = {module, fragment_entry_point};
-        Slang::ComPtr<IComponentType> fragment_program;
-        fragment_session->createCompositeComponentType(fragment_components, 2, fragment_program.writeRef(), diagnostics.writeRef());
-        if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
+            // Compute hash.
+            Slang::ComPtr<IBlob> hash;
+            composite->getEntryPointHash(0, 0, hash.writeRef()); // We use entry point index 0 because the composite was only made with 1 entry point.
+            if (CompareShaderHash(hash_file_path, hash)) break;
 
-        Slang::ComPtr<IComponentType> fragment_linked_program;
-        fragment_program->link(fragment_linked_program.writeRef(), diagnostics.writeRef());
-        if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
+            Log::Log("Recompiling shader: {}", vertex_path);
 
-        Slang::ComPtr<IBlob> fragment_kernal_blob;
-        fragment_linked_program->getEntryPointCode(0, 0, fragment_kernal_blob.writeRef(), diagnostics.writeRef());
+            std::ofstream hash_file{hash_file_path, std::ios::trunc | std::ios::binary};
+            hash_file.write(static_cast<const char*>(hash->getBufferPointer()), static_cast<std::streamsize>(hash->getBufferSize()));
+            hash_file.close();
+
+            // Link/compile the shader.
+            Slang::ComPtr<IComponentType> linked_entry_point;
+            entry_point->link(linked_entry_point.writeRef(), diagnostics.writeRef());
+            if (TryLog(diagnostics)) return;
+
+            // Get the shader data.
+            Slang::ComPtr<IBlob> shader_stage_data;
+            linked_entry_point->getEntryPointCode(0, 0, shader_stage_data.writeRef(), diagnostics.writeRef());
+            if (TryLog(diagnostics)) return;
+
+            // Write the shader stage data to the file.
+            std::ofstream vertex_file{vertex_path, std::ios::trunc | (backend_shader_info.binary ? std::ios::binary : 0)};
+            vertex_file.write(
+                static_cast<const char*>(shader_stage_data->getBufferPointer()),
+                static_cast<std::streamsize>(shader_stage_data->getBufferSize())
+            );
+            vertex_file.close();
+
+            break;
+        }
+
+        module = Slang::ComPtr{fragment_session->loadModule(path.c_str(), diagnostics.writeRef())};
         if (diagnostics) Log::Log(static_cast<const char*>(diagnostics->getBufferPointer()));
 
         const std::string fragment_path = new_path + ".frag" + Renderer::GetBackendShaderInfo().file_extension;
-        std::ofstream fragment_file{fragment_path, std::ios::trunc | (backend_shader_info.binary ? std::ios::binary : 0)};
-        fragment_file.write(static_cast<const char*>(fragment_kernal_blob->getBufferPointer()), fragment_kernal_blob->getBufferSize());
-        fragment_file.close();
+        const SlangInt32 fragment_session_entry_points = module->getDefinedEntryPointCount();
+        for (SlangInt32 i = 0; i < fragment_session_entry_points; i++)
+        {
+            // Get the entry point.
+            Slang::ComPtr<IEntryPoint> entry_point;
+            module->getDefinedEntryPoint(i, entry_point.writeRef());
+
+            EntryPointReflection* entry_point_reflection = entry_point->getLayout()->getEntryPointByIndex(0);
+            if (entry_point_reflection->getStage() != SLANG_STAGE_FRAGMENT) continue;
+
+            const std::string hash_file_path = fragment_path + ".hash";
+
+            // Create a composite type to correctly compute the hash later.
+            Slang::ComPtr<IComponentType> composite;
+            IComponentType* components[2]{module, entry_point};
+            vertex_session->createCompositeComponentType(components, 2, composite.writeRef());
+
+            // Compute hash.
+            Slang::ComPtr<IBlob> hash;
+            composite->getEntryPointHash(0, 0, hash.writeRef()); // We use entry point index 0 because the composite was only made with 1 entry point.
+            if (CompareShaderHash(hash_file_path, hash)) break;
+
+            Log::Log("Recompiling shader: {}", fragment_path);
+
+            std::ofstream hash_file{hash_file_path, std::ios::trunc | std::ios::binary};
+            hash_file.write(static_cast<const char*>(hash->getBufferPointer()), static_cast<std::streamsize>(hash->getBufferSize()));
+            hash_file.close();
+
+            // Link/compile the shader.
+            Slang::ComPtr<IComponentType> linked_entry_point;
+            entry_point->link(linked_entry_point.writeRef(), diagnostics.writeRef());
+            if (TryLog(diagnostics)) return;
+
+            // Get the shader data.
+            Slang::ComPtr<IBlob> shader_stage_data;
+            linked_entry_point->getEntryPointCode(0, 0, shader_stage_data.writeRef(), diagnostics.writeRef());
+            if (TryLog(diagnostics)) return;
+
+            // Write the shader stage data to the file.
+            std::ofstream fragment_shader{fragment_path, std::ios::trunc | (backend_shader_info.binary ? std::ios::binary : 0)};
+            fragment_shader.write(
+                static_cast<const char*>(shader_stage_data->getBufferPointer()),
+                static_cast<std::streamsize>(shader_stage_data->getBufferSize())
+            );
+            fragment_shader.close();
+
+            break;
+        }
     }
 } // namespace ShaderCompiler
