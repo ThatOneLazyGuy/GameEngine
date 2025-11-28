@@ -21,27 +21,27 @@ namespace
 
     std::map<int, unsigned int> uniformBuffers;
 
-    void CheckCompileErrors(const uint32 id, const std::string& type)
+    void CheckCompileErrors(const uint32 id, const std::string& type = "")
     {
         int success;
-        char infoLog[1024];
-        if (type != "program")
-        {
-            glGetShaderiv(id, GL_COMPILE_STATUS, &success);
-            if (!success)
-            {
-                glGetShaderInfoLog(id, 1024, nullptr, infoLog);
-                Log::Error("Error compiling shader of type: {}", type);
-            }
-        }
-        else
+        char info_log[1024];
+        if (type.empty())
         {
             glGetProgramiv(id, GL_LINK_STATUS, &success);
-            if (!success)
+            if (success == GL_FALSE)
             {
-                glGetProgramInfoLog(id, 1024, nullptr, infoLog);
-                Log::Error("Error linking program of type: {}", type);
+                glGetProgramInfoLog(id, 1024, nullptr, info_log);
+                Log::Error("Error linking program: {}", info_log);
             }
+
+            return;
+        }
+
+        glGetShaderiv(id, GL_COMPILE_STATUS, &success);
+        if (success == GL_FALSE)
+        {
+            glGetShaderInfoLog(id, 1024, nullptr, info_log);
+            Log::Error("Error compiling shader of type: {}, {}", type, info_log);
         }
     }
 
@@ -61,10 +61,7 @@ namespace
 
 OpenGLRenderer::OpenGLRenderer() : Renderer{}
 {
-    backend_shader_info = {
-        .file_extension = ".glsl",
-        .binary = false,
-    };
+    backend_shader_info = {.file_extension = ".glsl", .binary = false, .profile = "glsl_150", .invert_y = true};
 }
 
 void OpenGLRenderer::InitBackend()
@@ -93,9 +90,7 @@ void OpenGLRenderer::InitBackend()
     glFrontFace(GL_CW);
 
     const Handle<GraphicsShaderPipeline>& graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(
-        "Assets/Shaders/Shader.slang",
-        ShaderSettings{Shader::VERTEX, 0, 0, 3},
-        ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
+        "Assets/Shaders/TestShader.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
     );
 
     glUseProgram(graphics_pipeline->shader_pipeline.id);
@@ -118,7 +113,7 @@ void OpenGLRenderer::SwapBuffer()
     SDL_GL_SwapWindow(window);
 }
 
-void* OpenGLRenderer::GetContext() { return &context; }
+void* OpenGLRenderer::GetContext() { return static_cast<void*>(&context); }
 
 void OpenGLRenderer::RenderMesh(const Mesh& mesh)
 {
@@ -327,7 +322,7 @@ void OpenGLRenderer::CreateShaderPipeline(
     glAttachShader(pipeline.shader_pipeline.id, vertex_shader->shader.id);
     glAttachShader(pipeline.shader_pipeline.id, fragment_shader->shader.id);
     glLinkProgram(pipeline.shader_pipeline.id);
-    CheckCompileErrors(pipeline.shader_pipeline.id, "program");
+    CheckCompileErrors(pipeline.shader_pipeline.id);
 }
 
 void OpenGLRenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) { glDeleteProgram(pipeline.shader_pipeline.id); }

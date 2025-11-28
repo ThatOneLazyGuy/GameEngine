@@ -36,7 +36,7 @@ namespace
     SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size data_size)
     {
         const SDL_GPUTransferBufferCreateInfo transfer_buffer_info{
-            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = static_cast<uint32>(data_size)
+            .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = static_cast<uint32>(data_size), .props = 0
         };
 
         SDL_GPUTransferBuffer* transfer_buffer = SDL_CreateGPUTransferBuffer(device, &transfer_buffer_info);
@@ -109,6 +109,8 @@ SDL3GPURenderer::SDL3GPURenderer() : Renderer{}
     backend_shader_info = {
         .file_extension = ".spv",
         .binary = true,
+        .profile = "spirv_1_3",
+        .invert_y = false
     };
 }
 
@@ -134,7 +136,7 @@ void SDL3GPURenderer::InitBackend()
     SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
 
     Resource::Load<GraphicsShaderPipeline>(
-        "Assets/Shaders/Shader.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
+        "Assets/Shaders/TestShader.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
     );
 }
 
@@ -151,10 +153,7 @@ void SDL3GPURenderer::Update()
     DataUploadPass();
 
     render_command_buffer = SDL_AcquireGPUCommandBuffer(device);
-    if (render_command_buffer == nullptr)
-    {
-        Log::Error("Failed to acquire render command buffer: {}", SDL_GetError());
-    }
+    if (render_command_buffer == nullptr) { Log::Error("Failed to acquire render command buffer: {}", SDL_GetError()); }
 }
 
 void SDL3GPURenderer::SwapBuffer()

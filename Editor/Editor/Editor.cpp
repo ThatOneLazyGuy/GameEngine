@@ -29,32 +29,39 @@ namespace
 
     ECS::Entity backpack_entity;
     ECS::Entity camera_entity;
+
+    void CreateDefaultEntities()
+    {
+        Handle<Mesh> handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
+        backpack_entity = ECS::CreateEntity("Backpack");
+        backpack_entity.AddComponent<Handle<Mesh>>(handle);
+        backpack_entity.AddComponent<Physics::SphereCollider>();
+
+        camera_entity = ECS::CreateEntity("Camera");
+        camera_entity.AddComponent<Camera>();
+        camera_entity.GetComponent<Transform>().SetPosition(float3{0.0f, 0.0f, 7.0f});
+    }
+
 } // namespace
 
 int main(int, char* args[])
 {
     Renderer::SetupBackend(args[1]);
-
     Window::Init(&ImGui::PlatformProcessEvent);
-
+    ShaderCompiler::Init();
+    ShaderCompiler::CompileShader("Assets/Shaders/TestShader.slang"); 
+    ShaderCompiler::CompileShader("Assets/Shaders/PhysicsDebug.slang");
     Renderer::Init();
 
     Editor::Init();
     Handle<GraphicsShaderPipeline> graphics_pipeline = Resource::GetResources<GraphicsShaderPipeline>()[0];
     Renderer::render_passes.emplace_back(std::make_shared<DefaultRenderPass>(graphics_pipeline, Renderer::main_target));
     graphics_pipeline.reset();
+
     Physics::Init();
     ECS::Init();
 
-    auto handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
-    backpack_entity = ECS::CreateEntity("Backpack");
-    backpack_entity.AddComponent<Handle<Mesh>>(handle);
-    backpack_entity.AddComponent<Physics::SphereCollider>();
-
-    camera_entity = ECS::CreateEntity("Camera");
-    camera_entity.AddComponent<Camera>();
-    camera_entity.GetComponent<Transform>().SetPosition(float3{0.0f, 0.0f, 7.0f});
-    handle.reset();
+    CreateDefaultEntities();
 
     while (!Window::PollEvents())
     {
@@ -68,7 +75,9 @@ int main(int, char* args[])
 
     ECS::Exit();
     Physics::Exit();
+
     Resource::CleanResources(true);
+
     ImGui::PlatformExit();
     Renderer::Exit();
     Window::Exit();

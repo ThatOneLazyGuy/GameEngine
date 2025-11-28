@@ -270,6 +270,8 @@ class Renderer
       {
           const char* file_extension;
           bool binary;
+          const char* profile;
+          bool invert_y;
       };
 
     Renderer(Renderer& other) = delete;

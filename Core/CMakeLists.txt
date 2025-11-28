@@ -46,21 +46,3 @@ target_compile_definitions(Core
         "JPH_DEBUG_RENDERER"
         "EIGEN_MAX_ALIGN_BYTES=0"
 )
-
-add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D SDL3GPU -D VERTEX -matrix-layout-row-major -target spirv -profile spirv_1_3 -o "${SHADERS}/Shader.vert.spv" -entry "VertexMain"
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D SDL3GPU -D FRAGMENT -matrix-layout-row-major -target spirv -profile spirv_1_3 -o "${SHADERS}/Shader.frag.spv" -entry "FragmentMain"
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D OPENGL -D VERTEX -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.vert.glsl" -entry "VertexMain"
-        COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D OPENGL -D FRAGMENT -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/Shader.frag.glsl" -entry "FragmentMain"
-        # COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D DX12 -D VERTEX -matrix-layout-row-major -target dxil -profile vs_6_0 -o "${SHADERS}/Shader.vert.dxil" -entry "VertexMain"
-        # COMMAND slangc.exe "${SHADERS}/TestShader.slang" -D DX12 -D FRAGMENT -matrix-layout-row-major -target dxil -profile ps_6_0 -o "${SHADERS}/Shader.frag.dxil" -entry "FragmentMain"
-)
-
-add_custom_command(TARGET Core POST_BUILD
-        COMMAND slangc.exe "${SHADERS}/PhysicsDebug.slang" -D SDL3GPU -D VERTEX -matrix-layout-row-major -target spirv -profile spirv_1_3 -o "${SHADERS}/PhysicsDebug.vert.spv" -entry "VertexMain"
-        COMMAND slangc.exe "${SHADERS}/PhysicsDebug.slang" -D SDL3GPU -D FRAGMENT -matrix-layout-row-major -target spirv -profile spirv_1_3 -o "${SHADERS}/PhysicsDebug.frag.spv" -entry "FragmentMain"
-        COMMAND slangc.exe "${SHADERS}/PhysicsDebug.slang" -D OPENGL -D VERTEX -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/PhysicsDebug.vert.glsl" -entry "VertexMain"
-        COMMAND slangc.exe "${SHADERS}/PhysicsDebug.slang" -D OPENGL -D FRAGMENT -matrix-layout-row-major -fvk-invert-y -target glsl -o "${SHADERS}/PhysicsDebug.frag.glsl" -entry "FragmentMain"
-        # COMMAND slangc.exe "${SHADERS}/PhysicsDebug.slang" -D DX12 -D VERTEX -matrix-layout-row-major -target dxil -profile vs_6_0 -o "${SHADERS}/PhysicsDebug.vert.dxil" -entry "VertexMain"
-        # COMMAND slangc.exe "${SHADERS}/PhysicsDebug.slang" -D DX12 -D FRAGMENT -matrix-layout-row-major -target dxil -profile ps_6_0 -o "${SHADERS}/PhysicsDebug.frag.dxil" -entry "FragmentMain"
-)

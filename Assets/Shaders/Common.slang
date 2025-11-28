@@ -14,7 +14,7 @@
         #define Sampler 2
         #define Uniform 3
     #endif
-#else//if defined(OPENGL)
+#else // defined(OpenGL)
     #define Uniform 1
     #define Sampler 0
 #endif
