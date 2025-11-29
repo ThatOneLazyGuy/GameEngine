@@ -214,8 +214,6 @@ class Shader final : public FileResource
     uint32 storage_count{0};
     uint32 uniform_count{0};
 
-    std::vector<char> code;
-
     ShaderID shader;
 };
 
@@ -338,7 +336,7 @@ class Renderer
     virtual void ReloadMesh(Mesh& mesh) = 0;
     virtual void DestroyMesh(Mesh& mesh) = 0;
 
-    virtual void CreateShader(Shader& shader) = 0;
+    virtual void CreateShader(Shader& shader, const void* data, size size) = 0;
     virtual void DestroyShader(Shader& shader) = 0;
 
     virtual void CreateShaderPipeline(

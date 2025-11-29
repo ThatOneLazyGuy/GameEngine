@@ -8,17 +8,22 @@
 #include "Tools/Logging.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_STDIO
 #include <stb/stb_image.h>
 #include <filesystem>
-#include <fstream>
 #include <assimp/scene.h>
+
+#include "Tools/Files.hpp"
 
 namespace
 {
     std::vector<uint8> LoadTextureImage(const std::string& path, sint32& out_width, sint32& out_height)
     {
+        const std::vector<uint8>& file_data = Files::ReadBinary(path);
+        const int file_size = static_cast<int>(file_data.size());
+
         sint32 component_count;
-        uint8* data = stbi_load(path.c_str(), &out_width, &out_height, &component_count, 4);
+        uint8* data = stbi_load_from_memory(file_data.data(), file_size, &out_width, &out_height, &component_count, 4);
         if (data == nullptr)
         {
             Log::Error("Failed to load image: {}", stbi_failure_reason());
@@ -188,32 +193,28 @@ Shader::Shader(std::string path, const ShaderSettings& shader_info) :
     uniform_count{shader_info.uniform_count}
 {
     const Renderer::BackendShaderInfo& backend_shader_info = Renderer::GetBackendShaderInfo();
-    const std::ifstream::openmode open_mode = std::ios::ate | (backend_shader_info.binary ? std::ios::binary : 0);
 
     path = path.substr(0, path.find_last_of('.'));
     path += (shader_info.type == VERTEX ? ".vert" : ".frag");
     path += backend_shader_info.file_extension;
 
-    std::ifstream shader_file{path, open_mode};
-    if (!shader_file.is_open())
+    if (backend_shader_info.binary)
     {
-        Log::Error("Failed to open shader file: {}", path);
-        return;
+        const std::vector<uint8>& binary_shader = Files::ReadBinary(path);
+        Renderer::Instance().CreateShader(*this, binary_shader.data(), binary_shader.size());
     }
-
-    const std::streamsize size = shader_file.tellg();
-    code.resize(size);
-
-    shader_file.seekg(0, std::ios::beg);
-    shader_file.read(code.data(), size);
-    shader_file.close();
-
-    Renderer::Instance().CreateShader(*this);
+    else
+    {
+        const std::string& text_shader = Files::ReadText(path);
+        Renderer::Instance().CreateShader(*this, text_shader.data(), text_shader.size());
+    }
 }
 
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
-GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings)
+GraphicsShaderPipeline::GraphicsShaderPipeline(
+    const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings
+)
 {
     const Handle<Shader>& vertex_shader = FileResource::Load<Shader>(pipeline_path, vertex_settings);
     vertex_path = pipeline_path;

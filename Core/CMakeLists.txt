@@ -8,12 +8,14 @@ add_library(
         "Core/Model.cpp"
         "Core/Time.cpp"
         "Core/Window.cpp"
-
         "Core/Rendering/Renderer.cpp"
         "Core/Rendering/RenderPassInterface.cpp"
+
         "Platform/PC/SDL3GPU/Rendering/Renderer.cpp"
         "Platform/OpenGL/Rendering/Renderer.cpp"
         "${EXTERNAL}/glad/src/glad.c"
+
+        "Tools/Files.cpp"
 )
 
 set_target_properties(Core PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")

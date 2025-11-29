@@ -40,7 +40,7 @@ class OpenGLRenderer final : public Renderer
     void ReloadMesh(Mesh& mesh) override;
     void DestroyMesh(Mesh& mesh) override;
 
-    void CreateShader(Shader& shader) override;
+    void CreateShader(Shader& shader, const void* data, size size) override;
     void DestroyShader(Shader& shader) override;
 
     void CreateShaderPipeline(GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader)

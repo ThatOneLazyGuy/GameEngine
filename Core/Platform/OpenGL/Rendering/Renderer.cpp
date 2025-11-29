@@ -281,16 +281,16 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<sint32>(mesh.indices.size() * sizeof(uint32)), mesh.indices.data(), GL_STATIC_DRAW);
 
-    uint64 offset = 0;
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(offset));
+    const uint8* offset = nullptr;
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(0);
     offset += sizeof(float3);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(offset));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(1);
     offset += sizeof(float3);
 
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(offset));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
     glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
@@ -298,12 +298,12 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void OpenGLRenderer::CreateShader(Shader& shader)
+void OpenGLRenderer::CreateShader(Shader& shader, const void* data, size)
 {
     const GLuint shader_type = (shader.type == Shader::VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
 
     shader.shader.id = glCreateShader(shader_type);
-    const char* code = shader.code.data();
+    const char* code = static_cast<const char*>(data);
     glShaderSource(shader.shader.id, 1, &code, nullptr);
     glCompileShader(shader.shader.id);
 

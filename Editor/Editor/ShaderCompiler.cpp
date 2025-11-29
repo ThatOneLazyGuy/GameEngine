@@ -1,12 +1,12 @@
 #include "ShaderCompiler.hpp"
 
+#include <Core/Rendering/Renderer.hpp>
+#include <Tools/Logging.hpp>
+#include <Tools/Files.hpp>
 #include <slang.h>
 #include <slang-com-ptr.h>
-#include <Tools/Logging.hpp>
-#include <Core/Rendering/Renderer.hpp>
 
 #include <array>
-#include <fstream>
 
 using namespace slang;
 
@@ -23,26 +23,9 @@ namespace
         return diagnostic;
     }
 
-    std::vector<uint8> LoadBinary(const std::string& path)
-    {
-        std::vector<uint8> data;
-
-        std::ifstream file{path, std::ios::ate | std::ios::binary};
-        if (!file.is_open()) return data;
-
-        const std::streamsize size = file.tellg();
-        data.resize(size);
-
-        file.seekg(0, std::ios::beg);
-        file.read(reinterpret_cast<char*>(data.data()), size);
-        file.close();
-
-        return data;
-    }
-
     bool CompareShaderHash(const std::string& path, const Slang::ComPtr<IBlob>& hash)
     {
-        const std::vector<uint8>& stored_hash = LoadBinary(path);
+        const std::vector<uint8>& stored_hash = Files::ReadBinary(path, false);
         if (stored_hash.size() != hash->getBufferSize()) return false;
 
         return std::memcmp(stored_hash.data(), hash->getBufferPointer(), stored_hash.size()) == 0;
@@ -123,14 +106,15 @@ namespace ShaderCompiler
 
             // Compute hash.
             Slang::ComPtr<IBlob> hash;
-            composite->getEntryPointHash(0, 0, hash.writeRef()); // We use entry point index 0 because the composite was only made with 1 entry point.
+            composite->getEntryPointHash(
+                0, 0, hash.writeRef()
+            ); // We use entry point index 0 because the composite was only made with 1 entry point.
             if (CompareShaderHash(hash_file_path, hash)) break;
 
             Log::Log("Recompiling shader: {}", vertex_path);
 
-            std::ofstream hash_file{hash_file_path, std::ios::trunc | std::ios::binary};
-            hash_file.write(static_cast<const char*>(hash->getBufferPointer()), static_cast<std::streamsize>(hash->getBufferSize()));
-            hash_file.close();
+            const uint8* hash_data = static_cast<const uint8*>(hash->getBufferPointer());
+            Files::WriteBinary(hash_file_path, {hash_data, hash->getBufferSize()});
 
             // Link/compile the shader.
             Slang::ComPtr<IComponentType> linked_entry_point;
@@ -143,12 +127,16 @@ namespace ShaderCompiler
             if (TryLog(diagnostics)) return;
 
             // Write the shader stage data to the file.
-            std::ofstream vertex_file{vertex_path, std::ios::trunc | (backend_shader_info.binary ? std::ios::binary : 0)};
-            vertex_file.write(
-                static_cast<const char*>(shader_stage_data->getBufferPointer()),
-                static_cast<std::streamsize>(shader_stage_data->getBufferSize())
-            );
-            vertex_file.close();
+            if (backend_shader_info.binary)
+            {
+                const uint8* shader_data = static_cast<const uint8*>(shader_stage_data->getBufferPointer());
+                Files::WriteBinary(vertex_path, {shader_data, shader_stage_data->getBufferSize()});
+            }
+            else
+            {
+                const char* shader_text = static_cast<const char*>(shader_stage_data->getBufferPointer());
+                Files::WriteText(vertex_path, {shader_text, shader_stage_data->getBufferSize()});
+            }
 
             break;
         }
@@ -176,14 +164,15 @@ namespace ShaderCompiler
 
             // Compute hash.
             Slang::ComPtr<IBlob> hash;
-            composite->getEntryPointHash(0, 0, hash.writeRef()); // We use entry point index 0 because the composite was only made with 1 entry point.
+            composite->getEntryPointHash(
+                0, 0, hash.writeRef()
+            ); // We use entry point index 0 because the composite was only made with 1 entry point.
             if (CompareShaderHash(hash_file_path, hash)) break;
 
             Log::Log("Recompiling shader: {}", fragment_path);
 
-            std::ofstream hash_file{hash_file_path, std::ios::trunc | std::ios::binary};
-            hash_file.write(static_cast<const char*>(hash->getBufferPointer()), static_cast<std::streamsize>(hash->getBufferSize()));
-            hash_file.close();
+            const uint8* hash_data = static_cast<const uint8*>(hash->getBufferPointer());
+            Files::WriteBinary(hash_file_path, {hash_data, hash->getBufferSize()});
 
             // Link/compile the shader.
             Slang::ComPtr<IComponentType> linked_entry_point;
@@ -196,12 +185,16 @@ namespace ShaderCompiler
             if (TryLog(diagnostics)) return;
 
             // Write the shader stage data to the file.
-            std::ofstream fragment_shader{fragment_path, std::ios::trunc | (backend_shader_info.binary ? std::ios::binary : 0)};
-            fragment_shader.write(
-                static_cast<const char*>(shader_stage_data->getBufferPointer()),
-                static_cast<std::streamsize>(shader_stage_data->getBufferSize())
-            );
-            fragment_shader.close();
+            if (backend_shader_info.binary)
+            {
+                const uint8* shader_data = static_cast<const uint8*>(shader_stage_data->getBufferPointer());
+                Files::WriteBinary(fragment_path, {shader_data, shader_stage_data->getBufferSize()});
+            }
+            else
+            {
+                const char* shader_text = static_cast<const char*>(shader_stage_data->getBufferPointer());
+                Files::WriteText(fragment_path, {shader_text, shader_stage_data->getBufferSize()});
+            }
 
             break;
         }

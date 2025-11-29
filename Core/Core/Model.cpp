@@ -7,8 +7,11 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
+#include "Tools/Files.hpp"
+
 ModelParser::ModelParser(const std::string& path)
 {
+    // TODO: Figure out how to load from memory, works fine except fails due to texture issues, probably doesn't have access to .mtl files.
     importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices);
 }
 

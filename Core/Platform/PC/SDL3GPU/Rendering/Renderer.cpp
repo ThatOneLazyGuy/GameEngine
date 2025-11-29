@@ -447,7 +447,7 @@ void SDL3GPURenderer::DestroyMesh(Mesh& mesh)
     SDL_ReleaseGPUBuffer(device, static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer));
 }
 
-void SDL3GPURenderer::CreateShader(Shader& shader)
+void SDL3GPURenderer::CreateShader(Shader& shader, const void* data, size size)
 {
     const auto stage = static_cast<SDL_GPUShaderStage>(shader.type);
 
@@ -477,8 +477,8 @@ void SDL3GPURenderer::CreateShader(Shader& shader)
     }
 
     const SDL_GPUShaderCreateInfo shaderInfo{
-        .code_size = shader.code.size(),
-        .code = reinterpret_cast<const uint8*>(shader.code.data()),
+        .code_size = size,
+        .code = static_cast<const uint8*>(data),
         .entrypoint = entrypoint,
         .format = format,
         .stage = stage,
