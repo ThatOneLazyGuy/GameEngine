@@ -293,7 +293,7 @@ class Renderer
 
     virtual void RenderMesh(const Mesh& mesh) = 0;
     virtual void SetTextureSampler(uint32 slot, const Texture& texture) = 0;
-    virtual void SetUniform(uint32 slot, const void* data, size size) = 0;
+    virtual void SetUniform(uint32 slot, const void* data, usize size) = 0;
 
     template <typename Type>
     static void SetUniform(const uint32 slot, const Type& object)
@@ -328,7 +328,7 @@ class Renderer
     virtual void DestroyTexture(Texture& texture) = 0;
 
     virtual void CreateRenderTarget(RenderTarget& target) = 0;
-    virtual void UpdateRenderBuffer(const RenderTarget& target, size index) = 0;
+    virtual void UpdateRenderBuffer(const RenderTarget& target, usize index) = 0;
     virtual void UpdateDepthBuffer(const RenderTarget& target) = 0;
     virtual void DestroyRenderTarget(RenderTarget& target) = 0;
 
@@ -336,7 +336,7 @@ class Renderer
     virtual void ReloadMesh(Mesh& mesh) = 0;
     virtual void DestroyMesh(Mesh& mesh) = 0;
 
-    virtual void CreateShader(Shader& shader, const void* data, size size) = 0;
+    virtual void CreateShader(Shader& shader, const void* data, usize size) = 0;
     virtual void DestroyShader(Shader& shader) = 0;
 
     virtual void CreateShaderPipeline(

@@ -9,7 +9,7 @@ class OpenGLRenderer final : public Renderer
     OpenGLRenderer();
     ~OpenGLRenderer() override = default;
 
-    constexpr size WindowFlags() override { return SDL_WINDOW_OPENGL; }
+    constexpr usize WindowFlags() override { return SDL_WINDOW_OPENGL; }
 
     void InitBackend() override;
     void ExitBackend() override;
@@ -21,7 +21,7 @@ class OpenGLRenderer final : public Renderer
 
     void RenderMesh(const Mesh& mesh) override;
     void SetTextureSampler(uint32 slot, const Texture& texture) override;
-    void SetUniform(uint32 slot, const void* data, size size) override;
+    void SetUniform(uint32 slot, const void* data, usize size) override;
 
   private:
     void BeginRenderPass(const RenderPassInterface& render_pass) override;
@@ -32,7 +32,7 @@ class OpenGLRenderer final : public Renderer
     void DestroyTexture(Texture& texture) override;
 
     void CreateRenderTarget(RenderTarget& target) override;
-    void UpdateRenderBuffer(const RenderTarget& target, size index) override;
+    void UpdateRenderBuffer(const RenderTarget& target, usize index) override;
     void UpdateDepthBuffer(const RenderTarget& target) override;
     void DestroyRenderTarget(RenderTarget& target) override;
 
@@ -40,7 +40,7 @@ class OpenGLRenderer final : public Renderer
     void ReloadMesh(Mesh& mesh) override;
     void DestroyMesh(Mesh& mesh) override;
 
-    void CreateShader(Shader& shader, const void* data, size size) override;
+    void CreateShader(Shader& shader, const void* data, usize size) override;
     void DestroyShader(Shader& shader) override;
 
     void CreateShaderPipeline(GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader)

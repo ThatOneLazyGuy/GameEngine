@@ -33,7 +33,7 @@ namespace
 
     SDL_GPUDevice* device = nullptr;
 
-    SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const size data_size)
+    SDL_GPUTransferBuffer* CreateUploadTransferBuffer(const void* upload_data, const usize data_size)
     {
         const SDL_GPUTransferBufferCreateInfo transfer_buffer_info{
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = static_cast<uint32>(data_size), .props = 0
@@ -184,7 +184,7 @@ void SDL3GPURenderer::SetTextureSampler(const uint32 slot, const Texture& textur
     SDL_BindGPUFragmentSamplers(active_render_pass, slot, &binding, 1);
 }
 
-void SDL3GPURenderer::SetUniform(const uint32 slot, const void* data, const size size)
+void SDL3GPURenderer::SetUniform(const uint32 slot, const void* data, const usize size)
 {
     SDL_PushGPUVertexUniformData(render_command_buffer, slot, data, static_cast<uint32>(size));
     SDL_PushGPUFragmentUniformData(render_command_buffer, slot, data, static_cast<uint32>(size));
@@ -447,7 +447,7 @@ void SDL3GPURenderer::DestroyMesh(Mesh& mesh)
     SDL_ReleaseGPUBuffer(device, static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer));
 }
 
-void SDL3GPURenderer::CreateShader(Shader& shader, const void* data, size size)
+void SDL3GPURenderer::CreateShader(Shader& shader, const void* data, usize size)
 {
     const auto stage = static_cast<SDL_GPUShaderStage>(shader.type);
 

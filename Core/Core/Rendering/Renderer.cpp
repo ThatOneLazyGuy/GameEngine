@@ -30,7 +30,7 @@ namespace
             return {};
         }
 
-        const size data_size = static_cast<size>(out_width * out_height) * 4;
+        const usize data_size = static_cast<usize>(out_width * out_height) * 4;
 
         std::vector<uint8_t> return_data{data, data + data_size};
         stbi_image_free(data);
@@ -146,10 +146,10 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     const aiColor4D* mesh_colors = model_mesh.mColors[0];
     const aiVector3D* mesh_tex_coords = model_mesh.mTextureCoords[0];
 
-    const size vertex_count = model_mesh.mNumVertices;
+    const usize vertex_count = model_mesh.mNumVertices;
     vertices.resize(vertex_count);
 
-    for (size i = 0; i < vertex_count; i++)
+    for (usize i = 0; i < vertex_count; i++)
     {
         auto& [position, color, tex_coord] = vertices[i];
 
@@ -160,14 +160,14 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 
     const aiFace* mesh_faces = model_mesh.mFaces;
 
-    const size face_count = model_mesh.mNumFaces;
+    const usize face_count = model_mesh.mNumFaces;
     indices.resize(face_count * 3);
-    for (size i = 0; i < face_count; i++)
+    for (usize i = 0; i < face_count; i++)
     {
         std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
     }
 
-    const size last_separator = path.find_last_of('/');
+    const usize last_separator = path.find_last_of('/');
     const std::string mesh_path = path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
 
     const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];

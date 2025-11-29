@@ -128,7 +128,7 @@ void OpenGLRenderer::SetTextureSampler(const uint32 slot, const Texture& texture
     glBindTexture(GL_TEXTURE_2D, texture.texture.id);
 }
 
-void OpenGLRenderer::SetUniform(const uint32 slot, const void* data, const size size)
+void OpenGLRenderer::SetUniform(const uint32 slot, const void* data, const usize size)
 {
     const auto iterator = uniformBuffers.find(static_cast<sint32>(slot));
     if (iterator == uniformBuffers.end())
@@ -233,7 +233,7 @@ void OpenGLRenderer::DestroyTexture(Texture& texture) { glDeleteTextures(1, &tex
 
 void OpenGLRenderer::CreateRenderTarget(RenderTarget& target) { glGenFramebuffers(1, &target.target_id); }
 
-void OpenGLRenderer::UpdateRenderBuffer(const RenderTarget& target, const size index)
+void OpenGLRenderer::UpdateRenderBuffer(const RenderTarget& target, const usize index)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, target.target_id);
 
@@ -298,7 +298,7 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void OpenGLRenderer::CreateShader(Shader& shader, const void* data, size)
+void OpenGLRenderer::CreateShader(Shader& shader, const void* data, usize)
 {
     const GLuint shader_type = (shader.type == Shader::VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
 

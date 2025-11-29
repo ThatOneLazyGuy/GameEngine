@@ -14,7 +14,7 @@ using float2 = Eigen::RowVector2f;
 using float3 = Eigen::RowVector3f;
 using float4 = Eigen::RowVector4f;
 
-template <size Rows, size Columns>
+template <usize Rows, usize Columns>
 using Matrix = Eigen::Matrix<float, Rows, Columns, Eigen::RowMajor>;
 using Matrix3 = Matrix<3, 3>;
 using Matrix4 = Matrix<4, 4>;

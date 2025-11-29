@@ -10,7 +10,7 @@ class SDL3GPURenderer final : public Renderer
     SDL3GPURenderer();
     ~SDL3GPURenderer() override = default;
 
-    constexpr size WindowFlags() override { return 0; }
+    constexpr usize WindowFlags() override { return 0; }
 
     void InitBackend() override;
     void ExitBackend() override;
@@ -22,7 +22,7 @@ class SDL3GPURenderer final : public Renderer
 
     void RenderMesh(const Mesh& mesh) override;
     void SetTextureSampler(uint32 slot, const Texture& texture) override;
-    void SetUniform(uint32 slot, const void* data, size size) override;
+    void SetUniform(uint32 slot, const void* data, usize size) override;
 
     static SDL_GPUCommandBuffer* GetCommandBuffer();
 
@@ -36,7 +36,7 @@ class SDL3GPURenderer final : public Renderer
 
     // Render target doesn't need to be setup for SDL3GPU.
     void CreateRenderTarget(RenderTarget& target) override {}
-    void UpdateRenderBuffer(const RenderTarget& target, size index) override {}
+    void UpdateRenderBuffer(const RenderTarget& target, usize index) override {}
     void UpdateDepthBuffer(const RenderTarget& target) override {}
     void DestroyRenderTarget(RenderTarget& target) override {}
 
@@ -44,7 +44,7 @@ class SDL3GPURenderer final : public Renderer
     void ReloadMesh(Mesh& mesh) override;
     void DestroyMesh(Mesh& mesh) override;
 
-    void CreateShader(Shader& shader, const void* data, size size) override;
+    void CreateShader(Shader& shader, const void* data, usize size) override;
     void DestroyShader(Shader& shader) override;
 
     void CreateShaderPipeline(GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader)

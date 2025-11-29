@@ -11,4 +11,4 @@ using uint16 = std::uint16_t;
 using uint32 = std::uint32_t;
 using uint64 = std::uint64_t;
 
-using size = std::uint64_t;
+using usize = std::uintmax_t;

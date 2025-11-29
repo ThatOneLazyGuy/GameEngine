@@ -40,11 +40,11 @@ struct Resource
 
     /// @brief Destroys out all dangling resources.
     /// @return Amount of resources destroyed.
-    static size CleanResources(const bool force_clear = false)
+    static usize CleanResources(const bool force_clear = false)
     {
         if (force_clear)
         {
-            const size resources_size = resources.size();
+            const usize resources_size = resources.size();
             resources.clear();
             return resources_size;
         }

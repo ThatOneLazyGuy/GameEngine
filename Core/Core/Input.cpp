@@ -11,9 +11,9 @@ namespace Input
 {
     namespace
     {
-        constexpr size key_type_bit_count{std::numeric_limits<KeyType>::digits};
-        constexpr size key_lower_mask{key_type_bit_count - 1};
-        constexpr size key_shift_count{6ull}; // How many bits to shift to divide by key_type_bit_count.
+        constexpr usize key_type_bit_count{std::numeric_limits<KeyType>::digits};
+        constexpr usize key_lower_mask{key_type_bit_count - 1};
+        constexpr usize key_shift_count{6ull}; // How many bits to shift to divide by key_type_bit_count.
 
         KeyType previous_key_states[KEY_COUNT >> key_shift_count];
         KeyType key_states[KEY_COUNT >> key_shift_count];
