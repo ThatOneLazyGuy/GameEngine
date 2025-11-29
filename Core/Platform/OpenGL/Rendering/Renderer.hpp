@@ -36,8 +36,7 @@ class OpenGLRenderer final : public Renderer
     void UpdateDepthBuffer(const RenderTarget& target) override;
     void DestroyRenderTarget(RenderTarget& target) override;
 
-    void CreateMesh(Mesh& mesh) override;
-    void ReloadMesh(Mesh& mesh) override;
+    void CreateMesh(Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices) override;
     void DestroyMesh(Mesh& mesh) override;
 
     void CreateShader(Shader& shader, const void* data, usize size) override;

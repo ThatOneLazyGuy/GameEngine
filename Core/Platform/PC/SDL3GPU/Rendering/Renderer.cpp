@@ -172,7 +172,7 @@ void SDL3GPURenderer::RenderMesh(const Mesh& mesh)
     const SDL_GPUBufferBinding index_binding{.buffer = static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer)};
     SDL_BindGPUIndexBuffer(active_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
-    SDL_DrawGPUIndexedPrimitives(active_render_pass, static_cast<uint32>(mesh.indices.size()), 1, 0, 0, 0);
+    SDL_DrawGPUIndexedPrimitives(active_render_pass, mesh.GetIndicesCount(), 1, 0, 0, 0);
 }
 
 void SDL3GPURenderer::SetTextureSampler(const uint32 slot, const Texture& texture)
@@ -394,10 +394,10 @@ void SDL3GPURenderer::DestroyTexture(Texture& texture)
     SDL_ReleaseGPUSampler(device, static_cast<SDL_GPUSampler*>(texture.sampler.pointer));
 }
 
-void SDL3GPURenderer::CreateMesh(Mesh& mesh)
+void SDL3GPURenderer::CreateMesh(Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices)
 {
-    const auto vertices_size = static_cast<uint32>(mesh.vertices.size() * sizeof(Vertex));
-    const auto indices_size = static_cast<uint32>(mesh.indices.size() * sizeof(uint32));
+    const auto vertices_size = static_cast<uint32>(vertices.size() * sizeof(Vertex));
+    const auto indices_size = static_cast<uint32>(indices.size() * sizeof(uint32));
 
     SDL_GPUBufferCreateInfo buffer_info{};
 
@@ -419,16 +419,8 @@ void SDL3GPURenderer::CreateMesh(Mesh& mesh)
         return;
     }
 
-    ReloadMesh(mesh);
-}
-
-void SDL3GPURenderer::ReloadMesh(Mesh& mesh)
-{
-    const auto vertices_size = static_cast<uint32>(mesh.vertices.size() * sizeof(Vertex));
-    const auto indices_size = static_cast<uint32>(mesh.indices.size() * sizeof(uint32));
-
-    SDL_GPUTransferBuffer* vertex_transfer_buffer = CreateUploadTransferBuffer(mesh.vertices.data(), vertices_size);
-    SDL_GPUTransferBuffer* index_transfer_buffer = CreateUploadTransferBuffer(mesh.indices.data(), indices_size);
+    SDL_GPUTransferBuffer* vertex_transfer_buffer = CreateUploadTransferBuffer(vertices.data(), vertices_size);
+    SDL_GPUTransferBuffer* index_transfer_buffer = CreateUploadTransferBuffer(indices.data(), indices_size);
 
     auto& [vertices_buffer_location, vertices_buffer_region] = buffer_copies.emplace_back();
     vertices_buffer_location.transfer_buffer = vertex_transfer_buffer;

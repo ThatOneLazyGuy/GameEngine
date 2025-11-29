@@ -175,10 +175,13 @@ class Mesh final : public Resource
 
     Mesh() = default;
     Mesh(const std::string& path, uint32 index);
+    Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices);
     ~Mesh() override;
 
-    std::vector<Vertex> vertices;
-    std::vector<uint32> indices;
+    [[nodiscard]] uint32 GetVerticesCount() const { return vertices_count; }
+    [[nodiscard]] uint32 GetIndicesCount() const { return indices_count; }
+    // Mesh index in the model it was loaded from.
+    [[nodiscard]] uint32 GetIndex() const { return index; }
 
     uint32 bind{};
 
@@ -187,7 +190,10 @@ class Mesh final : public Resource
 
     std::vector<Handle<Texture>> textures;
 
-    uint32 index; // Mesh index in the model it was loaded from.
+  private:
+    uint32 vertices_count;
+    uint32 indices_count;
+    uint32 index{0}; // Mesh index in the model it was loaded from.
 };
 
 struct ShaderSettings;
@@ -243,7 +249,9 @@ class GraphicsShaderPipeline final : public FileResource
 
     // TODO: Make sure the pipeline path and the vertex/fragment paths are pointing the used shader files.
     GraphicsShaderPipeline() = default;
-    GraphicsShaderPipeline(const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings);
+    GraphicsShaderPipeline(
+        const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings
+    );
     GraphicsShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader);
     ~GraphicsShaderPipeline() override;
 
@@ -264,13 +272,13 @@ class GraphicsShaderPipeline final : public FileResource
 class Renderer
 {
   public:
-      struct BackendShaderInfo
-      {
-          const char* file_extension;
-          bool binary;
-          const char* profile;
-          bool invert_y;
-      };
+    struct BackendShaderInfo
+    {
+        const char* file_extension;
+        bool binary;
+        const char* profile;
+        bool invert_y;
+    };
 
     Renderer(Renderer& other) = delete;
     void operator=(const Renderer&) = delete;
@@ -332,8 +340,7 @@ class Renderer
     virtual void UpdateDepthBuffer(const RenderTarget& target) = 0;
     virtual void DestroyRenderTarget(RenderTarget& target) = 0;
 
-    virtual void CreateMesh(Mesh& mesh) = 0;
-    virtual void ReloadMesh(Mesh& mesh) = 0;
+    virtual void CreateMesh(Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices) = 0;
     virtual void DestroyMesh(Mesh& mesh) = 0;
 
     virtual void CreateShader(Shader& shader, const void* data, usize size) = 0;

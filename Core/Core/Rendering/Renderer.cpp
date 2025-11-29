@@ -147,7 +147,7 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     const aiVector3D* mesh_tex_coords = model_mesh.mTextureCoords[0];
 
     const usize vertex_count = model_mesh.mNumVertices;
-    vertices.resize(vertex_count);
+    std::vector<Vertex> vertices{vertex_count};
 
     for (usize i = 0; i < vertex_count; i++)
     {
@@ -161,7 +161,7 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     const aiFace* mesh_faces = model_mesh.mFaces;
 
     const usize face_count = model_mesh.mNumFaces;
-    indices.resize(face_count * 3);
+    std::vector<uint32> indices(face_count * 3);
     for (usize i = 0; i < face_count; i++)
     {
         std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
@@ -177,7 +177,18 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
     auto specular_maps = LoadMaterialTextures(material, aiTextureType_SPECULAR, mesh_path);
     textures.insert(textures.end(), specular_maps.begin(), specular_maps.end());
 
-    Renderer::Instance().CreateMesh(*this);
+    vertices_count = static_cast<uint32>(vertices.size());
+    indices_count = static_cast<uint32>(indices.size());
+
+    Renderer::Instance().CreateMesh(*this, vertices, indices);
+}
+
+Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices)
+{
+    vertices_count = static_cast<uint32>(vertices.size());
+    indices_count = static_cast<uint32>(indices.size());
+
+    Renderer::Instance().CreateMesh(*this, vertices, indices);
 }
 
 Mesh::~Mesh() { Renderer::Instance().DestroyMesh(*this); }

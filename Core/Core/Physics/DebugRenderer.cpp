@@ -11,13 +11,12 @@ namespace Physics
 
     JPH::DebugRenderer::Batch DebugRenderer::CreateTriangleBatch(const Triangle* triangles, int triangle_count)
     {
-        BatchMesh* batch = new BatchMesh;
-
+        std::vector<::Vertex> vertices{static_cast<usize>(triangle_count) * 3};
         for (int triangle_index = 0; triangle_index < triangle_count; ++triangle_index)
         {
             for (auto [position, normal, ui, color] : triangles[triangle_index].mV)
             {
-                auto& vertex = batch->mesh.vertices.emplace_back();
+                auto& vertex = vertices.emplace_back();
 
                 vertex.position = float3{position.x, position.y, position.z};
                 const JPH::Vec4 float_color = color.ToVec4();
@@ -25,34 +24,32 @@ namespace Physics
             }
         }
 
-        std::iota(batch->mesh.indices.begin(), batch->mesh.indices.end(), 0);
+        std::vector<uint32> indices(vertices.size());
+        std::iota(indices.begin(), indices.end(), 0);
 
-        Renderer::Instance().CreateMesh(batch->mesh);
-        return batch;
+        return new BatchMesh{vertices, indices};
     }
 
     JPH::DebugRenderer::Batch DebugRenderer::CreateTriangleBatch(
-        const Vertex* vertices, const int vertices_count, const uint32* indices, const int inIndexCount
+        const Vertex* vertices, const int vertices_count, const uint32* indices, const int indices_count
     )
     {
-        BatchMesh* batch = new BatchMesh{};
 
-        batch->mesh.vertices.resize(vertices_count);
+        std::vector<::Vertex> mesh_vertices(vertices_count);
         for (int i = 0; i < vertices_count; i++)
         {
             auto& [position, normal, ui, color] = vertices[i];
 
-            auto& vertex = batch->mesh.vertices[i];
+            auto& vertex = mesh_vertices[i];
 
             vertex.position = float3{position.x, position.y, position.z};
             const JPH::Vec4 float_color = color.ToVec4();
             vertex.color = float3{float_color.mF32};
         }
 
-        batch->mesh.indices.assign(indices, indices + inIndexCount);
+        const std::vector<uint32> mesh_indices{indices, indices + indices_count};
 
-        Renderer::Instance().CreateMesh(batch->mesh);
-        return batch;
+        return new BatchMesh{mesh_vertices, mesh_indices};
     }
 
     void DebugRenderer::DrawGeometry(

@@ -118,7 +118,7 @@ void* OpenGLRenderer::GetContext() { return static_cast<void*>(&context); }
 void OpenGLRenderer::RenderMesh(const Mesh& mesh)
 {
     glBindVertexArray(mesh.bind);
-    glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh.indices.size()), GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh.GetIndicesCount()), GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
 }
 
@@ -255,31 +255,19 @@ void OpenGLRenderer::UpdateDepthBuffer(const RenderTarget& target)
 
 void OpenGLRenderer::DestroyRenderTarget(RenderTarget& target) { glDeleteFramebuffers(1, &target.target_id); }
 
-void OpenGLRenderer::CreateMesh(Mesh& mesh)
+void OpenGLRenderer::CreateMesh(Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices)
 {
     glGenVertexArrays(1, &mesh.bind);
     glGenBuffers(1, &mesh.vertices_buffer.id);
     glGenBuffers(1, &mesh.indices_buffer.id);
 
-    ReloadMesh(mesh);
-}
-
-void OpenGLRenderer::DestroyMesh(Mesh& mesh)
-{
-    glDeleteBuffers(1, &mesh.vertices_buffer.id);
-    glDeleteBuffers(1, &mesh.indices_buffer.id);
-    glDeleteVertexArrays(1, &mesh.bind);
-}
-
-void OpenGLRenderer::ReloadMesh(Mesh& mesh)
-{
     glBindVertexArray(mesh.bind);
 
     glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices_buffer.id);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<sint32>(mesh.vertices.size() * sizeof(Vertex)), mesh.vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<sint32>(vertices.size() * sizeof(Vertex)), vertices.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.id);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<sint32>(mesh.indices.size() * sizeof(uint32)), mesh.indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<sint32>(indices.size() * sizeof(uint32)), indices.data(), GL_STATIC_DRAW);
 
     const uint8* offset = nullptr;
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
@@ -296,6 +284,13 @@ void OpenGLRenderer::ReloadMesh(Mesh& mesh)
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void OpenGLRenderer::DestroyMesh(Mesh& mesh)
+{
+    glDeleteBuffers(1, &mesh.vertices_buffer.id);
+    glDeleteBuffers(1, &mesh.indices_buffer.id);
+    glDeleteVertexArrays(1, &mesh.bind);
 }
 
 void OpenGLRenderer::CreateShader(Shader& shader, const void* data, usize)
