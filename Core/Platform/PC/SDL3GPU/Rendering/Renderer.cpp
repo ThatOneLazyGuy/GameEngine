@@ -106,12 +106,7 @@ namespace
 
 SDL3GPURenderer::SDL3GPURenderer() : Renderer{}
 {
-    backend_shader_info = {
-        .file_extension = ".spv",
-        .binary = true,
-        .profile = "spirv_1_3",
-        .invert_y = false
-    };
+    backend_shader_info = {.file_extension = ".spv", .binary = true, .profile = "spirv_1_3", .invert_y = false};
 }
 
 void SDL3GPURenderer::InitBackend()
@@ -135,9 +130,11 @@ void SDL3GPURenderer::InitBackend()
     // SDL_GPU_PRESENTMODE_MAILBOX is a non-tearing alternative to SDL_GPU_PRESENTMODE_IMMIDATE, but we want to limit FPS so we choose SDL_GPU_PRESENTMODE_VSYNC.
     SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
 
-    Resource::Load<GraphicsShaderPipeline>(
-        "Assets/Shaders/TestShader.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
-    );
+    // TODO: FIX
+
+    //Resource::Load<GraphicsShaderPipeline>(
+    //    "Assets/Shaders/DefaultShader.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
+    //);
 }
 
 void SDL3GPURenderer::ExitBackend()
@@ -166,10 +163,10 @@ void* SDL3GPURenderer::GetContext() { return device; }
 
 void SDL3GPURenderer::RenderMesh(const Mesh& mesh)
 {
-    const SDL_GPUBufferBinding vertex_binding{.buffer = static_cast<SDL_GPUBuffer*>(mesh.vertices_buffer.pointer)};
+    const SDL_GPUBufferBinding vertex_binding{.buffer = static_cast<SDL_GPUBuffer*>(mesh.vertices_buffer.pointer), .offset = 0};
     SDL_BindGPUVertexBuffers(active_render_pass, 0, &vertex_binding, 1);
 
-    const SDL_GPUBufferBinding index_binding{.buffer = static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer)};
+    const SDL_GPUBufferBinding index_binding{.buffer = static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer), .offset = 0};
     SDL_BindGPUIndexBuffer(active_render_pass, &index_binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
     SDL_DrawGPUIndexedPrimitives(active_render_pass, mesh.GetIndicesCount(), 1, 0, 0, 0);
@@ -195,7 +192,7 @@ SDL_GPUCommandBuffer* SDL3GPURenderer::GetCommandBuffer() { return render_comman
 
 void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 {
-    Handle<RenderTarget> render_target = render_pass.render_target;
+    const Handle<RenderTarget> render_target = render_pass.render_target;
     std::vector<SDL_GPUColorTargetInfo> color_target_infos;
 
     if (render_target->render_buffers.empty())
@@ -210,11 +207,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
         }
 
         const SDL_GPUColorTargetInfo color_target_info{
-            .texture = swapchain_texture,
-            .layer_or_depth_plane = 0,
-            .clear_color = SDL_FColor{},
-            .load_op = SDL_GPU_LOADOP_CLEAR,
-            .store_op = SDL_GPU_STOREOP_STORE
+            .texture = swapchain_texture, .clear_color = {}, .load_op = SDL_GPU_LOADOP_CLEAR, .store_op = SDL_GPU_STOREOP_STORE
         };
 
         color_target_infos.push_back(color_target_info);
@@ -226,12 +219,12 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
         {
             const float4& clear_color = render_buffer.clear_color;
 
-            const SDL_GPUColorTargetInfo color_target_info{
+            SDL_GPUColorTargetInfo color_target_info{
                 .texture = static_cast<SDL_GPUTexture*>(render_buffer.GetTexture()->texture.pointer),
-                .layer_or_depth_plane = 0,
                 .clear_color = SDL_FColor{clear_color.x(), clear_color.y(), clear_color.z(), clear_color.w()},
                 .load_op = (render_pass.clear_render_targets ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
-                .store_op = SDL_GPU_STOREOP_STORE
+                .store_op = SDL_GPU_STOREOP_STORE,
+                .resolve_texture = nullptr
             };
 
             color_target_infos.push_back(color_target_info);
@@ -243,13 +236,11 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 
     if (depth_texture != nullptr)
     {
-        depth_stencil_target_info = new SDL_GPUDepthStencilTargetInfo{
-
-            .texture = static_cast<SDL_GPUTexture*>(depth_texture->texture.pointer),
-            .clear_depth = 1.0f,
-            .load_op = (render_pass.clear_render_targets ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD),
-            .store_op = SDL_GPU_STOREOP_STORE,
-        };
+        depth_stencil_target_info = new SDL_GPUDepthStencilTargetInfo{};
+        depth_stencil_target_info->texture = static_cast<SDL_GPUTexture*>(depth_texture->texture.pointer);
+        depth_stencil_target_info->clear_depth = 1.0f;
+        depth_stencil_target_info->load_op = (render_pass.clear_render_targets ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
+        depth_stencil_target_info->store_op = SDL_GPU_STOREOP_STORE;
     }
 
     active_render_pass = SDL_BeginGPURenderPass(
@@ -278,6 +269,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
 
     const SDL_GPUTextureFormat format =
         texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM;
+
     const SDL_GPUTextureCreateInfo texture_create_info{
         .type = SDL_GPU_TEXTURETYPE_2D,
         .format = format,
@@ -285,7 +277,7 @@ void SDL3GPURenderer::CreateTexture(Texture& texture, const uint8* data, const S
         .width = width,
         .height = height,
         .layer_count_or_depth = 1,
-        .num_levels = 1,
+        .num_levels = 1
     };
 
     texture.texture.pointer = SDL_CreateGPUTexture(device, &texture_create_info);
@@ -330,6 +322,7 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
 {
     const SDL_GPUTextureFormat format =
         texture.GetFormat() == Texture::COLOR_RGBA_32 ? SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM : SDL_GPU_TEXTUREFORMAT_D24_UNORM;
+
     const SDL_GPUTextureCreateInfo texture_create_info{
         .type = SDL_GPU_TEXTURETYPE_2D,
         .format = format,
@@ -337,7 +330,7 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
         .width = static_cast<uint32>(new_width),
         .height = static_cast<uint32>(new_height),
         .layer_count_or_depth = 1,
-        .num_levels = 1,
+        .num_levels = 1
     };
 
     SDL_GPUTexture* new_texture = SDL_CreateGPUTexture(device, &texture_create_info);
@@ -347,7 +340,7 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
         return;
     }
 
-    SDL_GPUTexture* texture_pointer = static_cast<SDL_GPUTexture*>(texture.texture.pointer);
+    auto* texture_pointer = static_cast<SDL_GPUTexture*>(texture.texture.pointer);
     if (texture_pointer != nullptr)
     {
         if (static_cast<uint32>(texture.GetFlags()) & Texture::COLOR_RGBA_32)
@@ -358,7 +351,7 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
                 .x = 0,
                 .y = 0,
                 .w = static_cast<uint32>(texture.GetWidth()),
-                .h = static_cast<uint32>(texture.GetHeight()),
+                .h = static_cast<uint32>(texture.GetHeight())
             };
 
             const SDL_GPUBlitRegion destination_region{
@@ -367,7 +360,7 @@ void SDL3GPURenderer::ResizeTexture(Texture& texture, const sint32 new_width, co
                 .x = 0,
                 .y = 0,
                 .w = static_cast<uint32>(new_width),
-                .h = static_cast<uint32>(new_height),
+                .h = static_cast<uint32>(new_height)
             };
 
             const SDL_GPUBlitInfo blit_info{
@@ -439,47 +432,31 @@ void SDL3GPURenderer::DestroyMesh(Mesh& mesh)
     SDL_ReleaseGPUBuffer(device, static_cast<SDL_GPUBuffer*>(mesh.indices_buffer.pointer));
 }
 
-void SDL3GPURenderer::CreateShader(Shader& shader, const void* data, usize size)
+void SDL3GPURenderer::CreateShader(Shader& shader, const void* data, const usize size)
 {
-    const auto stage = static_cast<SDL_GPUShaderStage>(shader.type);
-
-    const SDL_GPUShaderFormat backendFormats = SDL_GetGPUShaderFormats(device);
-    SDL_GPUShaderFormat format;
+    const SDL_GPUShaderFormat format = SDL_GetGPUShaderFormats(device);
     const char* entrypoint;
 
-    if (backendFormats & SDL_GPU_SHADERFORMAT_SPIRV)
-    {
-        format = SDL_GPU_SHADERFORMAT_SPIRV;
-        entrypoint = "main";
-    }
-    else if (backendFormats & SDL_GPU_SHADERFORMAT_MSL)
-    {
-        format = SDL_GPU_SHADERFORMAT_MSL;
-        entrypoint = "main0";
-    }
-    else if (backendFormats & SDL_GPU_SHADERFORMAT_DXIL)
-    {
-        format = SDL_GPU_SHADERFORMAT_DXIL;
-        entrypoint = "main";
-    }
+    if (format & SDL_GPU_SHADERFORMAT_SPIRV || format & SDL_GPU_SHADERFORMAT_DXIL) { entrypoint = "main"; }
+    else if (format & SDL_GPU_SHADERFORMAT_MSL) { entrypoint = "main0"; }
     else
     {
         Log::Error("Unrecognized backend shader format!");
         return;
     }
 
-    const SDL_GPUShaderCreateInfo shaderInfo{
+    const SDL_GPUShaderCreateInfo shader_info{
         .code_size = size,
         .code = static_cast<const uint8*>(data),
         .entrypoint = entrypoint,
         .format = format,
-        .stage = stage,
+        .stage = static_cast<SDL_GPUShaderStage>(shader.type),
         .num_samplers = shader.sampler_count,
         .num_storage_buffers = shader.storage_count,
-        .num_uniform_buffers = shader.uniform_count
+        .num_uniform_buffers = static_cast<uint32>(shader.uniform_sizes.size())
     };
 
-    shader.shader.pointer = SDL_CreateGPUShader(device, &shaderInfo);
+    shader.shader.pointer = SDL_CreateGPUShader(device, &shader_info);
     if (shader.shader.pointer == nullptr) Log::Error("Failed to create shader: {}", SDL_GetError());
 }
 

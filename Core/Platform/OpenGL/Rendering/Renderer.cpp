@@ -45,15 +45,14 @@ namespace
         }
     }
 
-    template <typename Type>
-    void CreateUniformBuffer(const int binding)
+    void CreateUniformBuffer(const int binding, const usize size)
     {
         unsigned int& UBO = uniformBuffers[binding];
 
         glGenBuffers(1, &UBO);
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
-        glBindBufferRange(GL_UNIFORM_BUFFER, binding, UBO, 0, sizeof(Type));
+        glBindBufferRange(GL_UNIFORM_BUFFER, binding, UBO, 0, static_cast<GLsizeiptr>(size));
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
     }
 
@@ -88,16 +87,6 @@ void OpenGLRenderer::InitBackend()
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
-
-    const Handle<GraphicsShaderPipeline>& graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(
-        "Assets/Shaders/TestShader.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 1, 0, 0}
-    );
-
-    glUseProgram(graphics_pipeline->shader_pipeline.id);
-    CreateUniformBuffer<Matrix4>(0);
-    CreateUniformBuffer<Matrix4>(1);
-    CreateUniformBuffer<Matrix4>(2);
-    glUseProgram(0);
 }
 
 void OpenGLRenderer::ExitBackend()
@@ -307,7 +296,6 @@ void OpenGLRenderer::CreateShader(Shader& shader, const void* data, usize)
 }
 void OpenGLRenderer::DestroyShader(Shader& shader) { glDeleteShader(shader.shader.id); }
 
-// Taken from the LearnOpenGL shader class: https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/shader_m.h
 void OpenGLRenderer::CreateShaderPipeline(
     GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
 )
@@ -317,7 +305,23 @@ void OpenGLRenderer::CreateShaderPipeline(
     glAttachShader(pipeline.shader_pipeline.id, vertex_shader->shader.id);
     glAttachShader(pipeline.shader_pipeline.id, fragment_shader->shader.id);
     glLinkProgram(pipeline.shader_pipeline.id);
+
     CheckCompileErrors(pipeline.shader_pipeline.id);
+
+    glUseProgram(pipeline.shader_pipeline.id);
+    int i = 0;
+    for (const usize size : vertex_shader->uniform_sizes)
+    {
+        CreateUniformBuffer(i, size);
+        ++i;
+    }
+    for (const usize size : fragment_shader->uniform_sizes)
+    {
+        CreateUniformBuffer(i, size);
+        ++i;
+    }
+    glUseProgram(0);
+
 }
 
 void OpenGLRenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) { glDeleteProgram(pipeline.shader_pipeline.id); }

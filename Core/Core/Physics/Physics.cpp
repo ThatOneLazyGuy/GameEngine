@@ -294,10 +294,7 @@ namespace Physics
 
         debug_renderer = new DebugRenderer();
 
-        Handle<GraphicsShaderPipeline> graphics_pipeline = Resource::Load<GraphicsShaderPipeline>(
-            "Assets/Shaders/PhysicsDebug.slang", ShaderSettings{Shader::VERTEX, 0, 0, 3}, ShaderSettings{Shader::FRAGMENT, 0, 0, 0}
-        );
-
+        Handle<GraphicsShaderPipeline> graphics_pipeline = Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", ShaderSettings{}, ShaderSettings{});
         Handle<RenderPassInterface> debug_render_pass = std::make_shared<PhysicsDebugRenderPass>(graphics_pipeline, Renderer::main_target);
         debug_render_pass->clear_render_targets = false;
         Renderer::render_passes.push_back(debug_render_pass);

@@ -19,4 +19,4 @@
     #define Sampler 0
 #endif
 
-#define Bind(bind, type) [vk::binding(bind, type)]
+#define Bind(bind, type) [[vk::binding(bind, type)]]

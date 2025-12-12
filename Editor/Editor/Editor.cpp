@@ -49,12 +49,15 @@ int main(int, char* args[])
     Renderer::SetupBackend(args[1]);
     Window::Init(&ImGui::PlatformProcessEvent);
     ShaderCompiler::Init();
-    ShaderCompiler::CompileShader("Assets/Shaders/TestShader.slang"); 
-    ShaderCompiler::CompileShader("Assets/Shaders/PhysicsDebug.slang");
+
     Renderer::Init();
+    const std::vector<ShaderSettings> test_shaders = ShaderCompiler::CompileShaders("Assets/Shaders/DefaultShader.slang");
+    Handle<GraphicsShaderPipeline> graphics_pipeline =
+        Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", test_shaders.at(0), test_shaders.at(1));
+    const std::vector<ShaderSettings> physics_shader = ShaderCompiler::CompileShaders("Assets/Shaders/PhysicsDebug.slang");
+    Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", physics_shader.at(0), physics_shader.at(1));
 
     Editor::Init();
-    Handle<GraphicsShaderPipeline> graphics_pipeline = Resource::GetResources<GraphicsShaderPipeline>()[0];
     Renderer::render_passes.emplace_back(std::make_shared<DefaultRenderPass>(graphics_pipeline, Renderer::main_target));
     graphics_pipeline.reset();
 

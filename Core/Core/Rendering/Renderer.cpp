@@ -201,7 +201,7 @@ uint64 Shader::GetID(const std::string& path, const ShaderSettings& shader_info)
 
 Shader::Shader(std::string path, const ShaderSettings& shader_info) :
     type{shader_info.type}, sampler_count{shader_info.sampler_count}, storage_count{shader_info.storage_count},
-    uniform_count{shader_info.uniform_count}
+    uniform_sizes{shader_info.uniform_sizes}
 {
     const Renderer::BackendShaderInfo& backend_shader_info = Renderer::GetBackendShaderInfo();
 
@@ -227,9 +227,9 @@ GraphicsShaderPipeline::GraphicsShaderPipeline(
     const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings
 )
 {
-    const Handle<Shader>& vertex_shader = FileResource::Load<Shader>(pipeline_path, vertex_settings);
+    const Handle<Shader>& vertex_shader = Load<Shader>(pipeline_path, vertex_settings);
     vertex_path = pipeline_path;
-    const Handle<Shader>& fragment_shader = FileResource::Load<Shader>(pipeline_path, fragment_settings);
+    const Handle<Shader>& fragment_shader = Load<Shader>(pipeline_path, fragment_settings);
     fragment_path = pipeline_path;
 
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);

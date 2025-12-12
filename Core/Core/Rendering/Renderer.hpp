@@ -218,7 +218,7 @@ class Shader final : public FileResource
     Type type{VERTEX};
     uint32 sampler_count{0};
     uint32 storage_count{0};
-    uint32 uniform_count{0};
+    std::vector<usize> uniform_sizes;
 
     ShaderID shader;
 };
@@ -228,7 +228,7 @@ struct ShaderSettings
     Shader::Type type{Shader::VERTEX};
     uint32 sampler_count{0};
     uint32 storage_count{0};
-    uint32 uniform_count{0};
+    std::vector<usize> uniform_sizes;
 };
 
 class RenderPassInterface;
@@ -236,6 +236,11 @@ class RenderPassInterface;
 class GraphicsShaderPipeline final : public FileResource
 {
   public:
+    static uint64 GetID(const std::string& path)
+    {
+        constexpr std::hash<std::string> hasher{};
+        return hasher(path);
+    }
     static uint64 GetID(const std::string& path, const ShaderSettings&, const ShaderSettings&)
     {
         constexpr std::hash<std::string> hasher{};
