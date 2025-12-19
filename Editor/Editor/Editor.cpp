@@ -51,11 +51,11 @@ int main(int, char* args[])
     ShaderCompiler::Init();
 
     Renderer::Init();
-    const std::vector<ShaderSettings> test_shaders = ShaderCompiler::CompileShaders("Assets/Shaders/DefaultShader.slang");
+    const GraphicsPipelineSettings default_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/DefaultShader.slang");
     Handle<GraphicsShaderPipeline> graphics_pipeline =
-        Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", test_shaders.at(0), test_shaders.at(1));
-    const std::vector<ShaderSettings> physics_shader = ShaderCompiler::CompileShaders("Assets/Shaders/PhysicsDebug.slang");
-    Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", physics_shader.at(0), physics_shader.at(1));
+        Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", default_pipeline_settings);
+    const GraphicsPipelineSettings physics_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/PhysicsDebug.slang");
+    Resource::Load<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", physics_pipeline_settings);
 
     Editor::Init();
     Renderer::render_passes.emplace_back(std::make_shared<DefaultRenderPass>(graphics_pipeline, Renderer::main_target));

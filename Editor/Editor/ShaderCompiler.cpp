@@ -32,7 +32,7 @@ namespace
         return std::memcmp(stored_hash.data(), hash->getBufferPointer(), stored_hash.size()) == 0;
     }
 
-    ShaderSettings ReflectCompositeShader(const Slang::ComPtr<IComponentType>& composite)
+    ShaderSettings ReflectCompositeShader(const Slang::ComPtr<IComponentType>& composite, std::unordered_map<std::string, usize>& uniform_sizes)
     {
         ShaderSettings settings{};
 
@@ -74,8 +74,6 @@ namespace
 
             if (!is_used) continue;
 
-            Log::Log("Parameter name: {}", parameter_layout->getName());
-
             TypeReflection* parameter_type = parameter_layout->getVariable()->getType();
             TypeReflection::Kind parameter_kind = parameter_type->getKind();
             switch (parameter_kind)
@@ -84,7 +82,9 @@ namespace
             {
                 // Get the TypeLayout of the constant buffer, then get the TypeLayout of the type it holds, then get the size of THAT.
                 const usize type_size = param_type_layout->getElementTypeLayout()->getSize();
-                settings.uniform_sizes.emplace_back(type_size);
+                const std::string& parameter_name = parameter_layout->getName();
+                if (!uniform_sizes.contains(parameter_name)) uniform_sizes[parameter_name] = type_size;
+                settings.uniform_count++;
                 break;
             }
 
@@ -106,7 +106,10 @@ namespace
         return settings;
     }
 
-    ShaderSettings CompileStage(const Slang::ComPtr<IModule>& module, const std::string& base_path, const SlangStage stage)
+    ShaderSettings CompileStage(
+        const Slang::ComPtr<IModule>& module, const std::string& base_path, const SlangStage stage,
+        std::unordered_map<std::string, usize>& uniform_sizes
+    )
     {
         Slang::ComPtr<IBlob> diagnostics{};
         ShaderSettings settings{};
@@ -131,7 +134,7 @@ namespace
             IComponentType* components[2]{module, entry_point};
             vertex_session->createCompositeComponentType(components, 2, composite.writeRef());
 
-            settings = ReflectCompositeShader(composite);
+            settings = ReflectCompositeShader(composite, uniform_sizes);
 
             // Compute hash.
             Slang::ComPtr<IBlob> hash;
@@ -142,7 +145,7 @@ namespace
 
             Log::Log("Recompiling shader: {}", shader_path);
 
-            const uint8* hash_data = static_cast<const uint8*>(hash->getBufferPointer());
+            const auto* hash_data = static_cast<const uint8*>(hash->getBufferPointer());
             Files::WriteBinary(hash_file_path, {hash_data, hash->getBufferSize()});
 
             // Link/compile the shader.
@@ -158,12 +161,12 @@ namespace
             // Write the shader stage data to the file.
             if (backend_shader_info.binary)
             {
-                const uint8* shader_data = static_cast<const uint8*>(shader_stage_data->getBufferPointer());
+                const auto* shader_data = static_cast<const uint8*>(shader_stage_data->getBufferPointer());
                 Files::WriteBinary(shader_path, {shader_data, shader_stage_data->getBufferSize()});
             }
             else
             {
-                const char* shader_text = static_cast<const char*>(shader_stage_data->getBufferPointer());
+                const auto* shader_text = static_cast<const char*>(shader_stage_data->getBufferPointer());
                 Files::WriteText(shader_path, {shader_text, shader_stage_data->getBufferSize()});
             }
 
@@ -179,7 +182,7 @@ namespace ShaderCompiler
 {
     void Init()
     {
-        SlangGlobalSessionDesc description{.enableGLSL = true};
+        constexpr SlangGlobalSessionDesc description{.enableGLSL = true};
         createGlobalSession(&description, global_session.writeRef());
 
         const Renderer::BackendShaderInfo& backend_shader_info = Renderer::GetBackendShaderInfo();
@@ -219,23 +222,23 @@ namespace ShaderCompiler
         global_session->createSession(default_session_description, fragment_session.writeRef());
     }
 
-    std::vector<ShaderSettings> CompileShaders(const std::string& path)
+    GraphicsPipelineSettings CompileGraphicsShaders(const std::string& path)
     {
         Slang::ComPtr<IBlob> diagnostics;
-        std::vector<ShaderSettings> infos;
+        GraphicsPipelineSettings info;
 
         const std::string base_path = path.substr(0, path.find_last_of('.'));
 
         Slang::ComPtr module{vertex_session->loadModule(path.c_str(), diagnostics.writeRef())};
-        if (TryLog(diagnostics)) return infos;
+        if (TryLog(diagnostics)) return info;
 
-        infos.push_back(CompileStage(module, base_path + ".vert", SLANG_STAGE_VERTEX));
+        info.vertex_info = CompileStage(module, base_path + ".vert", SLANG_STAGE_VERTEX, info.uniform_sizes);
 
         module = Slang::ComPtr{fragment_session->loadModule(path.c_str(), diagnostics.writeRef())};
-        if (TryLog(diagnostics)) return infos;
+        if (TryLog(diagnostics)) return info;
 
-        infos.push_back(CompileStage(module, base_path + ".frag", SLANG_STAGE_FRAGMENT));
+        info.fragment_info = CompileStage(module, base_path + ".frag", SLANG_STAGE_FRAGMENT, info.uniform_sizes);
 
-        return infos;
+        return info;
     }
 } // namespace ShaderCompiler

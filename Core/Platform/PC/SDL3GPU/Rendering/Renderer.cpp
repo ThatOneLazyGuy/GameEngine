@@ -453,7 +453,7 @@ void SDL3GPURenderer::CreateShader(Shader& shader, const void* data, const usize
         .stage = static_cast<SDL_GPUShaderStage>(shader.type),
         .num_samplers = shader.sampler_count,
         .num_storage_buffers = shader.storage_count,
-        .num_uniform_buffers = static_cast<uint32>(shader.uniform_sizes.size())
+        .num_uniform_buffers = shader.uniform_count
     };
 
     shader.shader.pointer = SDL_CreateGPUShader(device, &shader_info);

@@ -1,18 +1,12 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
-struct ShaderSettings;
+#include <core/Rendering/Renderer.hpp>
 
 namespace ShaderCompiler
 {
-	struct ShaderInfo
-	{
-
-	};
-
 	void Init();
 
-	std::vector<ShaderSettings> CompileShaders(const std::string& path);
+	GraphicsPipelineSettings CompileGraphicsShaders(const std::string& path);
 }

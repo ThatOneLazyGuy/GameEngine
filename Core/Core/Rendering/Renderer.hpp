@@ -218,7 +218,7 @@ class Shader final : public FileResource
     Type type{VERTEX};
     uint32 sampler_count{0};
     uint32 storage_count{0};
-    std::vector<usize> uniform_sizes;
+    uint32 uniform_count{0};
 
     ShaderID shader;
 };
@@ -228,36 +228,32 @@ struct ShaderSettings
     Shader::Type type{Shader::VERTEX};
     uint32 sampler_count{0};
     uint32 storage_count{0};
-    std::vector<usize> uniform_sizes;
+    uint32 uniform_count{0};
 };
 
 class RenderPassInterface;
 
+struct GraphicsPipelineSettings
+{
+    // The sizes of all uniforms in the pipeline.
+    std::unordered_map<std::string, usize> uniform_sizes;
+
+    ShaderSettings vertex_info;
+    ShaderSettings fragment_info;
+};
+
 class GraphicsShaderPipeline final : public FileResource
 {
   public:
-    static uint64 GetID(const std::string& path)
+    static uint64 GetID(const std::string& path, const GraphicsPipelineSettings& = {})
     {
         constexpr std::hash<std::string> hasher{};
         return hasher(path);
-    }
-    static uint64 GetID(const std::string& path, const ShaderSettings&, const ShaderSettings&)
-    {
-        constexpr std::hash<std::string> hasher{};
-        return hasher(path);
-    }
-    static uint64 GetID(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader)
-    {
-        constexpr std::hash<std::string> hasher{};
-        return hasher(vertex_shader->GetPath() + '+' + fragment_shader->GetPath());
     }
 
     // TODO: Make sure the pipeline path and the vertex/fragment paths are pointing the used shader files.
     GraphicsShaderPipeline() = default;
-    GraphicsShaderPipeline(
-        const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings
-    );
-    GraphicsShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader);
+    GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings = {});
     ~GraphicsShaderPipeline() override;
 
     const std::string& GetVertexPath() const { return vertex_path; }
@@ -266,6 +262,8 @@ class GraphicsShaderPipeline final : public FileResource
     bool IsWireframe() const { return wireframe; }
 
     GraphicsShaderPipelineID shader_pipeline;
+
+    std::unordered_map<std::string, usize> uniform_sizes;
 
   private:
     std::string vertex_path;

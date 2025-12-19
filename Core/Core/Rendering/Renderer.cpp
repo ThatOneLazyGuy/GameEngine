@@ -201,7 +201,7 @@ uint64 Shader::GetID(const std::string& path, const ShaderSettings& shader_info)
 
 Shader::Shader(std::string path, const ShaderSettings& shader_info) :
     type{shader_info.type}, sampler_count{shader_info.sampler_count}, storage_count{shader_info.storage_count},
-    uniform_sizes{shader_info.uniform_sizes}
+    uniform_count{shader_info.uniform_count}
 {
     const Renderer::BackendShaderInfo& backend_shader_info = Renderer::GetBackendShaderInfo();
 
@@ -223,25 +223,18 @@ Shader::Shader(std::string path, const ShaderSettings& shader_info) :
 
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
-GraphicsShaderPipeline::GraphicsShaderPipeline(
-    const std::string& pipeline_path, const ShaderSettings& vertex_settings, const ShaderSettings& fragment_settings
-)
+GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings) :
+    uniform_sizes{pipeline_settings.uniform_sizes}
 {
-    const Handle<Shader>& vertex_shader = Load<Shader>(pipeline_path, vertex_settings);
+    const Handle<Shader>& vertex_shader = Load<Shader>(pipeline_path, pipeline_settings.vertex_info);
     vertex_path = pipeline_path;
-    const Handle<Shader>& fragment_shader = Load<Shader>(pipeline_path, fragment_settings);
+    const Handle<Shader>& fragment_shader = Load<Shader>(pipeline_path, pipeline_settings.fragment_info);
     fragment_path = pipeline_path;
 
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
 
     TryDestroyResource(vertex_shader->Resource::GetID());
     TryDestroyResource(fragment_shader->Resource::GetID());
-}
-
-GraphicsShaderPipeline::GraphicsShaderPipeline(const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader) :
-    vertex_path{vertex_shader->GetPath()}, fragment_path{fragment_shader->GetPath()}
-{
-    Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
 }
 
 GraphicsShaderPipeline::~GraphicsShaderPipeline() { Renderer::Instance().DestroyShaderPipeline(*this); }

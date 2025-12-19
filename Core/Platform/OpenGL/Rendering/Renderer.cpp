@@ -310,12 +310,7 @@ void OpenGLRenderer::CreateShaderPipeline(
 
     glUseProgram(pipeline.shader_pipeline.id);
     int i = 0;
-    for (const usize size : vertex_shader->uniform_sizes)
-    {
-        CreateUniformBuffer(i, size);
-        ++i;
-    }
-    for (const usize size : fragment_shader->uniform_sizes)
+    for (const auto& [name, size] : pipeline.uniform_sizes)
     {
         CreateUniformBuffer(i, size);
         ++i;
