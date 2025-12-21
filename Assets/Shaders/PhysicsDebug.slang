@@ -8,13 +8,13 @@ Bind(2, Uniform)
 ConstantBuffer<matrix> projection : register(b2, space1);
 
 [shader("vertex")]
-float4 VertexMain(in float3 position: TEXCOORD0, inout float3 color: TEXCOORD1) : SV_Position
+float4 VertexMain(float3 position : Position, inout float3 color: Color) : SV_Position
 {
     return mul(mul(mul(float4(position, 1.0), model), view), projection);
 }
 
 [shader("fragment")]
-float4 FragmentMain(in float4 position : SV_Position, in float3 color: TEXCOORD1) : SV_Target
+float4 FragmentMain(in float4 position : SV_Position, in float3 color: Color) : SV_Target
 {
     return float4(color, 1.0);
 }

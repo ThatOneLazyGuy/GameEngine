@@ -51,6 +51,13 @@ struct Vertex
     float2 tex_coord{};
 };
 
+
+inline const std::unordered_map<std::string, usize> attribute_sizes{
+    {"POSITION", offsetof(Vertex, position)},
+    {"COLOR", offsetof(Vertex, color)},
+    {"TEX_COORD", offsetof(Vertex, tex_coord)}
+};
+
 struct TextureSettings;
 struct SamplerSettings;
 
@@ -233,8 +240,24 @@ struct ShaderSettings
 
 class RenderPassInterface;
 
+struct VertexAttribute
+{
+    enum ElementType : uint8
+    {
+        FLOAT = 0,
+        SINT = 1,
+        UINT = 2,
+    };
+
+    std::string semantic_name;
+    ElementType element_type;
+    usize element_count;
+};
+
 struct GraphicsPipelineSettings
 {
+    std::vector<VertexAttribute> vertex_attributes;
+
     // The sizes of all uniforms in the pipeline.
     std::unordered_map<std::string, usize> uniform_sizes;
 
@@ -263,6 +286,7 @@ class GraphicsShaderPipeline final : public FileResource
 
     GraphicsShaderPipelineID shader_pipeline;
 
+    std::vector<VertexAttribute> vertex_attributes;
     std::unordered_map<std::string, usize> uniform_sizes;
 
   private:

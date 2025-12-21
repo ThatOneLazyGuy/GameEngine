@@ -224,7 +224,7 @@ Shader::Shader(std::string path, const ShaderSettings& shader_info) :
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
 GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings) :
-    uniform_sizes{pipeline_settings.uniform_sizes}
+    vertex_attributes{pipeline_settings.vertex_attributes}, uniform_sizes{pipeline_settings.uniform_sizes}
 {
     const Handle<Shader>& vertex_shader = Load<Shader>(pipeline_path, pipeline_settings.vertex_info);
     vertex_path = pipeline_path;

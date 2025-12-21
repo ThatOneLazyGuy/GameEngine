@@ -2,9 +2,9 @@
 
 struct Vertex
 {
-    float3 position;
-    float3 color;
-    float2 tex_coord;
+    float3 position : Position;
+    float3 color : Color;
+    float2 tex_coord : Tex_Coord;
 };
 
 Bind(0, Uniform)
