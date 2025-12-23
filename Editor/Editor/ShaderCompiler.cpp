@@ -90,7 +90,7 @@ namespace
 
             case TypeReflection::Kind::Resource:
             {
-                if (parameter_type->getResourceShape() != (SLANG_TEXTURE_2D | SLANG_TEXTURE_COMBINED_FLAG)) break;
+                if (parameter_type->getResourceShape() ^ SLANG_TEXTURE_2D) break;
                 settings.sampler_count++;
                 break;
             }
