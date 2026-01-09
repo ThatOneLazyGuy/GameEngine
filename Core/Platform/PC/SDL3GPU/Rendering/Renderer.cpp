@@ -488,7 +488,7 @@ void SDL3GPURenderer::CreateShaderPipeline(
     };
 
     static constexpr SDL_GPUVertexBufferDescription vertex_buffer_description[]{
-        {.slot = 0, .pitch = sizeof(float) * 8, .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX},
+        {.slot = 0, .pitch = sizeof(Vertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,},
     };
 
     std::vector<SDL_GPUVertexAttribute> vertex_attributes;

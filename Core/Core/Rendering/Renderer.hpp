@@ -51,7 +51,6 @@ struct Vertex
     float2 tex_coord{};
 };
 
-
 inline const std::unordered_map<std::string, usize> attribute_sizes{
     {"POSITION", offsetof(Vertex, position)},
     {"COLOR", offsetof(Vertex, color)},
@@ -64,13 +63,13 @@ struct SamplerSettings;
 class Texture
 {
   public:
-    enum ColorFormat : uint32
+    enum ColorFormat : uint8
     {
         COLOR_RGBA_32,
         DEPTH_24
     };
 
-    enum Flags : uint32
+    enum Flags : uint8
     {
         SAMPLER = (1 << 0),
         COLOR_TARGET = (1 << 1),
@@ -189,8 +188,6 @@ class Mesh final : public Resource
     [[nodiscard]] uint32 GetIndicesCount() const { return indices_count; }
     // Mesh index in the model it was loaded from.
     [[nodiscard]] uint32 GetIndex() const { return index; }
-
-    uint32 bind{};
 
     BufferID vertices_buffer;
     BufferID indices_buffer;

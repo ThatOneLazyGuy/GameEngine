@@ -14,7 +14,7 @@ class OpenGLRenderer final : public Renderer
     void InitBackend() override;
     void ExitBackend() override;
 
-    void Update() override;
+    void Update() override {};
     void SwapBuffer() override;
 
     void* GetContext() override;

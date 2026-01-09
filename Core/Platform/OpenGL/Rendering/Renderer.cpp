@@ -19,11 +19,12 @@ namespace
 {
     SDL_GLContext context;
 
-    std::map<int, unsigned int> uniformBuffers;
+    std::map<GLuint, GLuint> uniform_buffers;
+    Handle<GraphicsShaderPipeline> active_pipeline;
 
     void CheckCompileErrors(const uint32 id, const std::string& type = "")
     {
-        int success;
+        GLint success;
         char info_log[1024];
         if (type.empty())
         {
@@ -45,15 +46,50 @@ namespace
         }
     }
 
-    void CreateUniformBuffer(const int binding, const usize size)
+    void CreateUniformBuffer(const GLuint binding, const usize size)
     {
-        unsigned int& UBO = uniformBuffers[binding];
+        GLuint& UBO = uniform_buffers[binding];
 
         glGenBuffers(1, &UBO);
 
         glBindBuffer(GL_UNIFORM_BUFFER, UBO);
         glBindBufferRange(GL_UNIFORM_BUFFER, binding, UBO, 0, static_cast<GLsizeiptr>(size));
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    }
+
+    void SetActiveVertexAttributes()
+    {
+        GLuint location = 0;
+        for (const VertexAttribute& attribute : active_pipeline->vertex_attributes)
+        {
+            GLenum type{};
+            switch (attribute.element_type)
+            {
+            case VertexAttribute::FLOAT:
+                type = GL_FLOAT;
+                break;
+
+            case VertexAttribute::SINT:
+                type = GL_INT;
+                break;
+
+            case VertexAttribute::UINT:
+                type = GL_UNSIGNED_INT;
+                break;
+
+            default:
+                Log::Error("Invalid element type");
+                break;
+            }
+
+
+            const usize offset = attribute_sizes.at(attribute.semantic_name);
+            glVertexAttribPointer(
+                location, static_cast<GLint>(attribute.element_count), type, GL_FALSE, sizeof(Vertex), std::bit_cast<void*>(offset)
+            );
+            glEnableVertexAttribArray(location);
+            ++location;
+        }
     }
 
 } // namespace
@@ -94,21 +130,25 @@ void OpenGLRenderer::ExitBackend()
     if (!SDL_GL_DestroyContext(context)) Log::Error("Failed to destroy GL context: %s", SDL_GetError());
 }
 
-void OpenGLRenderer::Update() {}
-
 void OpenGLRenderer::SwapBuffer()
 {
     auto* window = static_cast<SDL_Window*>(Window::GetHandle());
     SDL_GL_SwapWindow(window);
 }
 
-void* OpenGLRenderer::GetContext() { return static_cast<void*>(&context); }
+void* OpenGLRenderer::GetContext() { return &context; }
 
 void OpenGLRenderer::RenderMesh(const Mesh& mesh)
 {
-    glBindVertexArray(mesh.bind);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices_buffer.id);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.id);
+
+    // Explicitly set the vertex attributes for each render call instead of using a VAO, this allows us to use different parameter layouts in shaders.
+    SetActiveVertexAttributes();
     glDrawElements(GL_TRIANGLES, static_cast<sint32>(mesh.GetIndicesCount()), GL_UNSIGNED_INT, nullptr);
-    glBindVertexArray(0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void OpenGLRenderer::SetTextureSampler(const uint32 slot, const Texture& texture)
@@ -119,14 +159,14 @@ void OpenGLRenderer::SetTextureSampler(const uint32 slot, const Texture& texture
 
 void OpenGLRenderer::SetUniform(const uint32 slot, const void* data, const usize size)
 {
-    const auto iterator = uniformBuffers.find(static_cast<sint32>(slot));
-    if (iterator == uniformBuffers.end())
+    const auto iterator = uniform_buffers.find(static_cast<sint32>(slot));
+    if (iterator == uniform_buffers.end())
     {
         Log::Error("Invalid shader uniform buffer");
         return;
     }
 
-    const unsigned int UBO = iterator->second;
+    const GLuint UBO = iterator->second;
 
     glBindBuffer(GL_UNIFORM_BUFFER, UBO);
     glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(size), data, GL_STATIC_DRAW);
@@ -140,13 +180,14 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
     glBindFramebuffer(GL_FRAMEBUFFER, render_target->target_id);
     glViewport(0, 0, render_target->GetWidth(), render_target->GetHeight());
 
-    glUseProgram(render_pass.graphics_pipeline->shader_pipeline.id);
+    active_pipeline = render_pass.graphics_pipeline;
+    glUseProgram(active_pipeline->shader_pipeline.id);
 
     std::vector<uint32> draw_buffers;
     draw_buffers.reserve(render_target->render_buffers.size());
 
     uint32 index = 0;
-    for (RenderBuffer& render_buffer : render_target->render_buffers)
+    for (const RenderBuffer& render_buffer : render_target->render_buffers)
     {
         const uint32 attachment = GL_COLOR_ATTACHMENT0 + index;
         draw_buffers.push_back(attachment);
@@ -170,6 +211,8 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 
 void OpenGLRenderer::EndRenderPass()
 {
+    active_pipeline.reset();
+
     glUseProgram(0);
     glDrawBuffers(0, nullptr);
 
@@ -246,31 +289,14 @@ void OpenGLRenderer::DestroyRenderTarget(RenderTarget& target) { glDeleteFramebu
 
 void OpenGLRenderer::CreateMesh(Mesh& mesh, const std::vector<Vertex>& vertices, const std::vector<uint32>& indices)
 {
-    glGenVertexArrays(1, &mesh.bind);
     glGenBuffers(1, &mesh.vertices_buffer.id);
-    glGenBuffers(1, &mesh.indices_buffer.id);
-
-    glBindVertexArray(mesh.bind);
-
     glBindBuffer(GL_ARRAY_BUFFER, mesh.vertices_buffer.id);
     glBufferData(GL_ARRAY_BUFFER, static_cast<sint32>(vertices.size() * sizeof(Vertex)), vertices.data(), GL_STATIC_DRAW);
 
+    glGenBuffers(1, &mesh.indices_buffer.id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indices_buffer.id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<sint32>(indices.size() * sizeof(uint32)), indices.data(), GL_STATIC_DRAW);
 
-    const uint8* offset = nullptr;
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
-    glEnableVertexAttribArray(0);
-    offset += sizeof(float3);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
-    glEnableVertexAttribArray(1);
-    offset += sizeof(float3);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
-    glEnableVertexAttribArray(2);
-
-    glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
@@ -279,7 +305,6 @@ void OpenGLRenderer::DestroyMesh(Mesh& mesh)
 {
     glDeleteBuffers(1, &mesh.vertices_buffer.id);
     glDeleteBuffers(1, &mesh.indices_buffer.id);
-    glDeleteVertexArrays(1, &mesh.bind);
 }
 
 void OpenGLRenderer::CreateShader(Shader& shader, const void* data, usize)
@@ -309,14 +334,13 @@ void OpenGLRenderer::CreateShaderPipeline(
     CheckCompileErrors(pipeline.shader_pipeline.id);
 
     glUseProgram(pipeline.shader_pipeline.id);
-    int i = 0;
+    GLuint i = 0;
     for (const auto& [name, size] : pipeline.uniform_sizes)
     {
         CreateUniformBuffer(i, size);
         ++i;
     }
     glUseProgram(0);
-
 }
 
 void OpenGLRenderer::DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) { glDeleteProgram(pipeline.shader_pipeline.id); }
