@@ -1,10 +1,12 @@
 #include "RenderPassInterface.hpp"
 
+#include "Core/Components/Transform.hpp"
+
 namespace
 {
-    void RenderMesh(const Transform& transform, const Handle<Mesh>& mesh_handle)
+    void RenderMesh(const ECS::Entity& entity, const Handle<Mesh>& mesh_handle)
     {
-        Renderer::SetUniform(0, transform.GetMatrix());
+        Renderer::SetUniform(0, Transform::GetMatrix(entity));
 
         uint32 diffuse_count = 0;
         uint32 specular_count = 0;
@@ -25,15 +27,14 @@ namespace
 void DefaultRenderPass::Render()
 {
     const ECS::Entity camera_entity = ECS::GetWorld().query_builder<const Transform, const Camera>().build().first();
-    const Transform& camera_transform = camera_entity.GetComponent<Transform>();
     const Camera& camera = camera_entity.GetComponent<Camera>();
 
-    const Matrix4 view = Math::Inverse(camera_transform.GetMatrix());
+    const Matrix4 view = Math::Inverse(Transform::GetMatrix(camera_entity));
     Renderer::SetUniform(1, view);
 
     const Matrix4 projection = camera.GetProjection(*render_target);
     Renderer::SetUniform(2, projection);
 
-    const auto mesh_query = ECS::GetWorld().query_builder<const Transform, const Handle<Mesh>>().build();
-    mesh_query.each([](const Transform& transform, const Handle<Mesh>& mesh_handle) { RenderMesh(transform, mesh_handle); });
+    const auto mesh_query = ECS::GetWorld().query_builder<const Handle<Mesh>>().build();
+    mesh_query.each([](const ECS::Entity& entity, const Handle<Mesh>& mesh_handle) { RenderMesh(entity, mesh_handle); });
 }

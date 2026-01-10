@@ -32,6 +32,11 @@ namespace Physics
         Collider() = default;
         virtual ~Collider() = default;
 
+        Collider(Collider&& other) noexcept : body_id{other.body_id}, motion_type{other.motion_type}
+        {
+            other.body_id = BodyID{JPH::BodyID::cInvalidBodyID};
+        }
+
         [[nodiscard]] virtual Type GetType() const = 0;
 
         virtual void SetMotionType(MotionType type);

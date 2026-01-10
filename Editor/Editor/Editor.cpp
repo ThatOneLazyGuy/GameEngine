@@ -5,6 +5,8 @@
 #include "ImGuiPlatform.hpp"
 #include "ShaderCompiler.hpp"
 
+#include "Windows/Hierarchy.hpp"
+
 #include <Core/Input.hpp>
 #include <Core/Rendering/Renderer.hpp>
 #include <Core/Rendering/RenderPassInterface.hpp>
@@ -12,11 +14,13 @@
 #include <Core/Time.hpp>
 #include <Core/Window.hpp>
 #include <Core/Physics/Physics.hpp>
+#include <Core/Components/Transform.hpp>
 
 #include <SDL3/SDL_mouse.h>
 
 #include <imgui.h>
 #include <numeric>
+
 
 namespace
 {
@@ -32,10 +36,10 @@ namespace
 
     void CreateDefaultEntities()
     {
-        Handle<Mesh> handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
+        const Handle<Mesh> handle = Resource::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
         backpack_entity = ECS::CreateEntity("Backpack");
-        backpack_entity.AddComponent<Handle<Mesh>>(handle);
-        backpack_entity.AddComponent<Physics::SphereCollider>();
+        auto&& [handle_component, collider] = backpack_entity.AddComponent<Handle<Mesh>, Physics::SphereCollider>();
+        handle_component = handle;
 
         camera_entity = ECS::CreateEntity("Camera");
         camera_entity.AddComponent<Camera>();
@@ -117,6 +121,7 @@ namespace Editor
 
         ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
         ImGui::ShowDemoWindow();
+        ImGui::ShowStyleEditor();
 
         static bool open_window = true;
         if (ImGui::Begin("Game viewport", &open_window, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
@@ -144,7 +149,7 @@ namespace Editor
                     auto& camera_transform = camera_entity.GetComponent<Transform>();
                     camera_transform.SetRotation(Eigen::AngleAxisf{pitch, Math::RIGHT} * Eigen::AngleAxisf{yaw, Math::UP});
 
-                    const Matrix4 camera_matrix = camera_transform.GetMatrix();
+                    const Matrix4 camera_matrix = Transform::GetMatrix(camera_entity);
 
                     const float3 forward = Math::TransformVector(Math::FORWARD, camera_matrix);
                     const float3 right = Math::TransformVector(Math::RIGHT, camera_matrix);
@@ -169,18 +174,7 @@ namespace Editor
         }
         ImGui::End();
 
-        if (ImGui::Begin("Hierarchy", nullptr, ImGuiWindowFlags_NoCollapse))
-        {
-            const auto query = ECS::GetWorld().query_builder<Transform>().build();
-
-            query.each([](const ECS::Entity entity, const Transform&) {
-                constexpr ImGuiTreeNodeFlags flags =
-                    ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_Bullet;
-
-                ImGui::TreeNodeEx(entity.Name().data(), flags);
-            });
-        }
-        ImGui::End();
+        Hierarchy();
 
         static std::vector<std::string> selected;
         static const std::vector<std::string> items{

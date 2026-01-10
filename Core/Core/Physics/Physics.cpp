@@ -3,6 +3,7 @@
 #include "Tools/Logging.hpp"
 #include "DebugRenderer.hpp"
 #include "Core/ECS.hpp"
+#include "Core/Components/Transform.hpp"
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/RegisterTypes.h>

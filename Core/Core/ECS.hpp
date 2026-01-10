@@ -1,94 +1,69 @@
 #pragma once
 
 #include "Math.hpp"
+
 #include <flecs.h>
-
-class Transform
-{
-  public:
-    Transform() = default;
-
-    const Matrix4& GetMatrix() const
-    {
-        if (IsDirty())
-        {
-            matrix = Math::Identity<Matrix4>();
-
-            matrix *= Math::Scale(scale);
-            matrix *= Math::Rotation(rotation);
-            matrix *= Math::Translation(position);
-        }
-
-        return matrix;
-    }
-
-    const float3& GetPosition() const { return position; }
-    const Quat& GetRotation() const { return rotation; }
-    const float3& GetScale() const { return scale; }
-
-    void SetPosition(const float3& pos)
-    {
-        position = pos;
-        SetDirty();
-    }
-
-    void SetRotation(const Quat& rot)
-    {
-        rotation = rot;
-        SetDirty();
-    }
-
-    void SetScale(const float3& size)
-    {
-        scale = size;
-        SetDirty();
-    }
-
-  private:
-    void SetDirty() const { matrix(3, 3) = 0.0f; }
-    [[nodiscard]] bool IsDirty() const { return matrix(3, 3) == 0.0f; }
-
-    float3 position{0.0f, 0.0f, 0.0f};
-    Quat rotation{Math::Identity<Quat>()};
-    float3 scale{1.0f, 1.0f, 1.0f};
-
-    mutable Matrix4 matrix{Math::Identity<Matrix4>()};
-};
 
 namespace ECS
 {
     class Entity : protected flecs::entity
     {
       public:
+        static const Entity null;
+
         Entity() = default;
-        Entity(flecs::entity&& entity) : flecs::entity{std::move(entity)} {}
+        Entity(const entity&& entity);
 
-        [[nodiscard]] std::string_view Name() const { return std::string_view{name().c_str(), name().size()}; }
+        [[nodiscard]] bool Valid() const;
 
-        template <typename Type, typename... Args>
-        const Entity& AddComponent(Args&&... args) const
+        [[nodiscard]] std::string& Name();
+        [[nodiscard]] const std::string& Name() const;
+
+        [[nodiscard]] bool HasParent() const;
+        void RemoveParent();
+
+        void SetParent(const Entity& parent);
+        [[nodiscard]] Entity GetParent() const;
+
+        [[nodiscard]] std::vector<Entity> GetChildren() const;
+
+        [[nodiscard]] uint64 GetID() const;
+
+        template <typename Type>
+        Type& AddComponent()
         {
-            (void)set<Type>(std::forward<Args>(args)...);
-            return *this;
+            return add<Type>().template get_mut<Type>();
         }
-
-        template <typename Type, typename...>
-        Entity& AddComponent()
+        template <typename... Types>
+        requires(sizeof...(Types) > 1)
+        std::tuple<Types&...> AddComponent()
         {
-            (void)add<Type>();
-            return *this;
+            (add<Types>(), ...);
+            return {get_mut<Types>()...};
         }
 
         template <typename Type>
-        Type& GetComponent()
+        [[nodiscard]] Type& GetComponent()
         {
             return get_mut<Type>();
         }
+        template <typename... Types>
+        requires(sizeof...(Types) > 1)
+        [[nodiscard]] std::tuple<Types&...> GetComponent()
+        {
+            return {get_mut<Types>()...};
+        }
 
         template <typename Type>
-        const Type& GetComponent() const
+        [[nodiscard]] const Type& GetComponent() const
         {
             return get<Type>();
+        }
+        template <typename... Types>
+        requires(sizeof...(Types) > 1)
+        [[nodiscard]] std::tuple<const Types&...> GetComponent() const
+        {
+            return {get<Types>()...};
         }
     };
 
@@ -96,7 +71,7 @@ namespace ECS
 
     void Exit();
 
-    Entity CreateEntity(const std::string& string);
+    Entity CreateEntity(std::string string = {});
 
     [[nodiscard]] flecs::world& GetWorld();
 } // namespace ECS

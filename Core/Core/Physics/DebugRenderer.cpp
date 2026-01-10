@@ -2,6 +2,7 @@
 
 #include "Physics.hpp"
 #include "Core/Rendering/Renderer.hpp"
+#include "Core/Components/Transform.hpp"
 
 #include <numeric>
 
@@ -76,7 +77,7 @@ namespace Physics
         debug_renderer->camera_position = JPH::RVec3{camera_position.x(), camera_position.y(), camera_position.z()};
         debug_renderer->NextFrame();
 
-        const Matrix4 view = Math::Inverse(camera_transform.GetMatrix());
+        const Matrix4 view = Math::Inverse(Transform::GetMatrix(camera_entity));
         Renderer::SetUniform(1, view);
 
         const Matrix4 projection = camera.GetProjection(*render_target);

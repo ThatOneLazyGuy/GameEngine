@@ -3,6 +3,8 @@
 #include <vector>
 #include <imgui.h>
 
+#include "imgui_internal.h"
+
 namespace ImGui
 {
     template <typename ItemType, typename ContainerType>
@@ -20,7 +22,8 @@ namespace ImGui
                 if (request.Selected) selection.insert(selection.begin(), std::begin(items), std::end(items));
                 break;
 
-            case ImGuiSelectionRequestType_SetRange: {
+            case ImGuiSelectionRequestType_SetRange:
+            {
                 if (request.Selected)
                 {
                     for (ImGuiSelectionUserData i = request.RangeFirstItem; i <= request.RangeLastItem; i++)

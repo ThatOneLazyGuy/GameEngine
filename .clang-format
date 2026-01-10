@@ -156,7 +156,7 @@ IndentCaseLabels: false
 IndentExternBlock: AfterExternBlock
 IndentGotoLabels: true
 IndentPPDirectives: BeforeHash
-IndentRequiresClause: true
+IndentRequiresClause: false
 IndentWidth: 4
 IndentWrappedFunctionNames: false
 InsertBraces: false
