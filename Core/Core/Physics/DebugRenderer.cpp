@@ -67,9 +67,8 @@ namespace Physics
         render_data.emplace_back(model, &batch->mesh);
     }
 
-    void PhysicsDebugRenderPass::Render()
+    void PhysicsDebugRenderPass::Render(const ECS::Entity& camera_entity)
     {
-        const ECS::Entity camera_entity = ECS::GetWorld().query_builder<const Transform, const Camera>().build().first();
         const Transform& camera_transform = camera_entity.GetComponent<Transform>();
         const Camera& camera = camera_entity.GetComponent<Camera>();
 

@@ -16,7 +16,7 @@ class RenderPassInterface
 
     bool clear_render_targets{true};
 
-    virtual void Render() = 0;
+    virtual void Render(const ECS::Entity& camera_entity) = 0;
 };
 
 class DefaultRenderPass final : public RenderPassInterface
@@ -28,5 +28,5 @@ class DefaultRenderPass final : public RenderPassInterface
     }
     ~DefaultRenderPass() override = default;
 
-    void Render() override;
+    void Render(const ECS::Entity& camera_entity) override;
 };

@@ -305,7 +305,7 @@ namespace Physics
     {
         JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
 
-        const auto query = ECS::GetWorld().query_builder<Transform, const SphereCollider>().build();
+        const auto query = ECS::GetWorld().query_builder<Transform, const SphereCollider>().without<ECS::IgnoreTag>().build();
 
         query.each([&body_interface](Transform& transform, const SphereCollider& collider) {
             JPH::RVec3 position;

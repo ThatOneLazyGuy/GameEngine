@@ -6,6 +6,8 @@ add_executable(
         "Editor/ShaderCompiler.cpp"
         "Implementation/OpenGL/ImGuiPlatform.cpp"
         "Implementation/SDL3GPU/ImGuiPlatform.cpp"
+        "Windows/Viewport.cpp"
+        "Windows/Hierarchy.cpp"
 
         "${EXTERNAL}/imgui/imgui.cpp"
         "${EXTERNAL}/imgui/imgui_demo.cpp"

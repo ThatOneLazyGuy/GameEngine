@@ -269,14 +269,14 @@ void Renderer::Exit()
     renderer->ExitBackend();
 }
 
-void Renderer::Render()
+void Renderer::Render(const ECS::Entity& camera_entity)
 {
     Instance().Update();
 
     for (Handle<RenderPassInterface>& render_pass : render_passes)
     {
         Instance().BeginRenderPass(*render_pass);
-        render_pass->Render();
+        render_pass->Render(camera_entity);
         Instance().EndRenderPass();
     }
 }

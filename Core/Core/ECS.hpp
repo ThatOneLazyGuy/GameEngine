@@ -6,6 +6,10 @@
 
 namespace ECS
 {
+    struct IgnoreTag
+    {
+    };
+
     class Entity : protected flecs::entity
     {
       public:
@@ -64,6 +68,31 @@ namespace ECS
         [[nodiscard]] std::tuple<const Types&...> GetComponent() const
         {
             return {get<Types>()...};
+        }
+
+        template <typename... Tags>
+        void AddTag()
+        {
+            (add<Tags>(), ...);
+        }
+
+        template <typename... Tags>
+        void RemoveTag()
+        {
+            (remove<Tags>(), ...);
+        }
+
+        // Returns true if the entity has all the given tags/components.
+        template <typename... Types>
+        [[nodiscard]] bool Has() const
+        {
+            return (has<Types>() && ...);
+        }
+        // Returns true if the entity has any of the given tags/components.
+        template <typename... Types>
+        [[nodiscard]] bool HasAny() const
+        {
+            return (has<Types>() || ...);
         }
     };
 

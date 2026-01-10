@@ -69,7 +69,7 @@ namespace Physics
         }
         ~PhysicsDebugRenderPass() override = default;
 
-        void Render() override;
+        void Render(const ECS::Entity& camera_entity) override;
     };
 
 } // namespace Physics

@@ -318,7 +318,7 @@ class Renderer
     static void Init();
     static void Exit();
 
-    static void Render();
+    static void Render(const ECS::Entity& camera_entity);
     virtual void SwapBuffer() = 0;
 
     virtual void* GetContext() = 0;

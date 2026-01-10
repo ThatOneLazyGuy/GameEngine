@@ -1,10 +1,12 @@
 #pragma once
 
+#include <Core/ECS.hpp>
+
 namespace Editor
 {
-    void Init();
+    struct EditorOnly
+    {
+    };
 
-    void Update();
-    void UpdateWindows();
-    void UpdateSystems();
-}
+    ECS::Entity CreateEntity(std::string name = {});
+} // namespace Editor

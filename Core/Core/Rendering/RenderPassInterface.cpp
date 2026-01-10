@@ -24,9 +24,8 @@ namespace
 } // namespace
 
 
-void DefaultRenderPass::Render()
+void DefaultRenderPass::Render(const ECS::Entity& camera_entity)
 {
-    const ECS::Entity camera_entity = ECS::GetWorld().query_builder<const Transform, const Camera>().build().first();
     const Camera& camera = camera_entity.GetComponent<Camera>();
 
     const Matrix4 view = Math::Inverse(Transform::GetMatrix(camera_entity));
@@ -35,6 +34,6 @@ void DefaultRenderPass::Render()
     const Matrix4 projection = camera.GetProjection(*render_target);
     Renderer::SetUniform(2, projection);
 
-    const auto mesh_query = ECS::GetWorld().query_builder<const Handle<Mesh>>().build();
+    const auto mesh_query = ECS::GetWorld().query_builder<const Handle<Mesh>>().without<ECS::IgnoreTag>().build();
     mesh_query.each([](const ECS::Entity& entity, const Handle<Mesh>& mesh_handle) { RenderMesh(entity, mesh_handle); });
 }
