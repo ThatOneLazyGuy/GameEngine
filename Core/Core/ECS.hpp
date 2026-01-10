@@ -47,6 +47,20 @@ namespace ECS
         }
 
         template <typename Type>
+        Type& GetOrAddComponent()
+        {
+            if (!Has<Type>()) add<Type>();
+            return get_mut<Type>();
+        }
+        template <typename... Types>
+        requires(sizeof...(Types) > 1)
+        std::tuple<Types&...> GetOrAddComponent()
+        {
+            ((!Has<Types>() ? add<Types>() : std::ignore), ...);
+            return {get_mut<Types>()...};
+        }
+
+        template <typename Type>
         [[nodiscard]] Type& GetComponent()
         {
             return get_mut<Type>();
@@ -76,10 +90,11 @@ namespace ECS
             (add<Tags>(), ...);
         }
 
-        template <typename... Tags>
-        void RemoveTag()
+        // Remove all the given tags/components from the entity.
+        template <typename... Types>
+        void Remove()
         {
-            (remove<Tags>(), ...);
+            (remove<Types>(), ...);
         }
 
         // Returns true if the entity has all the given tags/components.

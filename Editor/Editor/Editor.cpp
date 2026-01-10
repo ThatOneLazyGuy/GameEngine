@@ -47,7 +47,6 @@ namespace
 // NOLINTBEGIN(misc-use-anonymous-namespace)
 namespace Editor
 {
-
     static void Init()
     {
         IMGUI_CHECKVERSION();
@@ -157,7 +156,7 @@ namespace Editor
     ECS::Entity CreateEntity(std::string name)
     {
         ECS::Entity editor_entity = ECS::CreateEntity(std::move(name));
-        editor_entity.AddTag<ECS::IgnoreTag>();
+        editor_entity.AddTag<ECS::IgnoreTag, EditorOnly>();
 
         return editor_entity;
     }
