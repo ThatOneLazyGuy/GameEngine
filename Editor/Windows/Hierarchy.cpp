@@ -46,10 +46,14 @@ namespace
 
         ImGuiTreeNodeFlags flags = default_flags;
         if (children.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
-        if (Editor::IsEntitySelected(entity)) flags |= ImGuiTreeNodeFlags_Selected;
+        if (Editor::selected_entities.Contains(entity)) flags |= ImGuiTreeNodeFlags_Selected;
 
         const bool node_open = ImGui::TreeNodeEx(entity.Name().c_str(), flags);
-        if (ImGui::IsItemClicked()) Editor::SetSelectedEntity(entity);
+        if (ImGui::IsItemClicked())
+        {
+            Editor::selected_entities.Clear();
+            Editor::selected_entities.PushBack(entity);
+        }
         EntityDrag(entity);
         EntityDrop(entity);
         if (node_open)
@@ -120,7 +124,7 @@ void Hierarchy::Display()
     query.each(&RecurseHierarchy);
     world.defer_end();
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) Editor::ClearSelectedEntities();
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) Editor::selected_entities.Clear();
 
     ImGui::PopStyleVar();
 }

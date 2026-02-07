@@ -116,6 +116,11 @@ namespace ECS
         bool operator==(const Entity& other) const;
     };
 
+    struct EntityHasher
+    {
+        usize operator()(const Entity& entity) const { return entity.GetID(); }
+    };
+
     void Init();
 
     void Exit();

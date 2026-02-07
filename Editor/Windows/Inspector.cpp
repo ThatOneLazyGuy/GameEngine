@@ -125,9 +125,9 @@ Inspector::Inspector()
 
 void Inspector::Display()
 {
-    ECS::Entity selected_entity = Editor::GetSelectedEntity();
+    if (Editor::selected_entities.Empty()) return;
 
-    if (!selected_entity.Valid()) return;
+    ECS::Entity selected_entity = Editor::selected_entities.Front();
     const flecs::world world = selected_entity.GetWorld();
 
     world.defer_begin();
