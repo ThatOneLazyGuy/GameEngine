@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Core/ECS.hpp>
-#include <Tools/SequentialSet.hpp>
+#include <Tools/UniqueVector.hpp>
 
 namespace Editor
 {
