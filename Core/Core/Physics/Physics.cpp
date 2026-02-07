@@ -206,9 +206,30 @@ namespace Physics
         physics_system.GetBodyInterface().SetMotionType(body_id, static_cast<JPH::EMotionType>(motion_type), JPH::EActivation::Activate);
     }
 
-    SphereCollider::SphereCollider(const float radius) : radius{radius}
+    SphereCollider::SphereCollider(const float radius) { SetRadius(radius); }
+
+    SphereCollider::SphereCollider() : SphereCollider{1.0f} {}
+
+    SphereCollider::~SphereCollider()
     {
+        if (body_id.IsInvalid()) return;
+
         JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
+
+        body_interface.RemoveBody(body_id);
+        body_interface.DestroyBody(body_id);
+    }
+
+    void SphereCollider::SetRadius(const float new_radius)
+    {
+        radius = new_radius;
+
+        JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
+        if (!body_id.IsInvalid())
+        {
+            body_interface.RemoveBody(body_id);
+            body_interface.DestroyBody(body_id);
+        }
 
         const auto* shape = new JPH::SphereShape{radius};
         const JPH::BodyCreationSettings sphere_settings{
@@ -217,16 +238,6 @@ namespace Physics
         };
 
         body_id = body_interface.CreateAndAddBody(sphere_settings, JPH::EActivation::Activate);
-    }
-
-    SphereCollider::SphereCollider() : SphereCollider{1.0f} {}
-
-    SphereCollider::~SphereCollider()
-    {
-        JPH::BodyInterface& body_interface = physics_system.GetBodyInterface();
-
-        body_interface.RemoveBody(body_id);
-        body_interface.DestroyBody(body_id);
     }
 
     void Init()

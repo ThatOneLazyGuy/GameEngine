@@ -8,6 +8,7 @@ add_executable(
         "Implementation/SDL3GPU/ImGuiPlatform.cpp"
         "Windows/Viewport.cpp"
         "Windows/Hierarchy.cpp"
+        "Windows/Inspector.cpp"
 
         "${EXTERNAL}/imgui/imgui.cpp"
         "${EXTERNAL}/imgui/imgui_demo.cpp"

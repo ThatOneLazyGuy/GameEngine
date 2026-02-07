@@ -68,7 +68,7 @@ namespace Physics
         [[nodiscard]] Type GetType() const override { return Type::SPHERE; }
 
         [[nodiscard]] float GetRadius() const { return radius; }
-        void SetRadius(const float new_radius) { radius = new_radius; }
+        void SetRadius(float new_radius);
 
       private:
         float radius{1.0f};

@@ -13,6 +13,8 @@ namespace
 namespace ECS
 {
 
+    bool Entity::operator==(const Entity& other) const { return world() == other.world() && id() == other.id(); }
+
     void Init() { world = new flecs::world{}; }
 
     void Exit() { delete world; }

@@ -1,10 +1,13 @@
 #include "Hierarchy.hpp"
 
+#include "Editor/Editor.hpp"
+
 #include <Core/ECS.hpp>
 #include <Core/Components/Transform.hpp>
 
 #include <imgui.h>
 #include <imgui_internal.h>
+
 
 namespace
 {
@@ -43,8 +46,10 @@ namespace
 
         ImGuiTreeNodeFlags flags = default_flags;
         if (children.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+        if (Editor::IsEntitySelected(entity)) flags |= ImGuiTreeNodeFlags_Selected;
 
         const bool node_open = ImGui::TreeNodeEx(entity.Name().c_str(), flags);
+        if (ImGui::IsItemClicked()) Editor::SetSelectedEntity(entity);
         EntityDrag(entity);
         EntityDrop(entity);
         if (node_open)
@@ -106,13 +111,16 @@ void Hierarchy::Display()
     }
 
     const flecs::world& world = ECS::GetWorld();
-    const flecs::query query = world.query_builder().with<Transform>().without(flecs::ChildOf, flecs::Wildcard).without<ECS::IgnoreTag>().build();
+    const flecs::query query =
+        world.query_builder().with<Transform>().without(flecs::ChildOf, flecs::Wildcard).without<ECS::IgnoreTag>().build();
 
     ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
 
     world.defer_begin();
     query.each(&RecurseHierarchy);
     world.defer_end();
+
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) Editor::ClearSelectedEntities();
 
     ImGui::PopStyleVar();
 }

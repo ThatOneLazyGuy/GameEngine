@@ -18,6 +18,8 @@ namespace ECS
         Entity() = default;
         Entity(const entity&& entity);
 
+        [[nodiscard]] flecs::world GetWorld() const { return world(); }
+
         [[nodiscard]] bool Valid() const;
 
         [[nodiscard]] std::string& Name();
@@ -36,14 +38,15 @@ namespace ECS
         template <typename Type>
         Type& AddComponent()
         {
-            return add<Type>().template get_mut<Type>();
+            add<Type>();
+            return get_mut<Type>();
         }
         template <typename... Types>
         requires(sizeof...(Types) > 1)
         std::tuple<Types&...> AddComponent()
         {
             (add<Types>(), ...);
-            return {get_mut<Types>()...};
+            return std::forward_as_tuple(get_mut<Types>()...);
         }
 
         template <typename Type>
@@ -109,6 +112,8 @@ namespace ECS
         {
             return (has<Types>() || ...);
         }
+
+        bool operator==(const Entity& other) const;
     };
 
     void Init();
