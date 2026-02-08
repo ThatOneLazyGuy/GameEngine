@@ -7,6 +7,7 @@
 
 namespace ImGui
 {
+
     template <typename ItemType, typename ContainerType>
     void ApplyRequests(ImGuiMultiSelectIO* io, std::vector<ItemType>& selection, const ContainerType& items)
     {
@@ -43,4 +44,5 @@ namespace ImGui
             }
         }
     }
+
 } // namespace ImGui

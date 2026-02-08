@@ -8,9 +8,51 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-
 namespace
 {
+    // Custom entity selection ApplyRequests function for ImGui, works with ImGui's built in multi-select system.
+    bool ApplyRequests(
+        ImGuiMultiSelectIO* io, UniqueVector<ECS::Entity, ECS::EntityHasher>& selection, const std::vector<ECS::Entity>& entities
+    )
+    {
+        bool set_all = false;
+
+        for (const auto& request : io->Requests)
+        {
+            switch (request.Type)
+            {
+            case ImGuiSelectionRequestType_None:
+                break;
+
+            case ImGuiSelectionRequestType_SetAll:
+                selection.Clear();
+                // "Entities" will only be populated after looping through entities, but the SetAll (ctrl + A) call can happen before the loop.
+                set_all = request.Selected;
+                break;
+
+            case ImGuiSelectionRequestType_SetRange:
+            {
+                if (request.Selected)
+                {
+                    for (ImGuiSelectionUserData i = request.RangeFirstItem; i <= request.RangeLastItem; i++)
+                    {
+                        selection.PushBack(entities.at(static_cast<usize>(i)));
+                    }
+                }
+                else
+                {
+                    for (ImGuiSelectionUserData i = request.RangeFirstItem; i <= request.RangeLastItem; i++)
+                    {
+                        selection.Erase(entities.at(static_cast<usize>(i)));
+                    }
+                }
+            }
+            break;
+            }
+        }
+
+        return set_all;
+    }
 
     void EntityDrag(const ECS::Entity& entity)
     {
@@ -32,7 +74,7 @@ namespace
         ImGui::EndDragDropTarget();
     }
 
-    void RecurseHierarchy(const ECS::Entity& entity)
+    void RecurseHierarchy(const ECS::Entity& entity, std::vector<ECS::Entity>& entities)
     {
         constexpr ImGuiTreeNodeFlags default_flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow |
                                                      ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
@@ -48,19 +90,18 @@ namespace
         if (children.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
         if (Editor::selected_entities.Contains(entity)) flags |= ImGuiTreeNodeFlags_Selected;
 
+        ImGui::SetNextItemSelectionUserData(static_cast<ImGuiSelectionUserData>(entities.size()));
+        entities.push_back(entity);
+
         const bool node_open = ImGui::TreeNodeEx(entity.Name().c_str(), flags);
-        if (ImGui::IsItemClicked())
-        {
-            Editor::selected_entities.Clear();
-            Editor::selected_entities.PushBack(entity);
-        }
+
         EntityDrag(entity);
         EntityDrop(entity);
         if (node_open)
         {
             for (const ECS::Entity& child : children)
             {
-                RecurseHierarchy(child);
+                RecurseHierarchy(child, entities);
             }
 
             ImGui::TreePop();
@@ -118,13 +159,26 @@ void Hierarchy::Display()
     const flecs::query query =
         world.query_builder().with<Transform>().without(flecs::ChildOf, flecs::Wildcard).without<ECS::IgnoreTag>().build();
 
+
     ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
 
+
+    constexpr ImGuiMultiSelectFlags flags = ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_ClearOnClickVoid |
+                                            ImGuiMultiSelectFlags_BoxSelect1d | ImGuiMultiSelectFlags_SelectOnClickRelease;
+
+
+    std::vector<ECS::Entity> entities;
+    ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, static_cast<int>(Editor::selected_entities.Size()));
+    const bool select_all = ApplyRequests(ms_io, Editor::selected_entities, entities);
+
     world.defer_begin();
-    query.each(&RecurseHierarchy);
+    query.each([&entities](const ECS::Entity& entity) { RecurseHierarchy(entity, entities); });
     world.defer_end();
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) Editor::selected_entities.Clear();
+    if (select_all) Editor::selected_entities.PushBack(entities);
+
+    ms_io = ImGui::EndMultiSelect();
+    ApplyRequests(ms_io, Editor::selected_entities, entities);
 
     ImGui::PopStyleVar();
 }

@@ -24,7 +24,7 @@ class UniqueVector
 
     void PushBack(const Type& value)
     {
-        const usize index = Size();
+        const usize index = data.size();
         if (AddMapping(value, index)) return;
 
         data.push_back(value);
@@ -33,10 +33,12 @@ class UniqueVector
     void PushBack(const Iterator& begin, const Iterator& end)
     {
         data.reserve(data.size() + std::distance(begin, end));
-        Iterator iter = begin;
-        while (begin != end)
+
+        Iterator iterator = begin;
+        while (iterator != end)
         {
-            PushBack(*end);
+            PushBack(*iterator);
+            ++iterator;
         }
     }
     template <typename Container>
@@ -46,7 +48,7 @@ class UniqueVector
     }
     void PushBack(Type&& value)
     {
-        const usize index = Size();
+        const usize index = data.size();
         if (AddMapping(value, index)) return;
 
         data.push_back(std::move(value));
@@ -64,12 +66,12 @@ class UniqueVector
     {
         const auto&& [hash, mapping_iterator] = GetNextMappingIterator(value);
 
-        data.erase(data.begin() + mapping_iterator->second);
+        data.erase(data.begin() + mapping_iterator->value_index);
 
         // Decrement the index value of all the elements in the mapping after the erased one.
-        for (auto iterator = mapping_iterator; iterator != data.end(); ++iterator)
+        for (auto iterator = mapping_iterator; iterator != mapping.end(); ++iterator)
         {
-            --iterator->second;
+            --iterator->value_index;
         }
 
         mapping.erase(mapping_iterator);
@@ -78,17 +80,14 @@ class UniqueVector
     {
         const usize i = std::distance(data.begin(), position);
 
-        const auto mapping_iterator = std::ranges::lower_bound(
-            mapping,
-            std::pair{i, i},
-            [](const std::pair<usize, usize>& first, const std::pair<usize, usize>& second) { return first.second < second.second; }
-        );
+        const auto mapping_iterator =
+            std::ranges::find(mapping, [i](const std::pair<usize, usize>& element) { return i == element.second; });
 
         data.erase(position);
 
         for (auto iterator = mapping_iterator; iterator != data.end(); ++iterator)
         {
-            --iterator->second;
+            --iterator->value_index;
         }
 
         mapping.erase(mapping_iterator);
@@ -103,41 +102,47 @@ class UniqueVector
     {
         const auto&& [hash, mapping_iterator] = GetNextMappingIterator(value);
 
-        if (mapping_iterator == mapping.end() || hash != mapping_iterator->first) return nullptr;
+        if (mapping_iterator == mapping.end() || hash != mapping_iterator->value_hash) return nullptr;
 
-        return data[mapping_iterator->second];
+        return data[mapping_iterator->value_index];
     }
 
     [[nodiscard]] const Type* Find(const Type& value) const
     {
         const auto&& [hash, mapping_iterator] = GetNextMappingIterator(value);
 
-        if (mapping_iterator == mapping.end() || hash != mapping_iterator->first) return nullptr;
+        if (mapping_iterator == mapping.end() || hash != mapping_iterator->value_hash) return nullptr;
 
-        return data[mapping_iterator->second];
+        return data[mapping_iterator->value_index];
     }
 
     [[nodiscard]] bool Contains(const Type& value)
     {
         const auto&& [hash, mapping_iterator] = GetNextMappingIterator(value);
 
-        return mapping_iterator != mapping.end() && hash == mapping_iterator->first;
+        return mapping_iterator != mapping.end() && hash == mapping_iterator->value_hash;
     }
 
     Type& operator[](usize i) { return data[i].data; }
     const Type& operator[](usize i) const { return data[i].data; }
 
   private:
-    std::pair<usize, std::vector<std::pair<usize, usize>>::iterator> GetNextMappingIterator(const Type& value)
+    class ValueMapping
+    {
+      public:
+        // Lesser than operator is used in std::ranges::lower_bounds() to do a binary search on the hashes in the "mapping" vector.
+        [[nodiscard]] bool operator<(const ValueMapping& other) const { return value_hash < other.value_hash; }
+
+        usize value_hash;
+        usize value_index;
+    };
+
+    // Hashes the value and does a binary search to find its position, or the position it *should* be in the "mapping" vector.
+    std::pair<usize, typename std::vector<ValueMapping>::iterator> GetNextMappingIterator(const Type& value)
     {
         const usize hash = HasherType{}(value);
-        return std::pair{
-            hash,
-            std::ranges::lower_bound(
-                mapping,
-                std::pair{hash, hash},
-                [](const std::pair<usize, usize>& first, const std::pair<usize, usize>& second) { return first.first < second.first; }
-            )
+        return std::pair<usize, typename decltype(mapping)::iterator>{
+            hash, std::ranges::lower_bound(mapping, ValueMapping{hash, hash}, std::less{})
         };
     }
 
@@ -145,12 +150,12 @@ class UniqueVector
     [[nodiscard]] bool AddMapping(const Type& value, const usize data_index)
     {
         const auto&& [hash, mapping_iterator] = GetNextMappingIterator(value);
-        if (mapping_iterator != mapping.end() && hash == mapping_iterator->first) return true;
+        if (mapping_iterator != mapping.end() && hash == mapping_iterator->value_hash) return true;
 
-        mapping.emplace(mapping_iterator, std::pair{hash, data_index});
+        mapping.emplace(mapping_iterator, ValueMapping{hash, data_index});
         return false;
     }
 
     std::vector<Type> data;
-    std::vector<std::pair<usize, usize>> mapping; // Mapping between value hash and index in data vector.
+    std::vector<ValueMapping> mapping; // Mapping between value hash and index in data vector.
 };
