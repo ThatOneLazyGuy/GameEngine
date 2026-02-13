@@ -6,12 +6,16 @@
 
 #include "Rendering/Renderer.hpp"
 
-struct ModelParser final : FileResource
+class ModelParser final : public Resource<ModelParser>
 {
+  public:
     explicit ModelParser(const std::string& path);
 
-    [[nodiscard]] Handle<Mesh> GetMesh(uint32 index) const;
-    [[nodiscard]] std::vector<Handle<Mesh>> GetMeshes() const;
+    [[nodiscard]] ResourceRef<Mesh> GetMesh(uint32 index) const;
+    [[nodiscard]] std::vector<ResourceRef<Mesh>> GetMeshes() const;
 
     Assimp::Importer importer;
+
+  private:
+    std::string path;
 };

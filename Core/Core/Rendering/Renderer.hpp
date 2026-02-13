@@ -2,7 +2,7 @@
 
 #include "Core/ECS.hpp"
 #include "Core/Math.hpp"
-#include "Core/Resource.hpp"
+#include "Core/ResourceManager.hpp"
 #include "Core/Window.hpp"
 
 #include <memory>
@@ -52,8 +52,8 @@ struct Vertex
 };
 
 inline const std::unordered_map<std::string, usize> attribute_sizes{
-    {"POSITION", offsetof(Vertex, position)},
-    {"COLOR", offsetof(Vertex, color)},
+    {"POSITION",  offsetof(Vertex, position) },
+    {"COLOR",     offsetof(Vertex, color)    },
     {"TEX_COORD", offsetof(Vertex, tex_coord)}
 };
 
@@ -128,25 +128,19 @@ class RenderBuffer
 {
   public:
     RenderBuffer() = default;
-    RenderBuffer(const Handle<Texture>& texture) : texture{texture} {}
+    RenderBuffer(const std::shared_ptr<Texture>& texture) : texture{texture} {}
 
-    [[nodiscard]] Handle<Texture> GetTexture() const { return texture; }
+    [[nodiscard]] std::shared_ptr<Texture> GetTexture() const { return texture; }
 
     float4 clear_color{};
 
   private:
-    Handle<Texture> texture;
+    std::shared_ptr<Texture> texture;
 };
 
-class RenderTarget final : public Resource
+class RenderTarget final : public Resource<RenderTarget>
 {
   public:
-    static uint64 GetID(const std::string& name)
-    {
-        constexpr std::hash<std::string> hasher{};
-        return hasher(name);
-    }
-
     RenderTarget() = default;
     explicit RenderTarget(const std::string& name);
 
@@ -155,8 +149,8 @@ class RenderTarget final : public Resource
     [[nodiscard]] sint32 GetWidth() const { return width; }
     [[nodiscard]] sint32 GetHeight() const { return height; }
 
-    void AddRenderBuffer(const Handle<Texture>& render_texture, const float4& clear_color = {});
-    void SetDepthBuffer(const Handle<Texture>& depth_texture);
+    void AddRenderBuffer(const std::shared_ptr<Texture>& render_texture, const float4& clear_color = {});
+    void SetDepthBuffer(const std::shared_ptr<Texture>& depth_texture);
 
     std::vector<RenderBuffer> render_buffers;
     RenderBuffer depth_buffer;
@@ -170,13 +164,12 @@ class RenderTarget final : public Resource
     sint32 height{1};
 };
 
-class Mesh final : public Resource
+class Mesh final : public Resource<Mesh>
 {
   public:
-    static uint64 GetID(const std::string& path, const uint32 index)
+    static std::string GetID(const std::string& path, const uint32 index)
     {
-        constexpr std::hash<std::string> hasher{};
-        return hasher(path + '-' + std::to_string(index));
+        return path + '-' + std::to_string(index);
     }
 
     Mesh() = default;
@@ -192,7 +185,7 @@ class Mesh final : public Resource
     BufferID vertices_buffer;
     BufferID indices_buffer;
 
-    std::vector<Handle<Texture>> textures;
+    std::vector<std::shared_ptr<Texture>> textures;
 
   private:
     uint32 vertices_count;
@@ -202,7 +195,7 @@ class Mesh final : public Resource
 
 struct ShaderSettings;
 
-class Shader final : public FileResource
+class Shader final : public Resource<Shader>
 {
   public:
     enum Type : uint8
@@ -212,7 +205,7 @@ class Shader final : public FileResource
         COMPUTE,
     };
 
-    static uint64 GetID(const std::string& path, const ShaderSettings& shader_info);
+    static std::string GetID(const std::string& path, const ShaderSettings& shader_info);
 
     // TODO: Make sure that the stored path is the actual file path instead of the given path.
     Shader() = default;
@@ -262,15 +255,9 @@ struct GraphicsPipelineSettings
     ShaderSettings fragment_info;
 };
 
-class GraphicsShaderPipeline final : public FileResource
+class GraphicsShaderPipeline final : public Resource<GraphicsShaderPipeline>
 {
   public:
-    static uint64 GetID(const std::string& path, const GraphicsPipelineSettings& = {})
-    {
-        constexpr std::hash<std::string> hasher{};
-        return hasher(path);
-    }
-
     // TODO: Make sure the pipeline path and the vertex/fragment paths are pointing the used shader files.
     GraphicsShaderPipeline() = default;
     GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings = {});
@@ -311,7 +298,7 @@ class Renderer
     static Renderer& Instance() { return *renderer; }
     static const std::string& GetBackendName() { return backend_name; }
 
-    static inline std::vector<Handle<RenderPassInterface>> render_passes;
+    static inline std::vector<std::shared_ptr<RenderPassInterface>> render_passes;
 
     virtual constexpr std::size_t WindowFlags() = 0;
 
@@ -335,7 +322,7 @@ class Renderer
 
     static const BackendShaderInfo& GetBackendShaderInfo() { return backend_shader_info; }
 
-    static inline Handle<RenderTarget> main_target;
+    static inline ResourceRef<RenderTarget> main_target;
 
   protected:
     friend class RenderTarget;
@@ -371,7 +358,7 @@ class Renderer
     virtual void DestroyShader(Shader& shader) = 0;
 
     virtual void CreateShaderPipeline(
-        GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
+        GraphicsShaderPipeline& pipeline, const ResourceRef<Shader>& vertex_shader, const ResourceRef<Shader>& fragment_shader
     ) = 0;
     virtual void DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) = 0;
 

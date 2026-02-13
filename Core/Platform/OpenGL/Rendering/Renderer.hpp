@@ -42,7 +42,7 @@ class OpenGLRenderer final : public Renderer
     void CreateShader(Shader& shader, const void* data, usize size) override;
     void DestroyShader(Shader& shader) override;
 
-    void CreateShaderPipeline(GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader)
+    void CreateShaderPipeline(GraphicsShaderPipeline& pipeline, const ResourceRef<Shader>& vertex_shader, const ResourceRef<Shader>& fragment_shader)
         override;
     void DestroyShaderPipeline(GraphicsShaderPipeline& pipeline) override;
 };

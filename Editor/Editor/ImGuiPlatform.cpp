@@ -27,7 +27,7 @@ namespace ImGui
         if (backend_name == "OpenGL") platform = new PlatformOpenGL;
         else if (backend_name == "SDL3GPU") platform = new PlatformSDL3GPU;
 
-        Renderer::main_target = Resource::Load<RenderTarget>("EditorWindow");
+        Renderer::main_target = ResourceManager::Load<RenderTarget>("EditorWindow");
 
         constexpr TextureSettings render_buffer_settings{
             .width = 1,
@@ -35,7 +35,7 @@ namespace ImGui
             .format = Texture::COLOR_RGBA_32,
             .flags = static_cast<Texture::Flags>(Texture::COLOR_TARGET | Texture::SAMPLER),
         };
-        const Handle<Texture> render_buffer = std::make_shared<Texture>(render_buffer_settings, SamplerSettings{});
+        const std::shared_ptr<Texture> render_buffer = std::make_shared<Texture>(render_buffer_settings, SamplerSettings{});
 
         constexpr TextureSettings depth_buffer_settings{
             .width = 1,
@@ -43,7 +43,7 @@ namespace ImGui
             .format = Texture::DEPTH_24,
             .flags = static_cast<Texture::Flags>(Texture::DEPTH_TARGET | Texture::SAMPLER),
         };
-        const Handle<Texture> depth_buffer = std::make_shared<Texture>(depth_buffer_settings, SamplerSettings{});
+        const std::shared_ptr<Texture> depth_buffer = std::make_shared<Texture>(depth_buffer_settings, SamplerSettings{});
 
         Renderer::main_target->AddRenderBuffer(render_buffer, float4{0.75f, 0.81f, 0.4f, 1.0f});
         Renderer::main_target->SetDepthBuffer(depth_buffer);

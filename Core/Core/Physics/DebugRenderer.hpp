@@ -18,8 +18,9 @@ namespace Physics
       public:
         DebugRenderer();
 
-        void DrawTriangle(JPH::RVec3Arg vertex1, JPH::RVec3Arg vertex2, JPH::RVec3Arg vertex3, JPH::ColorArg color, ECastShadow cast_shadow)
-            override
+        void DrawTriangle(
+            JPH::RVec3Arg vertex1, JPH::RVec3Arg vertex2, JPH::RVec3Arg vertex3, JPH::ColorArg color, ECastShadow cast_shadow
+        ) override
         {
             DrawLine(vertex1, vertex2, color);
             DrawLine(vertex2, vertex3, color);
@@ -63,7 +64,7 @@ namespace Physics
     class PhysicsDebugRenderPass : public RenderPassInterface
     {
       public:
-        PhysicsDebugRenderPass(const Handle<GraphicsShaderPipeline>& pipeline, const Handle<RenderTarget>& target) :
+        PhysicsDebugRenderPass(const ResourceRef<GraphicsShaderPipeline>& pipeline, const ResourceRef<RenderTarget>& target) :
             RenderPassInterface{pipeline, target}
         {
         }

@@ -4,7 +4,7 @@
 
 namespace
 {
-    void RenderMesh(const ECS::Entity& entity, const Handle<Mesh>& mesh_handle)
+    void RenderMesh(const ECS::Entity& entity, const ResourceRef<Mesh>& mesh_handle)
     {
         Renderer::SetUniform(0, Transform::GetMatrix(entity));
 
@@ -34,6 +34,6 @@ void DefaultRenderPass::Render(const ECS::Entity& camera_entity)
     const Matrix4 projection = camera.GetProjection(*render_target);
     Renderer::SetUniform(2, projection);
 
-    const auto mesh_query = ECS::GetWorld().query_builder<const Handle<Mesh>>().without<ECS::IgnoreTag>().build();
-    mesh_query.each([](const ECS::Entity& entity, const Handle<Mesh>& mesh_handle) { RenderMesh(entity, mesh_handle); });
+    const auto mesh_query = ECS::GetWorld().query_builder<const ResourceRef<Mesh>>().without<ECS::IgnoreTag>().build();
+    mesh_query.each([](const ECS::Entity& entity, const ResourceRef<Mesh>& mesh_handle) { RenderMesh(entity, mesh_handle); });
 }

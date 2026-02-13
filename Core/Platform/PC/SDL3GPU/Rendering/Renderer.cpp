@@ -192,7 +192,7 @@ SDL_GPUCommandBuffer* SDL3GPURenderer::GetCommandBuffer() { return render_comman
 
 void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 {
-    const Handle<RenderTarget> render_target = render_pass.render_target;
+    ResourceRef<RenderTarget> render_target = render_pass.render_target;
     std::vector<SDL_GPUColorTargetInfo> color_target_infos;
 
     if (render_target->render_buffers.empty())
@@ -231,7 +231,7 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
         }
     }
 
-    const Handle<Texture> depth_texture = render_target->depth_buffer.GetTexture();
+    const std::shared_ptr<Texture> depth_texture = render_target->depth_buffer.GetTexture();
     SDL_GPUDepthStencilTargetInfo* depth_stencil_target_info = nullptr;
 
     if (depth_texture != nullptr)
@@ -463,7 +463,7 @@ void SDL3GPURenderer::CreateShader(Shader& shader, const void* data, const usize
 void SDL3GPURenderer::DestroyShader(Shader& shader) { SDL_ReleaseGPUShader(device, static_cast<SDL_GPUShader*>(shader.shader.pointer)); }
 
 void SDL3GPURenderer::CreateShaderPipeline(
-    GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
+    GraphicsShaderPipeline& pipeline, const ResourceRef<Shader>& vertex_shader, const ResourceRef<Shader>& fragment_shader
 )
 {
     constexpr SDL_GPUColorTargetBlendState blend_state{

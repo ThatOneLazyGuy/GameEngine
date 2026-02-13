@@ -10,6 +10,7 @@ add_library(
         "Core/Window.cpp"
         "Core/Rendering/Renderer.cpp"
         "Core/Rendering/RenderPassInterface.cpp"
+        "Core/ResourceManager.cpp"
 
         "Platform/PC/SDL3GPU/Rendering/Renderer.cpp"
         "Platform/OpenGL/Rendering/Renderer.cpp"

@@ -38,9 +38,11 @@ namespace
         return return_data;
     }
 
-    std::vector<Handle<Texture>> LoadMaterialTextures(const aiMaterial& material, const aiTextureType type, const std::string& mesh_path)
+    std::vector<std::shared_ptr<Texture>> LoadMaterialTextures(
+        const aiMaterial& material, const aiTextureType type, const std::string& mesh_path
+    )
     {
-        std::vector<Handle<Texture>> textures;
+        std::vector<std::shared_ptr<Texture>> textures;
         for (uint32 i = 0; i < material.GetTextureCount(type); i++)
         {
             aiString string;
@@ -84,7 +86,7 @@ void RenderTarget::Resize(const sint32 new_width, const sint32 new_height)
     if (depth_buffer.GetTexture() != nullptr) { depth_buffer.GetTexture()->Resize(width, height); }
 }
 
-void RenderTarget::AddRenderBuffer(const Handle<Texture>& render_texture, const float4& clear_color)
+void RenderTarget::AddRenderBuffer(const std::shared_ptr<Texture>& render_texture, const float4& clear_color)
 {
     RenderBuffer& render_buffer = render_buffers.emplace_back(render_texture);
     render_buffer.clear_color = clear_color;
@@ -92,7 +94,7 @@ void RenderTarget::AddRenderBuffer(const Handle<Texture>& render_texture, const 
     Renderer::Instance().UpdateRenderBuffer(*this, render_buffers.size() - 1);
 }
 
-void RenderTarget::SetDepthBuffer(const Handle<Texture>& depth_texture)
+void RenderTarget::SetDepthBuffer(const std::shared_ptr<Texture>& depth_texture)
 {
     depth_buffer = RenderBuffer{depth_texture};
 
@@ -132,7 +134,7 @@ void Texture::Resize(const sint32 new_width, const sint32 new_height)
 
 Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 {
-    const auto model_handle = FileResource::Load<ModelParser>(path);
+    const auto model_handle = ResourceManager::Load<ModelParser>(path);
     const aiScene* scene = model_handle->importer.GetScene();
 
     if (scene == nullptr)
@@ -151,11 +153,11 @@ Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
 
     for (usize i = 0; i < vertex_count; i++)
     {
-        auto& [position, color, tex_coord] = vertices[i];
+        Vertex& vertex = vertices[i];
 
-        position = float3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
-        if (mesh_colors != nullptr) color = float3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
-        if (mesh_tex_coords != nullptr) tex_coord = float2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
+        vertex.position = float3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
+        if (mesh_colors != nullptr) vertex.color = float3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
+        if (mesh_tex_coords != nullptr) vertex.tex_coord = float2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
     }
 
     const aiFace* mesh_faces = model_mesh.mFaces;
@@ -193,10 +195,9 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indic
 
 Mesh::~Mesh() { Renderer::Instance().DestroyMesh(*this); }
 
-uint64 Shader::GetID(const std::string& path, const ShaderSettings& shader_info)
+std::string Shader::GetID(const std::string& path, const ShaderSettings& shader_info)
 {
-    constexpr std::hash<std::string> hasher{};
-    return hasher(path + (shader_info.type == VERTEX ? ".vert" : ".frag"));
+    return path + (shader_info.type == VERTEX ? ".vert" : ".frag");
 }
 
 Shader::Shader(std::string path, const ShaderSettings& shader_info) :
@@ -226,15 +227,12 @@ Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings) :
     vertex_attributes{pipeline_settings.vertex_attributes}, uniform_sizes{pipeline_settings.uniform_sizes}
 {
-    const Handle<Shader>& vertex_shader = Load<Shader>(pipeline_path, pipeline_settings.vertex_info);
+    const ResourceRef<Shader> vertex_shader = ResourceManager::Load<Shader>(pipeline_path, pipeline_settings.vertex_info);
     vertex_path = pipeline_path;
-    const Handle<Shader>& fragment_shader = Load<Shader>(pipeline_path, pipeline_settings.fragment_info);
+    const ResourceRef<Shader> fragment_shader = ResourceManager::Load<Shader>(pipeline_path, pipeline_settings.fragment_info);
     fragment_path = pipeline_path;
 
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
-
-    TryDestroyResource(vertex_shader->Resource::GetID());
-    TryDestroyResource(fragment_shader->Resource::GetID());
 }
 
 GraphicsShaderPipeline::~GraphicsShaderPipeline() { Renderer::Instance().DestroyShaderPipeline(*this); }
@@ -243,8 +241,6 @@ void Renderer::SetupBackend(const char* backend_argument)
 {
     if (backend_argument == nullptr) backend_name = "SDL3GPU";
     else backend_name = backend_argument;
-
-    main_target = std::make_shared<RenderTarget>();
 
     if (backend_name == "OpenGL")
     {
@@ -263,7 +259,7 @@ void Renderer::Init() { renderer->InitBackend(); }
 
 void Renderer::Exit()
 {
-    main_target.reset();
+    main_target.Clear();
     render_passes.clear();
 
     renderer->ExitBackend();
@@ -273,7 +269,7 @@ void Renderer::Render(const ECS::Entity& camera_entity)
 {
     Instance().Update();
 
-    for (Handle<RenderPassInterface>& render_pass : render_passes)
+    for (std::shared_ptr<RenderPassInterface>& render_pass : render_passes)
     {
         Instance().BeginRenderPass(*render_pass);
         render_pass->Render(camera_entity);

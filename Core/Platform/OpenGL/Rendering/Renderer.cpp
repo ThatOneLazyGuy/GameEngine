@@ -20,7 +20,7 @@ namespace
     SDL_GLContext context;
 
     std::map<GLuint, GLuint> uniform_buffers;
-    Handle<GraphicsShaderPipeline> active_pipeline;
+    ResourceRef<GraphicsShaderPipeline> active_pipeline;
 
     void CheckCompileErrors(const uint32 id, const std::string& type = "")
     {
@@ -175,7 +175,7 @@ void OpenGLRenderer::SetUniform(const uint32 slot, const void* data, const usize
 
 void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 {
-    const Handle<RenderTarget>& render_target = render_pass.render_target;
+    const ResourceRef<RenderTarget>& render_target = render_pass.render_target;
 
     glBindFramebuffer(GL_FRAMEBUFFER, render_target->target_id);
     glViewport(0, 0, render_target->GetWidth(), render_target->GetHeight());
@@ -211,7 +211,7 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
 
 void OpenGLRenderer::EndRenderPass()
 {
-    active_pipeline.reset();
+    active_pipeline.Clear();
 
     glUseProgram(0);
     glDrawBuffers(0, nullptr);
@@ -322,7 +322,7 @@ void OpenGLRenderer::CreateShader(Shader& shader, const void* data, usize)
 void OpenGLRenderer::DestroyShader(Shader& shader) { glDeleteShader(shader.shader.id); }
 
 void OpenGLRenderer::CreateShaderPipeline(
-    GraphicsShaderPipeline& pipeline, const Handle<Shader>& vertex_shader, const Handle<Shader>& fragment_shader
+    GraphicsShaderPipeline& pipeline, const ResourceRef<Shader>& vertex_shader, const ResourceRef<Shader>& fragment_shader
 )
 {
     pipeline.shader_pipeline.id = glCreateProgram();
