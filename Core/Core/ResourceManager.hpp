@@ -137,41 +137,60 @@ class ResourceRef
     UUID uuid{NULL_UUID};
 };
 
+class AssetRegistryBase
+{
+  protected:
+    AssetRegistryBase() = default;
+
+  public:
+    virtual ~AssetRegistryBase() = default;
+
+    [[nodiscard]] virtual bool IsValidResource(const UUID& uuid) const = 0;
+
+    [[nodiscard]] virtual std::string GetResourceText(const UUID& uuid) const = 0;
+    [[nodiscard]] virtual std::vector<uint8> GetResourceData(const UUID& uuid) const = 0;
+};
+
 namespace ResourceManager
 {
-    inline std::map<std::string, UUID> permanent_mapping;
-
-    // Concept to check if the resource defines a specific GetID function with different parameters.
-    template <typename ResourceType, typename... Args>
-    concept HasExplictGetID = requires(const std::string& path, Args&&... args) { ResourceType::GetID(path, std::forward<Args>(args)...); };
+    inline std::unique_ptr<AssetRegistryBase> asset_registry;
 
     template <typename ResourceType, typename... Args>
     requires std::derived_from<ResourceType, Resource<ResourceType>>
-    ResourceRef<ResourceType> Load(const std::string& path, Args&&... args)
+    ResourceRef<ResourceType> Load(const UUID& uuid)
     {
-        std::string id_string;
-        if constexpr (HasExplictGetID<ResourceType, Args...>) id_string = ResourceType::GetID(path, std::forward<Args>(args)...);
-        else id_string = path;
+        if (resources.contains(uuid)) return ResourceRef<ResourceType>{uuid};
 
-        UUID uuid;
-
-        const auto permanent_iterator = permanent_mapping.find(id_string);
-        if (permanent_iterator != permanent_mapping.end()) uuid = permanent_iterator->second;
-        else
+        if (!asset_registry->IsValidResource(uuid))
         {
-            uuid = UUIDGenerator::Generate();
-            permanent_mapping.emplace(id_string, uuid);
+            Log::Error("");
+            return ResourceRef<ResourceType>{};
         }
 
 
-        if (resources.contains(uuid)) return ResourceRef<ResourceType>{uuid};
-
-        resources[uuid] = std::pair{0, std::make_unique<ResourceType>(path, std::forward<Args>(args)...)};
+        if constexpr (ResourceType::IsTextConstructable)
+        {
+            const std::string& text = asset_registry->GetResourceText(uuid);
+            resources[uuid] = std::pair{0, std::make_unique<ResourceType>(text)};
+        }
+        else
+        {
+            const std::vector<uint8>& data = asset_registry->GetResourceData(uuid);
+            resources[uuid] = std::pair{0, std::make_unique<ResourceType>(data)};
+        }
 
         return ResourceRef<ResourceType>{uuid};
     }
 
-    void Init();
+    template <typename RegistryType>
+    requires std::derived_from<RegistryType, AssetRegistryBase>
+    RegistryType* Init()
+    {
+        RegistryType* new_registry = new RegistryType;
+        asset_registry = std::unique_ptr<RegistryType>(new_registry);
+
+        return new_registry;
+    }
     void Exit();
 
     void Update();

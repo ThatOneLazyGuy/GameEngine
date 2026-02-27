@@ -1,6 +1,7 @@
+#include "Editor.hpp"
+
 #include "Core/ECS.hpp"
 #include "Core/ResourceManager.hpp"
-#include "Editor.hpp"
 
 #include "ImGuiExtra.hpp"
 #include "ImGuiPlatform.hpp"
@@ -14,11 +15,13 @@
 #include <Core/Time.hpp>
 #include <Core/Window.hpp>
 #include <Core/Physics/Physics.hpp>
+#include <Tools/Files.hpp>
 
 #include <SDL3/SDL_mouse.h>
 
 #include <imgui.h>
 #include <numeric>
+
 
 namespace
 {
@@ -174,7 +177,8 @@ int main(int, char* args[])
 
     Renderer::Init();
     const GraphicsPipelineSettings default_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/DefaultShader.slang");
-    ResourceRef graphics_pipeline = ResourceManager::Load<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", default_pipeline_settings);
+    ResourceRef graphics_pipeline =
+        ResourceManager::Load<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", default_pipeline_settings);
     const GraphicsPipelineSettings physics_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/PhysicsDebug.slang");
     ResourceManager::Load<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", physics_pipeline_settings);
 
@@ -211,3 +215,67 @@ int main(int, char* args[])
 
     return 0;
 }
+
+AssetRegistry::AssetRegistry()
+{
+    usize read_index = 0;
+    const std::vector<uint8> data = Files::ReadBinary("ResourceMapping.bin");
+    while (read_index < data.size())
+    {
+        const usize uuid_size = *reinterpret_cast<const usize*>(data.data() + read_index);
+        read_index += sizeof(usize);
+
+        std::span uuid_bytes{data.data() + read_index, data.data() + read_index + uuid_size};
+        read_index += uuid_size;
+
+        const usize path_size = *reinterpret_cast<const usize*>(data.data() + read_index);
+        read_index += sizeof(usize);
+
+        std::string path{data.data() + read_index, data.data() + read_index + path_size};
+        read_index += path_size;
+
+        UUID uuid{uuid_bytes.data()};
+
+        Log::Log("Path: {}, UUID: {}", path, uuid.str());
+
+        const auto& iterator = mapping.emplace(uuid, path);
+        reverse_mapping.emplace(iterator.first->second, uuid);
+    }
+}
+
+AssetRegistry::~AssetRegistry()
+{
+    usize write_index = 0;
+    std::vector<uint8> data;
+    for (const auto& [uuid, path] : mapping)
+    {
+        const std::string uuid_bytes = uuid.bytes();
+        const usize uuid_size = uuid_bytes.size();
+        const usize uuid_data_size = uuid_size + sizeof(usize);
+
+        const usize path_size = path.size();
+        const usize path_data_size = path_size + sizeof(usize);
+
+        data.resize(data.size() + uuid_data_size + path_data_size);
+
+        std::memcpy(data.data() + write_index, &uuid_size, sizeof(usize));
+        write_index += sizeof(usize);
+
+        std::memcpy(data.data() + write_index, uuid_bytes.data(), uuid_size);
+        write_index += uuid_size;
+
+        std::memcpy(data.data() + write_index, &path_size, sizeof(usize));
+        write_index += sizeof(usize);
+
+        std::memcpy(data.data() + write_index, path.data(), path_size);
+        write_index += path_size;
+    }
+
+    Files::WriteBinary("ResourceMapping.bin", data);
+
+    mapping.clear();
+}
+
+std::string AssetRegistry::GetResourceText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid)); }
+
+std::vector<uint8> AssetRegistry::GetResourceData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid)); }
