@@ -7,6 +7,7 @@
 
 #include "Tools/Types.hpp"
 #include "Tools/Logging.hpp"
+#include "Tools/uuid.hpp"
 
 class ResourceBase
 {
@@ -37,7 +38,7 @@ class Resource : public ResourceBase
 namespace ResourceManager
 {
 
-    inline std::map<usize, std::pair<usize, std::unique_ptr<ResourceBase>>> resources{};
+    inline std::map<UUID, std::pair<usize, std::unique_ptr<ResourceBase>>> resources{};
 
 }
 
@@ -48,9 +49,9 @@ class ResourceRef
 {
   public:
     ResourceRef() = default;
-    ResourceRef(const usize id) : id{id}
+    ResourceRef(const UUID& uuid) : uuid{uuid}
     {
-        const auto iterator = ResourceManager::resources.find(id);
+        const auto iterator = ResourceManager::resources.find(uuid);
         if (iterator == ResourceManager::resources.end())
         {
             Log::Error("Tried to create ResourceRef with invalid resource id.");
@@ -64,7 +65,7 @@ class ResourceRef
     }
     ~ResourceRef()
     {
-        const auto iterator = ResourceManager::resources.find(id);
+        const auto iterator = ResourceManager::resources.find(uuid);
         if (iterator == ResourceManager::resources.end()) return;
 
         usize& reference_count = iterator->second.first;
@@ -73,9 +74,9 @@ class ResourceRef
 
     ResourceRef(const ResourceRef& other)
     {
-        id = other.id;
+        uuid = other.uuid;
 
-        const auto iterator = ResourceManager::resources.find(id);
+        const auto iterator = ResourceManager::resources.find(uuid);
         if (iterator != ResourceManager::resources.end())
         {
             usize& reference_count = iterator->second.first;
@@ -83,16 +84,16 @@ class ResourceRef
         }
     }
 
-    ResourceRef(ResourceRef&& other) noexcept : id{other.id} { other.id = 0; }
+    ResourceRef(ResourceRef&& other) noexcept : uuid{other.uuid} { other.uuid = NULL_UUID; }
     ResourceRef(const ResourceRef&& other) noexcept : ResourceRef{other} {}
 
     ResourceRef& operator=(const ResourceRef& other)
     {
         Clear();
 
-        id = other.id;
+        uuid = other.uuid;
 
-        const auto iterator = ResourceManager::resources.find(id);
+        const auto iterator = ResourceManager::resources.find(uuid);
         if (iterator != ResourceManager::resources.end())
         {
             usize& reference_count = iterator->second.first;
@@ -106,38 +107,40 @@ class ResourceRef
     {
         Clear();
 
-        id = other.id;
-        other.id = 0;
+        uuid = other.uuid;
+        other.uuid = NULL_UUID;
 
         return *this;
     }
 
-    Derived* operator->() { return static_cast<Derived*>(ResourceManager::resources[id].second.get()); }
-    const Derived* operator->() const { return static_cast<const Derived*>(ResourceManager::resources[id].second.get()); }
-    Derived& operator*() { return static_cast<Derived&>(*ResourceManager::resources[id].second); }
-    const Derived& operator*() const { return static_cast<const Derived&>(*ResourceManager::resources.at(id).second); }
+    Derived* operator->() { return static_cast<Derived*>(ResourceManager::resources[uuid].second.get()); }
+    const Derived* operator->() const { return static_cast<const Derived*>(ResourceManager::resources[uuid].second.get()); }
+    Derived& operator*() { return static_cast<Derived&>(*ResourceManager::resources[uuid].second); }
+    const Derived& operator*() const { return static_cast<const Derived&>(*ResourceManager::resources.at(uuid).second); }
 
-    [[nodiscard]] bool Valid() const { return ResourceManager::resources.contains(id); }
+    [[nodiscard]] bool Valid() const { return ResourceManager::resources.contains(uuid); }
     void Clear()
     {
-        const auto iterator = ResourceManager::resources.find(id);
+        const auto iterator = ResourceManager::resources.find(uuid);
         if (iterator != ResourceManager::resources.end())
         {
             usize& reference_count = iterator->second.first;
             --reference_count;
         }
 
-        id = 0;
+        uuid = NULL_UUID;
     }
 
   private:
     inline static usize type_hash{typeid(Derived).hash_code()};
 
-    usize id{0};
+    UUID uuid{NULL_UUID};
 };
 
 namespace ResourceManager
 {
+    inline std::map<std::string, UUID> permanent_mapping;
+
     // Concept to check if the resource defines a specific GetID function with different parameters.
     template <typename ResourceType, typename... Args>
     concept HasExplictGetID = requires(const std::string& path, Args&&... args) { ResourceType::GetID(path, std::forward<Args>(args)...); };
@@ -150,14 +153,25 @@ namespace ResourceManager
         if constexpr (HasExplictGetID<ResourceType, Args...>) id_string = ResourceType::GetID(path, std::forward<Args>(args)...);
         else id_string = path;
 
-        const usize id = std::hash<std::string>{}(id_string);
-        if (resources.contains(id)) return ResourceRef<ResourceType>{id};
+        UUID uuid;
 
-        resources[id] = std::pair{0, std::make_unique<ResourceType>(path, std::forward<Args>(args)...)};
+        const auto permanent_iterator = permanent_mapping.find(id_string);
+        if (permanent_iterator != permanent_mapping.end()) uuid = permanent_iterator->second;
+        else
+        {
+            uuid = UUIDGenerator::Generate();
+            permanent_mapping.emplace(id_string, uuid);
+        }
 
-        return ResourceRef<ResourceType>{id};
+
+        if (resources.contains(uuid)) return ResourceRef<ResourceType>{uuid};
+
+        resources[uuid] = std::pair{0, std::make_unique<ResourceType>(path, std::forward<Args>(args)...)};
+
+        return ResourceRef<ResourceType>{uuid};
     }
 
+    void Init();
     void Exit();
 
     void Update();

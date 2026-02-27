@@ -166,6 +166,8 @@ namespace Editor
 
 int main(int, char* args[])
 {
+    ResourceManager::Init();
+
     Renderer::SetupBackend(args[1]);
     Window::Init(&ImGui::PlatformProcessEvent);
     ShaderCompiler::Init();

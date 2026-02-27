@@ -28,3 +28,4 @@ imgui.ini
 *.dxil
 
 *.hash
+*.bin

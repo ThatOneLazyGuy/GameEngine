@@ -32,6 +32,7 @@ target_include_directories(
         "${EXTERNAL}/eigen"
         "${EXTERNAL}/flecs/include"
         "${EXTERNAL}/JoltPhysics"
+        "${EXTERNAL}/uuid_v4"
 )
 
 target_link_libraries(
