@@ -5,7 +5,7 @@ add_library(
         "Core/Physics/DebugRenderer.cpp"
         "Core/ECS.cpp"
         "Core/Input.cpp"
-        "Core/Model.cpp"
+        
         "Core/Time.cpp"
         "Core/Window.cpp"
         "Core/Rendering/Renderer.cpp"

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Core/Math.hpp"
+#include "Tools/uuid.hpp"
 #include "Tools/Types.hpp"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/BodyID.h>
+
 
 namespace Physics
 {
@@ -74,7 +76,7 @@ namespace Physics
         float radius{1.0f};
     };
 
-    void Init();
+    void Init(const UUID& shader_uuid);
 
     void Update(float delta_time);
 

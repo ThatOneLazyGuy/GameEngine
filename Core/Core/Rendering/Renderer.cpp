@@ -3,7 +3,6 @@
 #include "Platform/OpenGL/Rendering/Renderer.hpp"
 #include "Platform/PC/SDL3GPU/Rendering/Renderer.hpp"
 
-#include "Core/Model.hpp"
 #include "RenderPassInterface.hpp"
 #include "Tools/Logging.hpp"
 
@@ -83,10 +82,10 @@ void RenderTarget::Resize(const sint32 new_width, const sint32 new_height)
         buffer.GetTexture()->Resize(width, height);
     }
 
-    if (depth_buffer.GetTexture() != nullptr) { depth_buffer.GetTexture()->Resize(width, height); }
+    if (depth_buffer.GetTexture().Valid()) { depth_buffer.GetTexture()->Resize(width, height); }
 }
 
-void RenderTarget::AddRenderBuffer(const std::shared_ptr<Texture>& render_texture, const float4& clear_color)
+void RenderTarget::AddRenderBuffer(const ResourceRef<Texture>& render_texture, const float4& clear_color)
 {
     RenderBuffer& render_buffer = render_buffers.emplace_back(render_texture);
     render_buffer.clear_color = clear_color;
@@ -94,12 +93,14 @@ void RenderTarget::AddRenderBuffer(const std::shared_ptr<Texture>& render_textur
     Renderer::Instance().UpdateRenderBuffer(*this, render_buffers.size() - 1);
 }
 
-void RenderTarget::SetDepthBuffer(const std::shared_ptr<Texture>& depth_texture)
+void RenderTarget::SetDepthBuffer(const ResourceRef<Texture>& depth_texture)
 {
     depth_buffer = RenderBuffer{depth_texture};
 
     Renderer::Instance().UpdateDepthBuffer(*this);
 }
+
+Texture::Texture(const std::vector<uint8>& data) {}
 
 Texture::Texture(const TextureSettings& texture_settings, const SamplerSettings& sampler_settings) :
     width{texture_settings.width}, height{texture_settings.height}, format{texture_settings.format}, flags{texture_settings.flags}
@@ -132,55 +133,39 @@ void Texture::Resize(const sint32 new_width, const sint32 new_height)
     height = new_height;
 }
 
-Mesh::Mesh(const std::string& path, const uint32 index) : index{index}
+
+Mesh::Mesh(const std::vector<uint8>& data)
 {
-    const auto model_handle = ResourceManager::Load<ModelParser>(path);
-    const aiScene* scene = model_handle->importer.GetScene();
+    usize read_index = 0;
+    vertices_count = static_cast<uint32>(*reinterpret_cast<const usize*>(data.data() + read_index));
+    read_index += sizeof(usize);
 
-    if (scene == nullptr)
+    std::vector<Vertex> vertices;
+    vertices.resize(vertices_count);
+    std::memcpy(vertices.data(), data.data() + read_index, vertices_count * sizeof(Vertex));
+    read_index += vertices_count * sizeof(Vertex);
+
+    indices_count = static_cast<uint32>(*reinterpret_cast<const usize*>(data.data() + read_index));
+    read_index += sizeof(usize);
+
+    std::vector<uint32> indices;
+    indices.resize(indices_count);
+    std::memcpy(indices.data(), data.data() + read_index, indices_count * sizeof(uint32));
+    read_index += indices_count * sizeof(uint32);
+
+    const usize texture_count = *reinterpret_cast<const usize*>(data.data() + read_index);
+    read_index += sizeof(usize);
+
+    for (usize i = 0; i < texture_count; i++)
     {
-        Log::Error("Failed to load asset: {}", path);
-        return;
+        const usize uuid_bytes_count = *reinterpret_cast<const usize*>(data.data() + read_index);
+        read_index += sizeof(usize);
+
+        const UUID texture_uuid{data.data() + read_index};
+        read_index += uuid_bytes_count;
+
+        textures.push_back(ResourceManager::Load<Texture>(texture_uuid));
     }
-
-    const aiMesh& model_mesh = *scene->mMeshes[index];
-    const aiVector3D* mesh_vertices = model_mesh.mVertices;
-    const aiColor4D* mesh_colors = model_mesh.mColors[0];
-    const aiVector3D* mesh_tex_coords = model_mesh.mTextureCoords[0];
-
-    const usize vertex_count = model_mesh.mNumVertices;
-    std::vector<Vertex> vertices{vertex_count};
-
-    for (usize i = 0; i < vertex_count; i++)
-    {
-        Vertex& vertex = vertices[i];
-
-        vertex.position = float3{mesh_vertices[i].x, mesh_vertices[i].y, mesh_vertices[i].z};
-        if (mesh_colors != nullptr) vertex.color = float3{mesh_colors[i].r, mesh_colors[i].g, mesh_colors[i].b};
-        if (mesh_tex_coords != nullptr) vertex.tex_coord = float2{mesh_tex_coords[i].x, mesh_tex_coords[i].y};
-    }
-
-    const aiFace* mesh_faces = model_mesh.mFaces;
-
-    const usize face_count = model_mesh.mNumFaces;
-    std::vector<uint32> indices(face_count * 3);
-    for (usize i = 0; i < face_count; i++)
-    {
-        std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
-    }
-
-    const usize last_separator = path.find_last_of('/');
-    const std::string mesh_path = path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
-
-    const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
-    auto diffuse_maps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, mesh_path);
-    textures.insert(textures.end(), diffuse_maps.begin(), diffuse_maps.end());
-
-    auto specular_maps = LoadMaterialTextures(material, aiTextureType_SPECULAR, mesh_path);
-    textures.insert(textures.end(), specular_maps.begin(), specular_maps.end());
-
-    vertices_count = static_cast<uint32>(vertices.size());
-    indices_count = static_cast<uint32>(indices.size());
 
     Renderer::Instance().CreateMesh(*this, vertices, indices);
 }
@@ -224,12 +209,17 @@ Shader::Shader(std::string path, const ShaderSettings& shader_info) :
 
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
+GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& text) 
+{
+
+}
+
 GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings) :
     vertex_attributes{pipeline_settings.vertex_attributes}, uniform_sizes{pipeline_settings.uniform_sizes}
 {
-    const ResourceRef<Shader> vertex_shader = ResourceManager::Load<Shader>(pipeline_path, pipeline_settings.vertex_info);
+    const ResourceRef<Shader> vertex_shader = ResourceManager::Create<Shader>(pipeline_path, pipeline_settings.vertex_info);
     vertex_path = pipeline_path;
-    const ResourceRef<Shader> fragment_shader = ResourceManager::Load<Shader>(pipeline_path, pipeline_settings.fragment_info);
+    const ResourceRef<Shader> fragment_shader = ResourceManager::Create<Shader>(pipeline_path, pipeline_settings.fragment_info);
     fragment_path = pipeline_path;
 
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);

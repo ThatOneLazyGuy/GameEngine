@@ -19,6 +19,8 @@ class AssetRegistry : public AssetRegistryBase
         return uuid;
     }
 
+    const std::map<std::string_view, UUID>& GetAssetFileMapping() const { return reverse_mapping; }
+
   private:
     [[nodiscard]] bool IsValidResource(const UUID& uuid) const override { return mapping.contains(uuid); }
 
@@ -31,6 +33,7 @@ class AssetRegistry : public AssetRegistryBase
 
 namespace Editor
 {
+    inline AssetRegistry* asset_registry{nullptr};
 
     struct EditorOnly
     {

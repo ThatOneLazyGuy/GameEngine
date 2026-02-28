@@ -60,7 +60,7 @@ inline const std::unordered_map<std::string, usize> attribute_sizes{
 struct TextureSettings;
 struct SamplerSettings;
 
-class Texture
+class Texture : public Resource<Texture>
 {
   public:
     enum ColorFormat : uint8
@@ -79,6 +79,7 @@ class Texture
     };
 
     Texture() = default;
+    Texture(const std::vector<uint8>& data);
     Texture(const TextureSettings& texture_settings, const SamplerSettings& sampler_settings);
 
     Texture(Texture&) = delete;
@@ -128,14 +129,14 @@ class RenderBuffer
 {
   public:
     RenderBuffer() = default;
-    RenderBuffer(const std::shared_ptr<Texture>& texture) : texture{texture} {}
+    RenderBuffer(const ResourceRef<Texture>& texture) : texture{texture} {}
 
-    [[nodiscard]] std::shared_ptr<Texture> GetTexture() const { return texture; }
+    [[nodiscard]] ResourceRef<Texture> GetTexture() const { return texture; }
 
     float4 clear_color{};
 
   private:
-    std::shared_ptr<Texture> texture;
+    ResourceRef<Texture> texture;
 };
 
 class RenderTarget final : public Resource<RenderTarget>
@@ -149,8 +150,8 @@ class RenderTarget final : public Resource<RenderTarget>
     [[nodiscard]] sint32 GetWidth() const { return width; }
     [[nodiscard]] sint32 GetHeight() const { return height; }
 
-    void AddRenderBuffer(const std::shared_ptr<Texture>& render_texture, const float4& clear_color = {});
-    void SetDepthBuffer(const std::shared_ptr<Texture>& depth_texture);
+    void AddRenderBuffer(const ResourceRef<Texture>& render_texture, const float4& clear_color = {});
+    void SetDepthBuffer(const ResourceRef<Texture>& depth_texture);
 
     std::vector<RenderBuffer> render_buffers;
     RenderBuffer depth_buffer;
@@ -167,13 +168,10 @@ class RenderTarget final : public Resource<RenderTarget>
 class Mesh final : public Resource<Mesh>
 {
   public:
-    static std::string GetID(const std::string& path, const uint32 index)
-    {
-        return path + '-' + std::to_string(index);
-    }
+    static std::string GetID(const std::string& path, const uint32 index) { return path + '-' + std::to_string(index); }
 
     Mesh() = default;
-    Mesh(const std::string& path, uint32 index);
+    Mesh(const std::vector<uint8>& data);
     Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices);
     ~Mesh() override;
 
@@ -185,7 +183,7 @@ class Mesh final : public Resource<Mesh>
     BufferID vertices_buffer;
     BufferID indices_buffer;
 
-    std::vector<std::shared_ptr<Texture>> textures;
+    std::vector<ResourceRef<Texture>> textures;
 
   private:
     uint32 vertices_count;
@@ -260,13 +258,16 @@ class GraphicsShaderPipeline final : public Resource<GraphicsShaderPipeline>
   public:
     // TODO: Make sure the pipeline path and the vertex/fragment paths are pointing the used shader files.
     GraphicsShaderPipeline() = default;
-    GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings = {});
+    GraphicsShaderPipeline(const std::string& text);
+    GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings);
     ~GraphicsShaderPipeline() override;
 
     const std::string& GetVertexPath() const { return vertex_path; }
     const std::string& GetFragmentPath() const { return fragment_path; }
 
     bool IsWireframe() const { return wireframe; }
+
+    static constexpr bool IsTextConstructable{true};
 
     GraphicsShaderPipelineID shader_pipeline;
 

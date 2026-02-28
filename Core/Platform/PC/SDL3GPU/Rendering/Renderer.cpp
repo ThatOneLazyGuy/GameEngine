@@ -231,10 +231,10 @@ void SDL3GPURenderer::BeginRenderPass(const RenderPassInterface& render_pass)
         }
     }
 
-    const std::shared_ptr<Texture> depth_texture = render_target->depth_buffer.GetTexture();
+    const ResourceRef<Texture> depth_texture = render_target->depth_buffer.GetTexture();
     SDL_GPUDepthStencilTargetInfo* depth_stencil_target_info = nullptr;
 
-    if (depth_texture != nullptr)
+    if (depth_texture.Valid())
     {
         depth_stencil_target_info = new SDL_GPUDepthStencilTargetInfo{};
         depth_stencil_target_info->texture = static_cast<SDL_GPUTexture*>(depth_texture->texture.pointer);

@@ -1,27 +1,28 @@
 #include "Editor.hpp"
 
-#include "Core/ECS.hpp"
-#include "Core/ResourceManager.hpp"
 
 #include "ImGuiExtra.hpp"
 #include "ImGuiPlatform.hpp"
 #include "ShaderCompiler.hpp"
 
 #include "Windows/WindowBase.hpp"
+#include "Importers/ImporterBase.hpp"
 
-#include <Core/Input.hpp>
-#include <Core/Rendering/Renderer.hpp>
-#include <Core/Rendering/RenderPassInterface.hpp>
+#include <Core/ECS.hpp>
 #include <Core/Time.hpp>
 #include <Core/Window.hpp>
 #include <Core/Physics/Physics.hpp>
+#include <Core/ResourceManager.hpp>
+#include <Core/Rendering/Renderer.hpp>
+#include <Core/Rendering/RenderPassInterface.hpp>
 #include <Tools/Files.hpp>
 
 #include <SDL3/SDL_mouse.h>
 
 #include <imgui.h>
-#include <numeric>
 
+#include <filesystem>
+#include <numeric>
 
 namespace
 {
@@ -35,13 +36,13 @@ namespace
 
     ECS::Entity backpack_entity;
 
-    void CreateDefaultEntities()
-    {
-        const ResourceRef<Mesh> handle = ResourceManager::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
-        backpack_entity = ECS::CreateEntity("Backpack");
-        auto&& [handle_component, collider] = backpack_entity.AddComponent<ResourceRef<Mesh>, Physics::SphereCollider>();
-        handle_component = handle;
-    }
+    //void CreateDefaultEntities()
+    //{
+    //    const ResourceRef<Mesh> handle = ResourceManager::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
+    //    backpack_entity = ECS::CreateEntity("Backpack");
+    //    auto&& [handle_component, collider] = backpack_entity.AddComponent<ResourceRef<Mesh>, Physics::SphereCollider>();
+    //    handle_component = handle;
+    //}
 
     std::vector<EditorWindowBase*> windows;
 
@@ -169,18 +170,23 @@ namespace Editor
 
 int main(int, char* args[])
 {
-    ResourceManager::Init();
+    Editor::asset_registry = ResourceManager::Init<AssetRegistry>();
 
     Renderer::SetupBackend(args[1]);
     Window::Init(&ImGui::PlatformProcessEvent);
     ShaderCompiler::Init();
 
     Renderer::Init();
+
+    Log::Log(std::filesystem::current_path().generic_string());
+
     const GraphicsPipelineSettings default_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/DefaultShader.slang");
     ResourceRef graphics_pipeline =
-        ResourceManager::Load<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", default_pipeline_settings);
+        ResourceManager::Create<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", default_pipeline_settings);
+
     const GraphicsPipelineSettings physics_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/PhysicsDebug.slang");
-    ResourceManager::Load<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", physics_pipeline_settings);
+    const ResourceRef physics_shader =
+        ResourceManager::Create<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", physics_pipeline_settings);
 
     ECS::Init();
 
@@ -188,9 +194,9 @@ int main(int, char* args[])
     Renderer::render_passes.emplace_back(std::make_shared<DefaultRenderPass>(graphics_pipeline, Renderer::main_target));
     graphics_pipeline.Clear();
 
-    Physics::Init();
+    Physics::Init(physics_shader.GetUUID());
 
-    CreateDefaultEntities();
+    //CreateDefaultEntities();
 
     while (!Window::PollEvents())
     {

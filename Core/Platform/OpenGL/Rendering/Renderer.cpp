@@ -2,7 +2,6 @@
 
 #include "Tools/Logging.hpp"
 #include "Core/Math.hpp"
-#include "Core/Model.hpp"
 #include "Core/Window.hpp"
 #include "Core/Physics/Physics.hpp"
 #include "Core/Rendering/RenderPassInterface.hpp"
@@ -204,7 +203,7 @@ void OpenGLRenderer::BeginRenderPass(const RenderPassInterface& render_pass)
     }
 
     // If the target has a valid depth buffer clear the frame buffer's depth bit (you shouldn't set draw buffers to GL_DEPTH_ATTACHMENT for some reason).
-    if (render_pass.clear_render_targets && render_target->depth_buffer.GetTexture() != nullptr) { glClear(GL_DEPTH_BUFFER_BIT); }
+    if (render_pass.clear_render_targets && render_target->depth_buffer.GetTexture().Valid()) { glClear(GL_DEPTH_BUFFER_BIT); }
 
     glDrawBuffers(static_cast<sint32>(draw_buffers.size()), draw_buffers.data());
 }

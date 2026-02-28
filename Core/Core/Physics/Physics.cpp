@@ -240,7 +240,7 @@ namespace Physics
         body_id = body_interface.CreateAndAddBody(sphere_settings, JPH::EActivation::Activate);
     }
 
-    void Init()
+    void Init(const UUID& shader_uuid)
     {
         // Register allocation hook. In this example we'll just let Jolt use malloc / free but you can override these if you want (see Memory.h).
         // This needs to be done before any other Jolt function is called.
@@ -306,7 +306,7 @@ namespace Physics
 
         debug_renderer = new DebugRenderer();
 
-        ResourceRef<GraphicsShaderPipeline> graphics_pipeline = ResourceManager::Load<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang");
+        ResourceRef<GraphicsShaderPipeline> graphics_pipeline = ResourceManager::Load<GraphicsShaderPipeline>(shader_uuid);
         const std::shared_ptr<RenderPassInterface> debug_render_pass = std::make_shared<PhysicsDebugRenderPass>(graphics_pipeline, Renderer::main_target);
         debug_render_pass->clear_render_targets = false;
         Renderer::render_passes.push_back(debug_render_pass);

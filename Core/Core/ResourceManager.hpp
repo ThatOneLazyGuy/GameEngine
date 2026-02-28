@@ -15,6 +15,7 @@ class ResourceBase
     virtual ~ResourceBase() = default;
 
     [[nodiscard]] virtual usize GetTypeHash() const = 0;
+    static constexpr bool IsTextConstructable{false};
 
   private:
     ResourceBase() = default;
@@ -131,6 +132,8 @@ class ResourceRef
         uuid = NULL_UUID;
     }
 
+    [[nodiscard]] const UUID& GetUUID() const { return uuid; }
+
   private:
     inline static usize type_hash{typeid(Derived).hash_code()};
 
@@ -155,7 +158,7 @@ namespace ResourceManager
 {
     inline std::unique_ptr<AssetRegistryBase> asset_registry;
 
-    template <typename ResourceType, typename... Args>
+    template <typename ResourceType>
     requires std::derived_from<ResourceType, Resource<ResourceType>>
     ResourceRef<ResourceType> Load(const UUID& uuid)
     {
@@ -182,6 +185,16 @@ namespace ResourceManager
         return ResourceRef<ResourceType>{uuid};
     }
 
+    template <typename ResourceType, typename... Args>
+    requires std::derived_from<ResourceType, Resource<ResourceType>>
+    ResourceRef<ResourceType> Create(Args&&... args)
+    {
+        const UUID& uuid = UUIDGenerator::Generate();
+        resources[uuid] = std::pair{0, std::make_unique<ResourceType>(std::forward<Args>(args)...)};
+
+        return ResourceRef<ResourceType>{uuid};
+    }
+
     template <typename RegistryType>
     requires std::derived_from<RegistryType, AssetRegistryBase>
     RegistryType* Init()
@@ -191,6 +204,7 @@ namespace ResourceManager
 
         return new_registry;
     }
+
     void Exit();
 
     void Update();
