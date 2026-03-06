@@ -8,7 +8,7 @@ namespace ResourceManager
     usize GetResourceTypeHash(const UUID& uuid)
     {
         const auto iterator = resources.find(uuid);
-        if (iterator != resources.end()) return iterator->second.second->GetTypeHash();
+        if (iterator != resources.end()) return iterator->second.resource->GetTypeHash();
 
         if (!asset_registry->IsValidAsset(uuid))
         {
@@ -27,8 +27,8 @@ namespace ResourceManager
 
     void Update()
     {
-        std::erase_if(resources, [](const std::pair<const UUID, std::pair<usize, std::unique_ptr<ResourceBase>>>& element) {
-            return element.second.first == 0;
+        std::erase_if(resources, [](const std::pair<const UUID, ResourceRefCount>& element) {
+            return element.second.reference_count == 0;
         });
     }
 

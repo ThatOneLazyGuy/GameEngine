@@ -43,10 +43,15 @@ const usize Resource<Derived>::type_hash{typeid(Derived).hash_code()};
 
 namespace ResourceManager
 {
+    struct ResourceRefCount
+    {
+        usize reference_count;
+        std::unique_ptr<ResourceBase> resource;
+    };
 
-    inline std::map<UUID, std::pair<usize, std::unique_ptr<ResourceBase>>> resources{};
+    inline std::map<UUID, ResourceRefCount> resources{};
 
-}
+} // namespace ResourceManager
 
 template <typename Type>
 concept ResourceType = std::derived_from<Type, Resource<Type>>;
@@ -68,47 +73,47 @@ class ResourceRef
             return;
         }
 
-        auto&& [reference_count, value] = iterator->second;
-        assert(value->GetTypeHash() == ResourceType::type_hash && "id type doesn't match ResourceRef type.");
+        auto&& [reference_count, resource] = iterator->second;
+        assert(resource->GetTypeHash() == ResourceType::type_hash && "id type doesn't match ResourceRef type.");
 
         ++reference_count;
+        pointer = static_cast<ResourceType*>(resource.get());
     }
     ~ResourceRef()
     {
         const auto iterator = ResourceManager::resources.find(uuid);
-        if (iterator == ResourceManager::resources.end()) return;
-
-        usize& reference_count = iterator->second.first;
-        --reference_count;
+        if (iterator != ResourceManager::resources.end()) --iterator->second.reference_count;
     }
 
     ResourceRef(const ResourceRef& other)
     {
         uuid = other.uuid;
+        pointer = other.pointer;
 
         const auto iterator = ResourceManager::resources.find(uuid);
-        if (iterator != ResourceManager::resources.end())
-        {
-            usize& reference_count = iterator->second.first;
-            ++reference_count;
-        }
+        if (iterator == ResourceManager::resources.end()) return;
+
+        ++iterator->second.reference_count;
     }
 
-    ResourceRef(ResourceRef&& other) noexcept : uuid{other.uuid} { other.uuid = NULL_UUID; }
+    ResourceRef(ResourceRef&& other) noexcept : uuid{other.uuid}, pointer{other.pointer}
+    {
+        other.uuid = NULL_UUID;
+        other.pointer = nullptr;
+    }
     ResourceRef(const ResourceRef&& other) noexcept : ResourceRef{other} {}
 
     ResourceRef& operator=(const ResourceRef& other)
     {
+        if (this == &other) return *this;
+
         Clear();
 
         uuid = other.uuid;
+        pointer = other.pointer;
 
         const auto iterator = ResourceManager::resources.find(uuid);
-        if (iterator != ResourceManager::resources.end())
-        {
-            usize& reference_count = iterator->second.first;
-            ++reference_count;
-        }
+        if (iterator != ResourceManager::resources.end()) ++iterator->second.reference_count;
 
         return *this;
     }
@@ -118,33 +123,39 @@ class ResourceRef
         Clear();
 
         uuid = other.uuid;
+        pointer = other.pointer;
+
         other.uuid = NULL_UUID;
+        other.pointer = nullptr;
 
         return *this;
     }
 
-    ResourceType* operator->() { return static_cast<ResourceType*>(ResourceManager::resources[uuid].second.get()); }
-    const ResourceType* operator->() const { return static_cast<const ResourceType*>(ResourceManager::resources[uuid].second.get()); }
-    ResourceType& operator*() { return static_cast<ResourceType&>(*ResourceManager::resources[uuid].second); }
-    const ResourceType& operator*() const { return static_cast<const ResourceType&>(*ResourceManager::resources.at(uuid).second); }
+    ResourceType* operator->() { return pointer; }
+    const ResourceType* operator->() const { return pointer; }
+    ResourceType& operator*() { return *pointer; }
+    const ResourceType& operator*() const { return *pointer; }
+
+    [[nodiscard]] bool operator==(const ResourceRef& other) const { return uuid == other.uuid; }
+    [[nodiscard]] bool operator==(const ResourceType* other_pointer) const { return pointer == other_pointer; }
+    [[nodiscard]] bool operator==(const UUID& other_uuid) const { return uuid == other_uuid; }
+    [[nodiscard]] bool operator==(const std::nullptr_t) const { return pointer == nullptr; }
 
     [[nodiscard]] bool Valid() const { return ResourceManager::resources.contains(uuid); }
     void Clear()
     {
         const auto iterator = ResourceManager::resources.find(uuid);
-        if (iterator != ResourceManager::resources.end())
-        {
-            usize& reference_count = iterator->second.first;
-            --reference_count;
-        }
+        if (iterator != ResourceManager::resources.end()) --iterator->second.reference_count;
 
         uuid = NULL_UUID;
+        pointer = nullptr;
     }
 
     [[nodiscard]] const UUID& GetUUID() const { return uuid; }
 
   private:
     UUID uuid{NULL_UUID};
+    ResourceType* pointer{nullptr};
 };
 
 class AssetRegistryBase
@@ -181,12 +192,12 @@ namespace ResourceManager
         if constexpr (ResourceType::IsTextConstructable)
         {
             const std::string& text = asset_registry->GetAssetText(uuid);
-            resources.emplace(uuid, std::pair{0, std::make_unique<ResourceType>(text)});
+            resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(text)});
         }
         else
         {
             const std::vector<uint8>& data = asset_registry->GetAssetData(uuid);
-            resources.emplace(uuid, std::pair{0, std::make_unique<ResourceType>(data)});
+            resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(data)});
         }
 
         return ResourceRef<ResourceType>{uuid};
@@ -196,7 +207,7 @@ namespace ResourceManager
     ResourceRef<ResourceType> Create(Args&&... args)
     {
         const UUID& uuid = UUIDGenerator::Generate();
-        resources[uuid] = std::pair{0, std::make_unique<ResourceType>(std::forward<Args>(args)...)};
+        resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(std::forward<Args>(args)...)});
 
         return ResourceRef<ResourceType>{uuid};
     }
