@@ -20,19 +20,18 @@ struct Vertex;
 
 namespace Files
 {
-    class BinaryReadStream : protected std::ifstream
+    class BinaryReadStream
     {
       public:
         BinaryReadStream() = default;
-        BinaryReadStream(const std::string& file) : std::ifstream{file, std::ios::binary} {}
-
-        [[nodiscard]] bool IsOpen() const { return is_open(); }
+        BinaryReadStream(const std::string& path);
+        BinaryReadStream(std::ifstream& input_stream, usize count);
 
         template <typename Type>
         requires(std::is_arithmetic_v<Type>)
         void operator>>(Type& value)
         {
-            read(reinterpret_cast<char*>(&value), sizeof(Type));
+            Read(&value);
         }
 
         template <typename Type>
@@ -40,17 +39,17 @@ namespace Files
         void operator>>(std::vector<Type>& value)
         {
             usize size = 0;
-            read(reinterpret_cast<char*>(&size), sizeof(usize));
+            Read(&size);
 
             value.resize(size);
-            read(reinterpret_cast<char*>(value.data()), size * sizeof(Type));
+            Read(value.data(), size * sizeof(Type));
         }
 
         template <typename Type>
         void operator>>(std::vector<Type>& value)
         {
             usize size = 0;
-            read(reinterpret_cast<char*>(&size), sizeof(usize));
+            Read(&size);
 
             value.resize(size);
             for (usize i = 0; i < size; i++)
@@ -63,7 +62,7 @@ namespace Files
         void operator>>(std::map<Key, Type>& value)
         {
             usize size = 0;
-            read(reinterpret_cast<char*>(&size), sizeof(usize));
+            Read(&size);
 
             for (usize i = 0; i < size; i++)
             {
@@ -83,6 +82,33 @@ namespace Files
         void operator>>(float2& value);
         void operator>>(float3& value);
         void operator>>(Vertex& value);
+
+        [[nodiscard]] bool IsInitialized() const { return is_initialized; }
+
+        [[nodiscard]] usize Size() const { return data.size(); }
+        [[nodiscard]] const uint8* Data() const { return data.data(); }
+
+        [[nodiscard]] usize GetReadPosition() const { return read_position; }
+        void SetReadPosition(const usize position) { read_position = position; }
+
+      private:
+        void Read(void* destination, const usize count)
+        {
+            std::memcpy(destination, data.data() + read_position, count);
+            read_position += count;
+        }
+
+        template <typename Type>
+        void Read(Type* destination)
+        {
+            std::memcpy(destination, data.data() + read_position, sizeof(Type));
+            read_position += sizeof(Type);
+        }
+
+        std::vector<uint8> data;
+        usize read_position{0};
+
+        bool is_initialized{false};
     };
 
     class BinaryWriteStream : protected std::ofstream
@@ -144,10 +170,6 @@ namespace Files
         void operator<<(const float2& value);
         void operator<<(const float3& value);
         void operator<<(const Vertex& value);
-    };
-
-    class OutputStream
-    {
     };
 
     std::vector<uint8> ReadBinary(const std::string& path, bool log_failure = true);

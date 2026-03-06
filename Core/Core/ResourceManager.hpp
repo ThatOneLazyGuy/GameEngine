@@ -16,7 +16,6 @@ class ResourceBase
     virtual ~ResourceBase() = default;
 
     [[nodiscard]] virtual usize GetTypeHash() const = 0;
-    static constexpr bool UseFileStream{false};
     static constexpr bool IsTextConstructable{false};
 
   private:
@@ -192,43 +191,21 @@ namespace ResourceManager
             return ResourceRef<ResourceType>{};
         }
 
-        if constexpr (ResourceType::UseFileStream)
+        if constexpr (ResourceType::IsTextConstructable)
         {
-            if constexpr (ResourceType::IsTextConstructable)
-            {
-                std::ifstream stream = asset_registry->GetAssetTextStream(uuid);
-                if (!stream.is_open())
-                {
-                    Log::Error("Failed to load resource, couldn't get text stream: {}", uuid.str());
-                    return ResourceRef<ResourceType>{};
-                }
-
-                resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(stream)});
-            }
-            else
-            {
-                Files::BinaryReadStream stream = asset_registry->GetAssetDataStream(uuid);
-                if (!stream.IsOpen())
-                {
-                    Log::Error("Failed to load resource, couldn't get data stream: {}", uuid.str());
-                    return ResourceRef<ResourceType>{};
-                }
-
-                resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(stream)});
-            }
+            const std::string& text = asset_registry->GetAssetText(uuid);
+            resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(text)});
         }
         else
         {
-            if constexpr (ResourceType::IsTextConstructable)
+            Files::BinaryReadStream stream = asset_registry->GetAssetDataStream(uuid);
+            if (!stream.IsInitialized())
             {
-                const std::string& text = asset_registry->GetAssetText(uuid);
-                resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(text)});
+                Log::Error("Couldn't initialize data stream to load resource: {}", uuid.str());
+                return ResourceRef<ResourceType>{};
             }
-            else
-            {
-                const std::vector<uint8>& data = asset_registry->GetAssetData(uuid);
-                resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(data)});
-            }
+
+            resources.emplace(uuid, ResourceRefCount{0, std::make_unique<ResourceType>(stream)});
         }
 
         return ResourceRef<ResourceType>{uuid};

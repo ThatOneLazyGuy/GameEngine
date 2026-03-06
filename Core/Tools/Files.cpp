@@ -10,13 +10,40 @@
 
 namespace Files
 {
+    BinaryReadStream::BinaryReadStream(const std::string& path)
+    {
+        data = ReadBinary(path);
+
+        if (!data.empty()) is_initialized = true;
+    }
+
+    BinaryReadStream::BinaryReadStream(std::ifstream& input_stream, const usize count)
+    {
+        if (!input_stream.is_open())
+        {
+            Log::Error("Tried to create BinaryReadStream from un-opened file stream!");
+            return;
+        }
+
+        if (!(input_stream.flags() | std::ios::binary))
+        {
+            Log::Error("Tried to create BinaryReadStream from non binary file stream!");
+            return;
+        }
+
+        data.resize(count);
+        input_stream.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(count));
+
+        if (!data.empty()) is_initialized = true;
+    }
+
     void BinaryReadStream::operator>>(std::string& value)
     {
         usize size = 0;
-        read(reinterpret_cast<char*>(&size), sizeof(usize));
+        Read(&size);
 
         value.resize(size);
-        read(value.data(), static_cast<std::streamsize>(size));
+        Read(value.data(), size);
     }
 
     void BinaryReadStream::operator>>(UUID& value)
@@ -24,22 +51,22 @@ namespace Files
         std::string bytes;
         bytes.resize(sizeof(UUID));
 
-        read(bytes.data(), sizeof(UUID));
+        Read(bytes.data(), sizeof(UUID));
 
         value = UUID{bytes};
     }
 
     void BinaryReadStream::operator>>(float2& value)
     {
-        read(reinterpret_cast<char*>(value.data()), sizeof(float3::Scalar));
-        read(reinterpret_cast<char*>(value.data() + 1), sizeof(float3::Scalar));
+        Read(value.data());
+        Read(value.data() + 1);
     }
 
     void BinaryReadStream::operator>>(float3& value)
     {
-        read(reinterpret_cast<char*>(value.data()), sizeof(float3::Scalar));
-        read(reinterpret_cast<char*>(value.data() + 1), sizeof(float3::Scalar));
-        read(reinterpret_cast<char*>(value.data() + 2), sizeof(float3::Scalar));
+        Read(value.data());
+        Read(value.data() + 1);
+        Read(value.data() + 2);
     }
 
     void BinaryReadStream::operator>>(Vertex& value)

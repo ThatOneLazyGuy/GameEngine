@@ -100,12 +100,12 @@ void RenderTarget::SetDepthBuffer(const ResourceRef<Texture>& depth_texture)
     Renderer::Instance().UpdateDepthBuffer(*this);
 }
 
-Texture::Texture(const std::vector<uint8>& data)
+Texture::Texture(const Files::BinaryReadStream& stream)
 {
-    const int file_size = static_cast<int>(data.size());
+    const int file_size = static_cast<int>(stream.Size());
 
     sint32 component_count;
-    uint8* color_data = stbi_load_from_memory(data.data(), file_size, &width, &height, &component_count, 4);
+    uint8* color_data = stbi_load_from_memory(stream.Data(), file_size, &width, &height, &component_count, 4);
     if (color_data == nullptr)
     {
         Log::Error("Failed to load image: {}", stbi_failure_reason());

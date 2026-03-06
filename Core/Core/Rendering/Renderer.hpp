@@ -79,14 +79,14 @@ class Texture : public Resource<Texture>
     };
 
     Texture() = default;
-    Texture(const std::vector<uint8>& data);
+    Texture(const Files::BinaryReadStream& stream);
     Texture(const TextureSettings& texture_settings, const SamplerSettings& sampler_settings);
 
     Texture(Texture&) = delete;
     Texture(const Texture&) = delete;
     Texture(Texture&& other) noexcept;
     Texture(const Texture&&) = delete;
-    ~Texture();
+    ~Texture() override;
 
     void Resize(sint32 new_width, sint32 new_height);
 
@@ -184,8 +184,6 @@ class Mesh final : public Resource<Mesh>
     BufferID indices_buffer;
 
     std::vector<ResourceRef<Texture>> textures;
-
-    static constexpr bool UseFileStream{true};
 
   private:
     uint32 vertices_count;
