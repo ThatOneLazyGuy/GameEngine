@@ -173,11 +173,8 @@ Mesh::Mesh(const std::vector<uint8>& data)
 
     for (usize i = 0; i < texture_count; i++)
     {
-        const usize uuid_bytes_count = *reinterpret_cast<const usize*>(data.data() + read_index);
-        read_index += sizeof(usize);
-
         const UUID texture_uuid{data.data() + read_index};
-        read_index += uuid_bytes_count;
+        read_index += sizeof(UUID);
 
         textures.push_back(ResourceManager::Load<Texture>(texture_uuid));
     }

@@ -1,6 +1,8 @@
 #include "Files.hpp"
 
-#include "Logging.hpp"
+#include "Core/Rendering/Renderer.hpp"
+#include "Tools/Logging.hpp"
+#include "Tools/UUID.hpp"
 
 #include <vector>
 #include <fstream>
@@ -8,6 +10,80 @@
 
 namespace Files
 {
+    void BinaryReadStream::operator>>(std::string& value)
+    {
+        usize size = 0;
+        read(reinterpret_cast<char*>(&size), sizeof(usize));
+
+        value.resize(size);
+        read(value.data(), static_cast<std::streamsize>(size));
+    }
+
+    void BinaryReadStream::operator>>(UUID& value)
+    {
+        std::string bytes;
+        bytes.resize(sizeof(UUID));
+
+        read(bytes.data(), sizeof(UUID));
+
+        value = UUID{bytes};
+    }
+
+    void BinaryReadStream::operator>>(float2& value)
+    {
+        read(reinterpret_cast<char*>(value.data()), sizeof(float3::Scalar));
+        read(reinterpret_cast<char*>(value.data() + 1), sizeof(float3::Scalar));
+    }
+
+    void BinaryReadStream::operator>>(float3& value)
+    {
+        read(reinterpret_cast<char*>(value.data()), sizeof(float3::Scalar));
+        read(reinterpret_cast<char*>(value.data() + 1), sizeof(float3::Scalar));
+        read(reinterpret_cast<char*>(value.data() + 2), sizeof(float3::Scalar));
+    }
+
+    void BinaryReadStream::operator>>(Vertex& value)
+    {
+        *this >> value.position;
+        *this >> value.color;
+        *this >> value.tex_coord;
+    }
+
+
+    void BinaryWriteStream::operator<<(const std::string& value)
+    {
+        const usize size = value.size();
+        write(reinterpret_cast<const char*>(&size), sizeof(usize));
+
+        write(value.data(), static_cast<std::streamsize>(size));
+    }
+
+    void BinaryWriteStream::operator<<(const UUID& value)
+    {
+        const std::string bytes = value.bytes();
+        write(bytes.data(), sizeof(UUID));
+    }
+
+    void BinaryWriteStream::operator<<(const float2& value)
+    {
+        write(reinterpret_cast<const char*>(value.data()), sizeof(float3::Scalar));
+        write(reinterpret_cast<const char*>(value.data() + 1), sizeof(float3::Scalar));
+    }
+
+    void BinaryWriteStream::operator<<(const float3& value)
+    {
+        write(reinterpret_cast<const char*>(value.data()), sizeof(float3::Scalar));
+        write(reinterpret_cast<const char*>(value.data() + 1), sizeof(float3::Scalar));
+        write(reinterpret_cast<const char*>(value.data() + 2), sizeof(float3::Scalar));
+    }
+
+    void BinaryWriteStream::operator<<(const Vertex& value)
+    {
+        *this << value.position;
+        *this << value.color;
+        *this << value.tex_coord;
+    }
+
     std::vector<uint8> ReadBinary(const std::string& path, bool log_failure)
     {
         std::vector<uint8> data;

@@ -25,14 +25,14 @@ void WriteMetaDataFile(const std::string& asset_path)
 
 inline void ImportObject(const std::string& path)
 {
-    Assimp::Importer importer;
-
     constexpr int import_flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices;
+
+    Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(path, import_flags);
 
     if (scene == nullptr)
     {
-        Log::Error("Failed to import object: {}", path);
+        Log::Error("Failed to import object, {}: {}", importer.GetErrorString(), path);
         return;
     }
 
@@ -70,8 +70,8 @@ inline void ImportObject(const std::string& path)
             std::memcpy(&indices[i * 3], mesh_faces[i].mIndices, sizeof(uint32) * 3);
         }
 
-        std::ofstream file{mesh_path, std::ios::trunc | std::ios::binary};
-        if (!file.is_open())
+        Files::BinaryWriteStream file{mesh_path};
+        if (!file.IsOpen())
         {
             Log::Error("Failed to import mesh, couldn't open file: {}", mesh_path);
             continue;
@@ -80,18 +80,13 @@ inline void ImportObject(const std::string& path)
         Editor::asset_registry->RegisterPath(mesh_path);
         WriteMetaDataFile<Mesh>(mesh_path);
 
-        const usize vertices_count = vertices.size();
-        file.write(reinterpret_cast<const char*>(&vertices_count), sizeof(usize));
-        file.write(reinterpret_cast<const char*>(vertices.data()), static_cast<sint32>(vertices.size() * sizeof(Vertex)));
-
-        const usize indices_count = indices.size();
-        file.write(reinterpret_cast<const char*>(&indices_count), sizeof(usize));
-        file.write(reinterpret_cast<const char*>(indices.data()), static_cast<sint32>(indices.size() * sizeof(uint32)));
+        file << vertices;
+        file << indices;
 
         const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
 
         const usize texture_count = material.GetTextureCount(aiTextureType_DIFFUSE);
-        file.write(reinterpret_cast<const char*>(&texture_count), sizeof(usize));
+        file << texture_count;
 
         for (uint32 i = 0; i < texture_count; i++)
         {
@@ -102,11 +97,7 @@ inline void ImportObject(const std::string& path)
             const UUID material_uuid = Editor::asset_registry->RegisterPath(full_texture_path);
             WriteMetaDataFile<Texture>(full_texture_path);
 
-            const std::string uuid_bytes = material_uuid.bytes();
-            const usize bytes_size = uuid_bytes.size();
-
-            file.write(reinterpret_cast<const char*>(&bytes_size), sizeof(usize));
-            file << uuid_bytes;
+            file << material_uuid;
         }
     }
 }
