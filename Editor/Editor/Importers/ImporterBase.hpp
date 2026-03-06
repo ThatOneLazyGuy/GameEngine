@@ -15,6 +15,14 @@
 
 #include <fstream>
 
+// TODO: Update to not use std::TypeInfo::hash_code since this isn't guaranteed to be the same across devices or even across invocations of the program.
+template <ResourceType ResourceType>
+void WriteMetaDataFile(const std::string& asset_path)
+{
+    const uint8* type_hash_data = reinterpret_cast<const uint8*>(&ResourceType::type_hash);
+    Files::WriteBinary(asset_path + ".meta", std::span{type_hash_data, type_hash_data + sizeof(usize)});
+}
+
 inline void ImportObject(const std::string& path)
 {
     Assimp::Importer importer;
@@ -70,6 +78,7 @@ inline void ImportObject(const std::string& path)
         }
 
         Editor::asset_registry->RegisterPath(mesh_path);
+        WriteMetaDataFile<Mesh>(mesh_path);
 
         const usize vertices_count = vertices.size();
         file.write(reinterpret_cast<const char*>(&vertices_count), sizeof(usize));
@@ -89,8 +98,10 @@ inline void ImportObject(const std::string& path)
             aiString string;
             material.GetTexture(aiTextureType_DIFFUSE, i, &string);
 
-            const std::string full_path = base_path + string.C_Str();
-            const UUID material_uuid = Editor::asset_registry->RegisterPath(full_path);
+            const std::string full_texture_path = base_path + string.C_Str();
+            const UUID material_uuid = Editor::asset_registry->RegisterPath(full_texture_path);
+            WriteMetaDataFile<Texture>(full_texture_path);
+
             const std::string uuid_bytes = material_uuid.bytes();
             const usize bytes_size = uuid_bytes.size();
 
@@ -100,6 +111,7 @@ inline void ImportObject(const std::string& path)
     }
 }
 
+// TODO: Actually correctly implement importing and loading of graphics pipelines.
 // INCORRECT, USES << OPERATOR WHICH WRITES THE STRING VERSION TO THE FILE INSTEAD OF THE BYTES.
 inline void ImportGraphicsPipeline(const std::string& path)
 {

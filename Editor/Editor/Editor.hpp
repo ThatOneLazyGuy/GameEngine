@@ -25,10 +25,11 @@ class AssetRegistry : public AssetRegistryBase
     const std::map<std::string_view, UUID>& GetAssetFileMapping() const { return reverse_mapping; }
 
   private:
-    [[nodiscard]] bool IsValidResource(const UUID& uuid) const override { return mapping.contains(uuid); }
+    [[nodiscard]] usize GetAssetMetadata(const UUID& uuid) const override;
+    [[nodiscard]] bool IsValidAsset(const UUID& uuid) const override { return mapping.contains(uuid); }
 
-    [[nodiscard]] std::string GetResourceText(const UUID& uuid) const override;
-    [[nodiscard]] std::vector<uint8> GetResourceData(const UUID& uuid) const override;
+    [[nodiscard]] std::string GetAssetText(const UUID& uuid) const override;
+    [[nodiscard]] std::vector<uint8> GetAssetData(const UUID& uuid) const override;
 
     std::map<UUID, std::string> mapping;
     std::map<std::string_view, UUID> reverse_mapping;

@@ -24,17 +24,22 @@ class ResourceBase
     friend class Resource;
 };
 
-template <typename Derived>
+template <typename>
 class Resource : public ResourceBase
 {
   public:
     ~Resource() override = default;
 
+    static const usize type_hash;
+
   protected:
     Resource() = default;
 
-    [[nodiscard]] usize GetTypeHash() const final { return typeid(Derived).hash_code(); }
+    [[nodiscard]] usize GetTypeHash() const final { return type_hash; }
 };
+
+template <typename Derived>
+const usize Resource<Derived>::type_hash{typeid(Derived).hash_code()};
 
 namespace ResourceManager
 {
@@ -43,12 +48,16 @@ namespace ResourceManager
 
 }
 
+template <typename Type>
+concept ResourceType = std::derived_from<Type, Resource<Type>>;
+
 // Handle to the resource in the resource manager, template parameter should be the derived resource's type (CRTP).
-template <typename Derived>
-requires std::derived_from<Derived, Resource<Derived>>
+template <ResourceType Type>
 class ResourceRef
 {
   public:
+    using ResourceType = Type;
+
     ResourceRef() = default;
     ResourceRef(const UUID& uuid) : uuid{uuid}
     {
@@ -60,7 +69,7 @@ class ResourceRef
         }
 
         auto&& [reference_count, value] = iterator->second;
-        assert(value->GetTypeHash() == type_hash && "id type doesn't match ResourceRef type.");
+        assert(value->GetTypeHash() == ResourceType::type_hash && "id type doesn't match ResourceRef type.");
 
         ++reference_count;
     }
@@ -114,10 +123,10 @@ class ResourceRef
         return *this;
     }
 
-    Derived* operator->() { return static_cast<Derived*>(ResourceManager::resources[uuid].second.get()); }
-    const Derived* operator->() const { return static_cast<const Derived*>(ResourceManager::resources[uuid].second.get()); }
-    Derived& operator*() { return static_cast<Derived&>(*ResourceManager::resources[uuid].second); }
-    const Derived& operator*() const { return static_cast<const Derived&>(*ResourceManager::resources.at(uuid).second); }
+    ResourceType* operator->() { return static_cast<ResourceType*>(ResourceManager::resources[uuid].second.get()); }
+    const ResourceType* operator->() const { return static_cast<const ResourceType*>(ResourceManager::resources[uuid].second.get()); }
+    ResourceType& operator*() { return static_cast<ResourceType&>(*ResourceManager::resources[uuid].second); }
+    const ResourceType& operator*() const { return static_cast<const ResourceType&>(*ResourceManager::resources.at(uuid).second); }
 
     [[nodiscard]] bool Valid() const { return ResourceManager::resources.contains(uuid); }
     void Clear()
@@ -135,8 +144,6 @@ class ResourceRef
     [[nodiscard]] const UUID& GetUUID() const { return uuid; }
 
   private:
-    inline static usize type_hash{typeid(Derived).hash_code()};
-
     UUID uuid{NULL_UUID};
 };
 
@@ -148,23 +155,23 @@ class AssetRegistryBase
   public:
     virtual ~AssetRegistryBase() = default;
 
-    [[nodiscard]] virtual bool IsValidResource(const UUID& uuid) const = 0;
+    [[nodiscard]] virtual usize GetAssetMetadata(const UUID& uuid) const = 0;
+    [[nodiscard]] virtual bool IsValidAsset(const UUID& uuid) const = 0;
 
-    [[nodiscard]] virtual std::string GetResourceText(const UUID& uuid) const = 0;
-    [[nodiscard]] virtual std::vector<uint8> GetResourceData(const UUID& uuid) const = 0;
+    [[nodiscard]] virtual std::string GetAssetText(const UUID& uuid) const = 0;
+    [[nodiscard]] virtual std::vector<uint8> GetAssetData(const UUID& uuid) const = 0;
 };
 
 namespace ResourceManager
 {
     inline std::unique_ptr<AssetRegistryBase> asset_registry;
 
-    template <typename ResourceType>
-    requires std::derived_from<ResourceType, Resource<ResourceType>>
+    template <ResourceType ResourceType>
     ResourceRef<ResourceType> Load(const UUID& uuid)
     {
         if (resources.contains(uuid)) return ResourceRef<ResourceType>{uuid};
 
-        if (!asset_registry->IsValidResource(uuid))
+        if (!asset_registry->IsValidAsset(uuid))
         {
             Log::Error("UUID isn't loaded and is not a registered asset: {}", uuid.str());
             return ResourceRef<ResourceType>{};
@@ -173,20 +180,19 @@ namespace ResourceManager
 
         if constexpr (ResourceType::IsTextConstructable)
         {
-            const std::string& text = asset_registry->GetResourceText(uuid);
-            resources[uuid] = std::pair{0, std::make_unique<ResourceType>(text)};
+            const std::string& text = asset_registry->GetAssetText(uuid);
+            resources.emplace(uuid, std::pair{0, std::make_unique<ResourceType>(text)});
         }
         else
         {
-            const std::vector<uint8>& data = asset_registry->GetResourceData(uuid);
-            resources[uuid] = std::pair{0, std::make_unique<ResourceType>(data)};
+            const std::vector<uint8>& data = asset_registry->GetAssetData(uuid);
+            resources.emplace(uuid, std::pair{0, std::make_unique<ResourceType>(data)});
         }
 
         return ResourceRef<ResourceType>{uuid};
     }
 
-    template <typename ResourceType, typename... Args>
-    requires std::derived_from<ResourceType, Resource<ResourceType>>
+    template <ResourceType ResourceType, typename... Args>
     ResourceRef<ResourceType> Create(Args&&... args)
     {
         const UUID& uuid = UUIDGenerator::Generate();
@@ -194,6 +200,8 @@ namespace ResourceManager
 
         return ResourceRef<ResourceType>{uuid};
     }
+
+    [[nodiscard]] usize GetResourceTypeHash(const UUID& uuid);
 
     template <typename RegistryType>
     requires std::derived_from<RegistryType, AssetRegistryBase>

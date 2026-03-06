@@ -288,6 +288,12 @@ AssetRegistry::~AssetRegistry()
     mapping.clear();
 }
 
-std::string AssetRegistry::GetResourceText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid)); }
+usize AssetRegistry::GetAssetMetadata(const UUID& uuid) const
+{
+    const std::vector<uint8> metadata = Files::ReadBinary(mapping.at(uuid) + ".meta");
+    return *reinterpret_cast<const usize*>(metadata.data());
+}
 
-std::vector<uint8> AssetRegistry::GetResourceData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid)); }
+std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid)); }
+
+std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid)); }

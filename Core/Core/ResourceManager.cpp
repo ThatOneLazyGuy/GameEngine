@@ -5,6 +5,20 @@
 namespace ResourceManager
 {
 
+    usize GetResourceTypeHash(const UUID& uuid)
+    {
+        const auto iterator = resources.find(uuid);
+        if (iterator != resources.end()) return iterator->second.second->GetTypeHash();
+
+        if (!asset_registry->IsValidAsset(uuid))
+        {
+            Log::Error("UUID isn't loaded and is not a registered asset: {}", uuid.str());
+            return 0;
+        }
+
+        return asset_registry->GetAssetMetadata(uuid);
+    }
+
     void Exit()
     {
         resources.clear();

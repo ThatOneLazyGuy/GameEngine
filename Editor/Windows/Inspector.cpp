@@ -14,7 +14,7 @@ namespace
     template <typename>
     constexpr std::string_view GetComponentName()
     {
-        return {};
+        return "Unknown";
     }
 
     template <>
@@ -42,7 +42,9 @@ namespace
     }
 
     template <typename Component>
-    void InspectComponent(Component&) {};
+    void InspectComponent(Component&)
+    {
+    }
 
     template <>
     void InspectComponent(Transform& transform)
@@ -64,20 +66,30 @@ namespace
         constexpr float max = std::numeric_limits<float>::max();
 
         float radius = sphere_collider.GetRadius();
-        if (ImGui::DragFloat("Radius", &radius, 0.05f, min, max)) sphere_collider.SetRadius(Math::Max(radius, min));
+        if (ImGui::DragFloat("Radius", &radius, 0.05f, min, max, "%.3f", ImGuiSliderFlags_AlwaysClamp)) sphere_collider.SetRadius(radius);
     }
 
     template <>
     void InspectComponent(ResourceRef<Mesh>& mesh)
     {
-        static std::string file_path;
-        ImGui::InputText("Path", &file_path);
+        std::string resource_string = (mesh.Valid() ? mesh.GetUUID().str() : "");
 
-        if (ImGui::Button("Load"))
+        ImGui::BeginDisabled();
+        ImGui::InputText("Mesh", &resource_string);
+        ImGui::EndDisabled();
+
+        if (ImGui::BeginDragDropTarget())
         {
-            const std::map<std::string_view, UUID>& file_mapping = Editor::asset_registry->GetAssetFileMapping();
+            const std::string type_hash_string = std::to_string(Mesh::type_hash);
 
-            if (file_mapping.contains(file_path)) mesh = ResourceManager::Load<Mesh>(file_mapping.at(file_path));
+            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type_hash_string.c_str());
+            if (payload != nullptr)
+            {
+                const UUID uuid{static_cast<const uint8*>(payload->Data)};
+                mesh = ResourceManager::Load<Mesh>(uuid);
+            }
+
+            ImGui::EndDragDropTarget();
         }
     }
 

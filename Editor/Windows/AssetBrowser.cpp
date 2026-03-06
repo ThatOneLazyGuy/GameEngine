@@ -9,6 +9,22 @@
 
 #include <filesystem>
 
+namespace
+{
+    void DragResource(const std::string_view& path, const UUID& uuid)
+    {
+        if (!ImGui::BeginDragDropSource()) return;
+
+        const std::string type_hash_string = std::to_string(ResourceManager::GetResourceTypeHash(uuid));
+        const std::string uuid_bytes = uuid.bytes();
+
+        ImGui::SetDragDropPayload(type_hash_string.c_str(), uuid_bytes.data(), uuid_bytes.size());
+        ImGui::Text("%s", path.data());
+
+        ImGui::EndDragDropSource();
+    }
+} // namespace
+
 AssetBrowser::AssetBrowser()
 {
     name = "AssetBrowser";
@@ -24,9 +40,9 @@ void AssetBrowser::Display()
     }
 
     const auto& asset_mapping = Editor::asset_registry->GetAssetFileMapping();
-
-    for (const auto& [path, UUID] : asset_mapping)
+    for (const auto& [path, uuid] : asset_mapping)
     {
         ImGui::Selectable(path.data());
+        DragResource(path, uuid);
     }
 }
