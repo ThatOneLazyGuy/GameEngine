@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Editor/Editor.hpp"
+#include "Editor/ShaderCompiler.hpp"
 
+#include <Core/Rendering/Renderer.hpp>
 #include <Core/ResourceManager.hpp>
 #include <Tools/Logging.hpp>
 #include <Tools/Types.hpp>
@@ -16,9 +18,9 @@
 inline void ImportObject(const std::string& path)
 {
     Assimp::Importer importer;
-    importer.ReadFile(path, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices);
 
-    const aiScene* scene = importer.GetScene();
+    constexpr int import_flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices;
+    const aiScene* scene = importer.ReadFile(path, import_flags);
 
     if (scene == nullptr)
     {
@@ -31,7 +33,8 @@ inline void ImportObject(const std::string& path)
 
     for (uint32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
-        const std::string mesh_path = base_path + "-" + std::to_string(mesh_index);
+        const usize extension_position = path.find_last_of('.');
+        const std::string mesh_path = path.substr(0, extension_position) + "-" + std::to_string(mesh_index) + ".mesh";
 
         const aiMesh& model_mesh = *scene->mMeshes[mesh_index];
         const aiVector3D* mesh_vertices = model_mesh.mVertices;
@@ -69,17 +72,17 @@ inline void ImportObject(const std::string& path)
         Editor::asset_registry->RegisterPath(mesh_path);
 
         const usize vertices_count = vertices.size();
-        file << vertices_count;
-        file.write(reinterpret_cast<const char*>(vertices.data()), vertices.size() * sizeof(Vertex));
+        file.write(reinterpret_cast<const char*>(&vertices_count), sizeof(usize));
+        file.write(reinterpret_cast<const char*>(vertices.data()), static_cast<sint32>(vertices.size() * sizeof(Vertex)));
 
         const usize indices_count = indices.size();
-        file << indices_count;
-        file.write(reinterpret_cast<const char*>(indices.data()), indices.size() * sizeof(uint32));
+        file.write(reinterpret_cast<const char*>(&indices_count), sizeof(usize));
+        file.write(reinterpret_cast<const char*>(indices.data()), static_cast<sint32>(indices.size() * sizeof(uint32)));
 
         const aiMaterial& material = *scene->mMaterials[model_mesh.mMaterialIndex];
 
         const usize texture_count = material.GetTextureCount(aiTextureType_DIFFUSE);
-        file << texture_count;
+        file.write(reinterpret_cast<const char*>(&texture_count), sizeof(usize));
 
         for (uint32 i = 0; i < texture_count; i++)
         {
@@ -89,13 +92,15 @@ inline void ImportObject(const std::string& path)
             const std::string full_path = base_path + string.C_Str();
             const UUID material_uuid = Editor::asset_registry->RegisterPath(full_path);
             const std::string uuid_bytes = material_uuid.bytes();
+            const usize bytes_size = uuid_bytes.size();
 
-            file << uuid_bytes.size();
+            file.write(reinterpret_cast<const char*>(&bytes_size), sizeof(usize));
             file << uuid_bytes;
         }
     }
 }
 
+// INCORRECT, USES << OPERATOR WHICH WRITES THE STRING VERSION TO THE FILE INSTEAD OF THE BYTES.
 inline void ImportGraphicsPipeline(const std::string& path)
 {
     Editor::asset_registry->RegisterPath(path);
@@ -121,7 +126,7 @@ inline void ImportGraphicsPipeline(const std::string& path)
     }
 
     file << settings.uniform_sizes.size();
-    for (const auto& [name, size] : settings.uniform_sizes) 
+    for (const auto& [name, size] : settings.uniform_sizes)
     {
         file << name.size();
         file << name;

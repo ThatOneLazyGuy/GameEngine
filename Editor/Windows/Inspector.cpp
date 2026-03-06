@@ -1,13 +1,13 @@
 #include "Inspector.hpp"
 
-
 #include "Editor/Editor.hpp"
 
-#include "Core/Components/Transform.hpp"
+#include <Core/Components/Transform.hpp>
+#include <Core/Physics/Physics.hpp>
+#include <core/Rendering/Renderer.hpp>
 
 #include <imgui.h>
-
-#include "Core/Physics/Physics.hpp"
+#include <imgui_stdlib.h>
 
 namespace
 {
@@ -35,6 +35,12 @@ namespace
         return "Sphere Collider";
     }
 
+    template <>
+    constexpr std::string_view GetComponentName<ResourceRef<Mesh>>()
+    {
+        return "Mesh Renderer";
+    }
+
     template <typename Component>
     void InspectComponent(Component&) {};
 
@@ -59,6 +65,20 @@ namespace
 
         float radius = sphere_collider.GetRadius();
         if (ImGui::DragFloat("Radius", &radius, 0.05f, min, max)) sphere_collider.SetRadius(Math::Max(radius, min));
+    }
+
+    template <>
+    void InspectComponent(ResourceRef<Mesh>& mesh)
+    {
+        static std::string file_path;
+        ImGui::InputText("Path", &file_path);
+
+        if (ImGui::Button("Load"))
+        {
+            const std::map<std::string_view, UUID>& file_mapping = Editor::asset_registry->GetAssetFileMapping();
+
+            if (file_mapping.contains(file_path)) mesh = ResourceManager::Load<Mesh>(file_mapping.at(file_path));
+        }
     }
 
     template <typename Component>
@@ -131,7 +151,7 @@ void Inspector::Display()
     const flecs::world world = selected_entity.GetWorld();
 
     world.defer_begin();
-    DisplayComponents<Transform, Physics::BoxCollider, Physics::SphereCollider>(selected_entity);
+    DisplayComponents<Transform, Physics::BoxCollider, Physics::SphereCollider, ResourceRef<Mesh>>(selected_entity);
     world.defer_end();
 
     ImGui::Separator();
@@ -142,5 +162,5 @@ void Inspector::Display()
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (half_avail - half_size));
 
     if (ImGui::Button("Add Component")) ImGui::OpenPopup("Add Component");
-    DisplayAddComponents<Transform, Physics::BoxCollider, Physics::SphereCollider>(selected_entity);
+    DisplayAddComponents<Transform, Physics::BoxCollider, Physics::SphereCollider, ResourceRef<Mesh>>(selected_entity);
 }

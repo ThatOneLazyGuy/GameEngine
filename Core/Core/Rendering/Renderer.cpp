@@ -100,7 +100,22 @@ void RenderTarget::SetDepthBuffer(const ResourceRef<Texture>& depth_texture)
     Renderer::Instance().UpdateDepthBuffer(*this);
 }
 
-Texture::Texture(const std::vector<uint8>& data) {}
+Texture::Texture(const std::vector<uint8>& data)
+{
+    const int file_size = static_cast<int>(data.size());
+
+    sint32 component_count;
+    uint8* color_data = stbi_load_from_memory(data.data(), file_size, &width, &height, &component_count, 4);
+    if (color_data == nullptr)
+    {
+        Log::Error("Failed to load image: {}", stbi_failure_reason());
+        return;
+    }
+
+    Renderer::Instance().CreateTexture(*this, color_data, {});
+
+    stbi_image_free(color_data);
+}
 
 Texture::Texture(const TextureSettings& texture_settings, const SamplerSettings& sampler_settings) :
     width{texture_settings.width}, height{texture_settings.height}, format{texture_settings.format}, flags{texture_settings.flags}
@@ -209,10 +224,7 @@ Shader::Shader(std::string path, const ShaderSettings& shader_info) :
 
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
-GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& text) 
-{
-
-}
+GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& text) {}
 
 GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings) :
     vertex_attributes{pipeline_settings.vertex_attributes}, uniform_sizes{pipeline_settings.uniform_sizes}

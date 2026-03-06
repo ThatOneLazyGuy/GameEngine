@@ -12,6 +12,9 @@ class AssetRegistry : public AssetRegistryBase
 
     UUID RegisterPath(const std::string& path)
     {
+        const auto& path_iterator = reverse_mapping.find(path);
+        if (path_iterator != reverse_mapping.end()) return path_iterator->second;
+
         const UUID uuid = UUIDGenerator::Generate();
         const auto& iterator = mapping.emplace(uuid, path);
         reverse_mapping.emplace(iterator.first->second, uuid);

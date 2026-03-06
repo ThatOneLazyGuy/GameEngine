@@ -9,6 +9,7 @@ add_executable(
         "Windows/Viewport.cpp"
         "Windows/Hierarchy.cpp"
         "Windows/Inspector.cpp"
+        "Windows/AssetBrowser.cpp"
 
         "${EXTERNAL}/imgui/imgui.cpp"
         "${EXTERNAL}/imgui/imgui_demo.cpp"

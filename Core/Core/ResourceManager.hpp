@@ -166,7 +166,7 @@ namespace ResourceManager
 
         if (!asset_registry->IsValidResource(uuid))
         {
-            Log::Error("");
+            Log::Error("UUID isn't loaded and is not a registered asset: {}", uuid.str());
             return ResourceRef<ResourceType>{};
         }
 

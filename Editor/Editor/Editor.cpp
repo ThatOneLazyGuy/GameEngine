@@ -244,6 +244,12 @@ AssetRegistry::AssetRegistry()
 
         Log::Log("Path: {}, UUID: {}", path, uuid.str());
 
+        if (!std::filesystem::exists(path))
+        {
+            Log::Warning("Asset path no longer exists: {}", path);
+            continue;
+        }
+
         const auto& iterator = mapping.emplace(uuid, path);
         reverse_mapping.emplace(iterator.first->second, uuid);
     }

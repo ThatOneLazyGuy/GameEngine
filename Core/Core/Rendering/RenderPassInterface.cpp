@@ -35,5 +35,9 @@ void DefaultRenderPass::Render(const ECS::Entity& camera_entity)
     Renderer::SetUniform(2, projection);
 
     const auto mesh_query = ECS::GetWorld().query_builder<const ResourceRef<Mesh>>().without<ECS::IgnoreTag>().build();
-    mesh_query.each([](const ECS::Entity& entity, const ResourceRef<Mesh>& mesh_handle) { RenderMesh(entity, mesh_handle); });
+    mesh_query.each([](const ECS::Entity& entity, const ResourceRef<Mesh>& mesh_handle) {
+        if (!mesh_handle.Valid()) return;
+
+        RenderMesh(entity, mesh_handle);
+    });
 }
