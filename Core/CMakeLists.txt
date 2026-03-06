@@ -17,6 +17,7 @@ add_library(
         "${EXTERNAL}/glad/src/glad.c"
 
         "Tools/Files.cpp"
+        "Tools/FileDialogs.cpp"
 )
 
 set_target_properties(Core PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")

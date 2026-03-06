@@ -3,8 +3,9 @@
 #include "Editor/Editor.hpp"
 #include "Editor/Importers/ImporterBase.hpp"
 
+#include <Tools/FileDialogs.hpp>
+
 #include <imgui.h>
-#include <imgui_stdlib.h>
 
 #include <filesystem>
 
@@ -16,12 +17,11 @@ AssetBrowser::AssetBrowser()
 
 void AssetBrowser::Display()
 {
-    static std::string path_string;
-    ImGui::InputText("Path", &path_string);
-
-    ImGui::BeginDisabled(path_string.empty() || !std::filesystem::exists(path_string));
-    if (ImGui::Button("Import Object")) ImportObject(path_string);
-    ImGui::EndDisabled();
+    if (ImGui::Button("Import Object +"))
+    {
+        const std::string path = FileDialogs::OpenFile("Import Obj", "./Assets", {"Wavefront Object (*.obj)", "*.obj"});
+        if (!path.empty()) ImportObject(path);
+    }
 
     const auto& asset_mapping = Editor::asset_registry->GetAssetFileMapping();
 
