@@ -149,32 +149,23 @@ void Texture::Resize(const sint32 new_width, const sint32 new_height)
 }
 
 
-Mesh::Mesh(const std::vector<uint8>& data)
+Mesh::Mesh(Files::BinaryReadStream& stream)
 {
-    usize read_index = 0;
-    vertices_count = static_cast<uint32>(*reinterpret_cast<const usize*>(data.data() + read_index));
-    read_index += sizeof(usize);
-
     std::vector<Vertex> vertices;
-    vertices.resize(vertices_count);
-    std::memcpy(vertices.data(), data.data() + read_index, vertices_count * sizeof(Vertex));
-    read_index += vertices_count * sizeof(Vertex);
-
-    indices_count = static_cast<uint32>(*reinterpret_cast<const usize*>(data.data() + read_index));
-    read_index += sizeof(usize);
+    stream >> vertices;
+    vertices_count = static_cast<uint32>(vertices.size());
 
     std::vector<uint32> indices;
-    indices.resize(indices_count);
-    std::memcpy(indices.data(), data.data() + read_index, indices_count * sizeof(uint32));
-    read_index += indices_count * sizeof(uint32);
+    stream >> indices;
+    indices_count = static_cast<uint32>(indices.size());
 
-    const usize texture_count = *reinterpret_cast<const usize*>(data.data() + read_index);
-    read_index += sizeof(usize);
+    usize texture_count;
+    stream >> texture_count;
 
     for (usize i = 0; i < texture_count; i++)
     {
-        const UUID texture_uuid{data.data() + read_index};
-        read_index += sizeof(UUID);
+        UUID texture_uuid;
+        stream >> texture_uuid;
 
         textures.push_back(ResourceManager::Load<Texture>(texture_uuid));
     }

@@ -28,6 +28,8 @@ class AssetRegistry : public AssetRegistryBase
     [[nodiscard]] usize GetAssetMetadata(const UUID& uuid) const override;
     [[nodiscard]] bool IsValidAsset(const UUID& uuid) const override { return mapping.contains(uuid); }
 
+    [[nodiscard]] std::ifstream GetAssetTextStream(const UUID& uuid) const override;
+    [[nodiscard]] Files::BinaryReadStream GetAssetDataStream(const UUID& uuid) const override;
     [[nodiscard]] std::string GetAssetText(const UUID& uuid) const override;
     [[nodiscard]] std::vector<uint8> GetAssetData(const UUID& uuid) const override;
 

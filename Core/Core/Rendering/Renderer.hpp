@@ -171,7 +171,7 @@ class Mesh final : public Resource<Mesh>
     static std::string GetID(const std::string& path, const uint32 index) { return path + '-' + std::to_string(index); }
 
     Mesh() = default;
-    Mesh(const std::vector<uint8>& data);
+    Mesh(Files::BinaryReadStream& stream);
     Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices);
     ~Mesh() override;
 
@@ -184,6 +184,8 @@ class Mesh final : public Resource<Mesh>
     BufferID indices_buffer;
 
     std::vector<ResourceRef<Texture>> textures;
+
+    static constexpr bool UseFileStream{true};
 
   private:
     uint32 vertices_count;

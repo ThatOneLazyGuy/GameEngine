@@ -294,6 +294,10 @@ usize AssetRegistry::GetAssetMetadata(const UUID& uuid) const
     return *reinterpret_cast<const usize*>(metadata.data());
 }
 
+std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{mapping.at(uuid)}; }
+
+Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) const { return Files::BinaryReadStream{mapping.at(uuid)}; }
+
 std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid)); }
 
 std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid)); }
