@@ -144,11 +144,13 @@ namespace
         }
     }
 
-    void CompileStage(
+    ShaderCompiler::ShaderData CompileStage(
         const Slang::ComPtr<IModule>& module, const std::string& base_path, const SlangStage stage,
         GraphicsPipelineSettings& pipeline_settings
     )
     {
+        ShaderCompiler::ShaderData out_info{};
+
         Slang::ComPtr<IBlob> diagnostics{};
 
         const Renderer::BackendShaderInfo& backend_shader_info = Renderer::GetBackendShaderInfo();
@@ -196,20 +198,28 @@ namespace
             linked_entry_point->getEntryPointCode(0, 0, shader_stage_data.writeRef(), diagnostics.writeRef());
             if (TryLog(diagnostics)) break;
 
+            out_info.shader_path = shader_path;
+
             // Write the shader stage data to the file.
             if (backend_shader_info.binary)
             {
                 const auto* shader_data = static_cast<const uint8*>(shader_stage_data->getBufferPointer());
-                Files::WriteBinary(shader_path, {shader_data, shader_stage_data->getBufferSize()});
+                //Files::WriteBinary(shader_path, {shader_data, shader_stage_data->getBufferSize()});
+
+                out_info.data = std::vector<uint8>{shader_data, shader_data + shader_stage_data->getBufferSize()};
             }
             else
             {
                 const auto* shader_text = static_cast<const char*>(shader_stage_data->getBufferPointer());
-                Files::WriteText(shader_path, {shader_text, shader_stage_data->getBufferSize()});
+                //Files::WriteText(shader_path, {shader_text, shader_stage_data->getBufferSize()});
+
+                out_info.data = std::vector<uint8>{shader_text, shader_text + shader_stage_data->getBufferSize()};
             }
 
             break;
         }
+
+        return out_info;
     }
 
 } // namespace
@@ -259,7 +269,7 @@ namespace ShaderCompiler
         global_session->createSession(default_session_description, fragment_session.writeRef());
     }
 
-    GraphicsPipelineSettings CompileGraphicsShaders(const std::string& path)
+    GraphicsPipelineSettings CompileGraphicsShaders(const std::string& path, ShaderData* vertex, ShaderData* fragment)
     {
         Slang::ComPtr<IBlob> diagnostics;
         GraphicsPipelineSettings info;
@@ -269,12 +279,14 @@ namespace ShaderCompiler
         Slang::ComPtr module{vertex_session->loadModule(path.c_str(), diagnostics.writeRef())};
         if (TryLog(diagnostics)) return info;
 
-        CompileStage(module, base_path + ".vert", SLANG_STAGE_VERTEX, info);
+        const ShaderData vertex_stage = CompileStage(module, base_path + ".vert", SLANG_STAGE_VERTEX, info);
+        if (vertex != nullptr) *vertex = vertex_stage;
 
         module = Slang::ComPtr{fragment_session->loadModule(path.c_str(), diagnostics.writeRef())};
         if (TryLog(diagnostics)) return info;
 
-        CompileStage(module, base_path + ".frag", SLANG_STAGE_FRAGMENT, info);
+        const ShaderData fragment_stage = CompileStage(module, base_path + ".frag", SLANG_STAGE_FRAGMENT, info);
+        if (fragment != nullptr) *fragment = fragment_stage;
 
         return info;
     }

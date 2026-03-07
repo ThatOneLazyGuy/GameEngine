@@ -183,9 +183,17 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indic
 
 Mesh::~Mesh() { Renderer::Instance().DestroyMesh(*this); }
 
-std::string Shader::GetID(const std::string& path, const ShaderSettings& shader_info)
+Shader::Shader(Files::BinaryReadStream& stream)
 {
-    return path + (shader_info.type == VERTEX ? ".vert" : ".frag");
+    stream >> type;
+    stream >> sampler_count;
+    stream >> storage_count;
+    stream >> uniform_count;
+
+    std::vector<uint8> data;
+    stream >> data;
+
+    Renderer::Instance().CreateShader(*this, data.data(), data.size());
 }
 
 Shader::Shader(std::string path, const ShaderSettings& shader_info) :
@@ -210,17 +218,61 @@ Shader::Shader(std::string path, const ShaderSettings& shader_info) :
     }
 }
 
+Shader::Shader(const void* data, const usize count, const ShaderSettings& shader_info) :
+    type{shader_info.type}, sampler_count{shader_info.sampler_count}, storage_count{shader_info.storage_count},
+    uniform_count{shader_info.uniform_count}
+{
+    Renderer::Instance().CreateShader(*this, data, count);
+}
+
 Shader::~Shader() { Renderer::Instance().DestroyShader(*this); }
 
-GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& text) {}
+GraphicsShaderPipeline::GraphicsShaderPipeline(Files::BinaryReadStream& stream)
+{
+    usize vertex_attribute_count;
+    stream >> vertex_attribute_count;
+    vertex_attributes.resize(vertex_attribute_count);
+
+    for (usize i = 0; i < vertex_attribute_count; i++)
+    {
+        VertexAttribute& attribute = vertex_attributes[i];
+
+        stream >> attribute.semantic_name;
+
+        stream >> attribute.element_type;
+        stream >> attribute.element_count;
+    }
+
+    usize uniform_sizes_count;
+    stream >> uniform_sizes_count;
+
+    for (usize i = 0; i < uniform_sizes_count; i++)
+    {
+        std::string name;
+        stream >> name;
+
+        usize size;
+        stream >> size;
+
+        uniform_sizes.emplace(std::move(name), size);
+    }
+
+    UUID vertex_uuid;
+    stream >> vertex_uuid;
+    const ResourceRef<Shader> vertex_shader = ResourceManager::Load<Shader>(vertex_uuid);
+
+    UUID fragment_uuid;
+    stream >> fragment_uuid;
+    const ResourceRef<Shader> fragment_shader = ResourceManager::Load<Shader>(fragment_uuid);
+
+    Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
+}
 
 GraphicsShaderPipeline::GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings) :
     vertex_attributes{pipeline_settings.vertex_attributes}, uniform_sizes{pipeline_settings.uniform_sizes}
 {
     const ResourceRef<Shader> vertex_shader = ResourceManager::Create<Shader>(pipeline_path, pipeline_settings.vertex_info);
-    vertex_path = pipeline_path;
     const ResourceRef<Shader> fragment_shader = ResourceManager::Create<Shader>(pipeline_path, pipeline_settings.fragment_info);
-    fragment_path = pipeline_path;
 
     Renderer::Instance().CreateShaderPipeline(*this, vertex_shader, fragment_shader);
 }

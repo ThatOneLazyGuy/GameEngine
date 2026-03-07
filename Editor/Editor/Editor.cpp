@@ -180,13 +180,14 @@ int main(int, char* args[])
 
     Log::Log(std::filesystem::current_path().generic_string());
 
-    const GraphicsPipelineSettings default_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/DefaultShader.slang");
-    ResourceRef graphics_pipeline =
-        ResourceManager::Create<GraphicsShaderPipeline>("Assets/Shaders/DefaultShader.slang", default_pipeline_settings);
+    const auto& file_mapping = Editor::asset_registry->GetAssetFileMapping();
 
-    const GraphicsPipelineSettings physics_pipeline_settings = ShaderCompiler::CompileGraphicsShaders("Assets/Shaders/PhysicsDebug.slang");
-    const ResourceRef physics_shader =
-        ResourceManager::Create<GraphicsShaderPipeline>("Assets/Shaders/PhysicsDebug.slang", physics_pipeline_settings);
+    // Import the default shaders if they haven't been imported yet.
+    if (!file_mapping.contains("Assets/Shaders/DefaultShader.shader")) ImportGraphicsPipeline("Assets/Shaders/DefaultShader.slang");
+    if (!file_mapping.contains("Assets/Shaders/PhysicsDebug.shader")) ImportGraphicsPipeline("Assets/Shaders/PhysicsDebug.slang");
+
+    ResourceRef graphics_pipeline = ResourceManager::Load<GraphicsShaderPipeline>(file_mapping.at("Assets/Shaders/DefaultShader.shader"));
+    const ResourceRef physics_shader = ResourceManager::Load<GraphicsShaderPipeline>(file_mapping.at("Assets/Shaders/PhysicsDebug.shader"));
 
     ECS::Init();
 

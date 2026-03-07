@@ -28,7 +28,7 @@ namespace Files
         BinaryReadStream(std::ifstream& input_stream, usize count);
 
         template <typename Type>
-        requires(std::is_arithmetic_v<Type>)
+        requires(std::is_trivially_copyable_v<Type>)
         void operator>>(Type& value)
         {
             Read(&value);
@@ -123,7 +123,7 @@ namespace Files
         [[nodiscard]] bool IsOpen() const { return is_open(); }
 
         template <typename Type>
-        requires(std::is_arithmetic_v<Type>)
+        requires(std::is_trivially_copyable_v<Type>)
         void operator<<(const Type& value)
         {
             write(reinterpret_cast<const char*>(&value), sizeof(Type));
@@ -170,6 +170,8 @@ namespace Files
         void operator<<(const float2& value);
         void operator<<(const float3& value);
         void operator<<(const Vertex& value);
+
+        void Write(const void* data, const usize count);
     };
 
     std::vector<uint8> ReadBinary(const std::string& path, bool log_failure = true);

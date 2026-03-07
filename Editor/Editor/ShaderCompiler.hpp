@@ -6,7 +6,13 @@
 
 namespace ShaderCompiler
 {
-	void Init();
+    struct ShaderData
+    {
+        std::string shader_path;
+        std::vector<uint8> data;
+    };
 
-	GraphicsPipelineSettings CompileGraphicsShaders(const std::string& path);
-}
+    void Init();
+
+    GraphicsPipelineSettings CompileGraphicsShaders(const std::string& path, ShaderData* vertex = nullptr, ShaderData* fragment = nullptr);
+} // namespace ShaderCompiler

@@ -111,6 +111,8 @@ namespace Files
         *this << value.tex_coord;
     }
 
+    void BinaryWriteStream::Write(const void* data, const usize count) { write(static_cast<const char*>(data), count); }
+
     std::vector<uint8> ReadBinary(const std::string& path, bool log_failure)
     {
         std::vector<uint8> data;

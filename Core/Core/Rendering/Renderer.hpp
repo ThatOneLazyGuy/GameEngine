@@ -168,8 +168,6 @@ class RenderTarget final : public Resource<RenderTarget>
 class Mesh final : public Resource<Mesh>
 {
   public:
-    static std::string GetID(const std::string& path, const uint32 index) { return path + '-' + std::to_string(index); }
-
     Mesh() = default;
     Mesh(Files::BinaryReadStream& stream);
     Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices);
@@ -203,11 +201,10 @@ class Shader final : public Resource<Shader>
         COMPUTE,
     };
 
-    static std::string GetID(const std::string& path, const ShaderSettings& shader_info);
-
-    // TODO: Make sure that the stored path is the actual file path instead of the given path.
     Shader() = default;
+    Shader(Files::BinaryReadStream& stream);
     Shader(std::string path, const ShaderSettings& shader_info);
+    Shader(const void* data, usize count, const ShaderSettings& shader_info);
     ~Shader() override;
 
     Type type{VERTEX};
@@ -256,18 +253,12 @@ struct GraphicsPipelineSettings
 class GraphicsShaderPipeline final : public Resource<GraphicsShaderPipeline>
 {
   public:
-    // TODO: Make sure the pipeline path and the vertex/fragment paths are pointing the used shader files.
     GraphicsShaderPipeline() = default;
-    GraphicsShaderPipeline(const std::string& text);
+    GraphicsShaderPipeline(Files::BinaryReadStream& stream);
     GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings);
     ~GraphicsShaderPipeline() override;
 
-    const std::string& GetVertexPath() const { return vertex_path; }
-    const std::string& GetFragmentPath() const { return fragment_path; }
-
     bool IsWireframe() const { return wireframe; }
-
-    static constexpr bool IsTextConstructable{true};
 
     GraphicsShaderPipelineID shader_pipeline;
 
@@ -275,9 +266,6 @@ class GraphicsShaderPipeline final : public Resource<GraphicsShaderPipeline>
     std::unordered_map<std::string, usize> uniform_sizes;
 
   private:
-    std::string vertex_path;
-    std::string fragment_path;
-
     bool wireframe{false};
 };
 
