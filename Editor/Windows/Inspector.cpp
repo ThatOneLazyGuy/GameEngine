@@ -1,6 +1,6 @@
 #include "Inspector.hpp"
 
-#include "Editor/Editor.hpp"
+#include "Editor.hpp"
 
 #include <Core/Components/Transform.hpp>
 #include <Core/Physics/Physics.hpp>

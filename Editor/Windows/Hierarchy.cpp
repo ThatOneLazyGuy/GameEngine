@@ -1,6 +1,6 @@
 #include "Hierarchy.hpp"
 
-#include "Editor/Editor.hpp"
+#include "Editor.hpp"
 
 #include <Core/ECS.hpp>
 #include <Core/Components/Transform.hpp>

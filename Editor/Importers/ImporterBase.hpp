@@ -56,19 +56,3 @@ class Importer : public ImporterBase
 
     Importer() = default;
 };
-
-class ObjImporter : public Importer<ObjImporter, "Wavefront Object (*.obj)", "*.obj">
-{
-  public:
-    ObjImporter() = default;
-
-    void ImportAsset(const std::string& path) override;
-};
-
-class GraphicsPipelineImporter : public Importer<GraphicsPipelineImporter, "Graphics Shader Pipeline (*.slang)", "*.slang">
-{
-  public:
-    GraphicsPipelineImporter() = default;
-
-    void ImportAsset(const std::string& path) override;
-};

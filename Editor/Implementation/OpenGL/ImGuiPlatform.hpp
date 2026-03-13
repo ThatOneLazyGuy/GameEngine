@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Editor/ImGuiPlatform.hpp"
+#include "../../ImGuiPlatform.hpp"
 
 namespace ImGui
 {

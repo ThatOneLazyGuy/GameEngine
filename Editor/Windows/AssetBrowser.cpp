@@ -1,7 +1,7 @@
 #include "AssetBrowser.hpp"
 
-#include "Editor/Editor.hpp"
-#include "Editor/Importers/ImporterBase.hpp"
+#include "Editor.hpp"
+#include "Importers/ImporterBase.hpp"
 
 #include <Tools/FileDialogs.hpp>
 

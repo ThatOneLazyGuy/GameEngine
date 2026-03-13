@@ -1,16 +1,18 @@
 add_executable(
         Editor
-        "Editor/Editor.cpp"
-        "Editor/ImGuiExtra.cpp"
-        "Editor/ImGuiPlatform.cpp"
-        "Editor/ShaderCompiler.cpp"
+        "Editor.cpp"
+        "ImGuiExtra.cpp"
+        "ImGuiPlatform.cpp"
+        "ShaderCompiler.cpp"
         "Implementation/OpenGL/ImGuiPlatform.cpp"
         "Implementation/SDL3GPU/ImGuiPlatform.cpp"
         "Windows/Viewport.cpp"
         "Windows/Hierarchy.cpp"
         "Windows/Inspector.cpp"
         "Windows/AssetBrowser.cpp"
-        "Editor/Importers/ImporterBase.cpp"
+        "Importers/ImporterBase.cpp"
+        "Importers/ObjectImporter.cpp"
+        "Importers/GraphicsPipelineImporter.cpp"
 
         "${EXTERNAL}/imgui/imgui.cpp"
         "${EXTERNAL}/imgui/imgui_demo.cpp"

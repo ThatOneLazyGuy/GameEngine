@@ -1,7 +1,7 @@
 #include "Viewport.hpp"
 
-#include "Editor/Editor.hpp"
-#include "Editor/ImGuiPlatform.hpp"
+#include "Editor.hpp"
+#include "ImGuiPlatform.hpp"
 
 #include <Core/Math.hpp>
 #include <Core/Input.hpp>
