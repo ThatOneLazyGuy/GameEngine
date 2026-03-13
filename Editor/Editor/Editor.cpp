@@ -36,14 +36,6 @@ namespace
 
     ECS::Entity backpack_entity;
 
-    //void CreateDefaultEntities()
-    //{
-    //    const ResourceRef<Mesh> handle = ResourceManager::Load<Mesh>("Assets/Backpack/backpack.obj", 0);
-    //    backpack_entity = ECS::CreateEntity("Backpack");
-    //    auto&& [handle_component, collider] = backpack_entity.AddComponent<ResourceRef<Mesh>, Physics::SphereCollider>();
-    //    handle_component = handle;
-    //}
-
     std::vector<EditorWindowBase*> windows;
 
 } // namespace
@@ -197,8 +189,6 @@ int main(int, char* args[])
 
     Physics::Init(physics_shader.GetUUID());
 
-    //CreateDefaultEntities();
-
     while (!Window::PollEvents())
     {
         Time::Update();
@@ -225,23 +215,17 @@ int main(int, char* args[])
 
 AssetRegistry::AssetRegistry()
 {
-    usize read_index = 0;
-    const std::vector<uint8> data = Files::ReadBinary("ResourceMapping.bin");
-    while (read_index < data.size())
+    Files::BinaryReadStream stream{"ResourceMapping.bin"};
+    while (stream.GetReadPosition() < stream.Size())
     {
-        const usize uuid_size = *reinterpret_cast<const usize*>(data.data() + read_index);
-        read_index += sizeof(usize);
+        UUID uuid;
+        stream >> uuid;
 
-        std::span uuid_bytes{data.data() + read_index, data.data() + read_index + uuid_size};
-        read_index += uuid_size;
+        std::string path;
+        stream >> path;
 
-        const usize path_size = *reinterpret_cast<const usize*>(data.data() + read_index);
-        read_index += sizeof(usize);
-
-        std::string path{data.data() + read_index, data.data() + read_index + path_size};
-        read_index += path_size;
-
-        UUID uuid{uuid_bytes.data()};
+        std::string type_id;
+        stream >> type_id;
 
         Log::Log("Path: {}, UUID: {}", path, uuid.str());
 
@@ -251,54 +235,36 @@ AssetRegistry::AssetRegistry()
             continue;
         }
 
-        const auto& iterator = mapping.emplace(uuid, path);
-        reverse_mapping.emplace(iterator.first->second, uuid);
+        const auto& iterator = mapping.emplace(uuid, std::pair{path, type_id});
+        reverse_mapping.emplace(iterator.first->second.first, uuid);
     }
 }
 
 AssetRegistry::~AssetRegistry()
 {
-    usize write_index = 0;
-    std::vector<uint8> data;
-    for (const auto& [uuid, path] : mapping)
+    Files::BinaryWriteStream stream{"ResourceMapping.bin"};
+    for (const auto& [uuid, info] : mapping)
     {
-        const std::string uuid_bytes = uuid.bytes();
-        const usize uuid_size = uuid_bytes.size();
-        const usize uuid_data_size = uuid_size + sizeof(usize);
+        stream << uuid;
 
-        const usize path_size = path.size();
-        const usize path_data_size = path_size + sizeof(usize);
+        stream << info.first;
 
-        data.resize(data.size() + uuid_data_size + path_data_size);
-
-        std::memcpy(data.data() + write_index, &uuid_size, sizeof(usize));
-        write_index += sizeof(usize);
-
-        std::memcpy(data.data() + write_index, uuid_bytes.data(), uuid_size);
-        write_index += uuid_size;
-
-        std::memcpy(data.data() + write_index, &path_size, sizeof(usize));
-        write_index += sizeof(usize);
-
-        std::memcpy(data.data() + write_index, path.data(), path_size);
-        write_index += path_size;
+        stream << info.second;
     }
 
-    Files::WriteBinary("ResourceMapping.bin", data);
-
+    reverse_mapping.clear();
     mapping.clear();
 }
 
-usize AssetRegistry::GetAssetMetadata(const UUID& uuid) const
+std::string_view AssetRegistry::GetAssetTypeID(const UUID& uuid) const
 {
-    const std::vector<uint8> metadata = Files::ReadBinary(mapping.at(uuid) + ".meta");
-    return *reinterpret_cast<const usize*>(metadata.data());
+    return mapping.at(uuid).second;
 }
 
-std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{mapping.at(uuid)}; }
+std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{mapping.at(uuid).first}; }
 
-Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) const { return Files::BinaryReadStream{mapping.at(uuid)}; }
+Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) const { return Files::BinaryReadStream{mapping.at(uuid).first}; }
 
-std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid)); }
+std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid).first); }
 
-std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid)); }
+std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid).first); }

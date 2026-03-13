@@ -5,18 +5,18 @@
 namespace ResourceManager
 {
 
-    usize GetResourceTypeHash(const UUID& uuid)
+    std::string_view GetResourceTypeID(const UUID& uuid)
     {
         const auto iterator = resources.find(uuid);
-        if (iterator != resources.end()) return iterator->second.resource->GetTypeHash();
+        if (iterator != resources.end()) return iterator->second.resource->GetTypeID();
 
         if (!asset_registry->IsValidAsset(uuid))
         {
             Log::Error("UUID isn't loaded and is not a registered asset: {}", uuid.str());
-            return 0;
+            return "";
         }
 
-        return asset_registry->GetAssetMetadata(uuid);
+        return asset_registry->GetAssetTypeID(uuid);
     }
 
     void Exit()

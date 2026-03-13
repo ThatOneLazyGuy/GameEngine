@@ -60,7 +60,7 @@ inline const std::unordered_map<std::string, usize> attribute_sizes{
 struct TextureSettings;
 struct SamplerSettings;
 
-class Texture : public Resource<Texture>
+class Texture : public Resource<"Texture">
 {
   public:
     enum ColorFormat : uint8
@@ -139,7 +139,7 @@ class RenderBuffer
     ResourceRef<Texture> texture;
 };
 
-class RenderTarget final : public Resource<RenderTarget>
+class RenderTarget final : public Resource<"Render Target">
 {
   public:
     RenderTarget() = default;
@@ -165,7 +165,7 @@ class RenderTarget final : public Resource<RenderTarget>
     sint32 height{1};
 };
 
-class Mesh final : public Resource<Mesh>
+class Mesh final : public Resource<"Mesh">
 {
   public:
     Mesh() = default;
@@ -191,7 +191,7 @@ class Mesh final : public Resource<Mesh>
 
 struct ShaderSettings;
 
-class Shader final : public Resource<Shader>
+class Shader final : public Resource<"Shader">
 {
   public:
     enum Type : uint8
@@ -250,7 +250,7 @@ struct GraphicsPipelineSettings
     ShaderSettings fragment_info;
 };
 
-class GraphicsShaderPipeline final : public Resource<GraphicsShaderPipeline>
+class GraphicsShaderPipeline final : public Resource<"Graphics Shader Pipeline">
 {
   public:
     GraphicsShaderPipeline() = default;
@@ -258,7 +258,7 @@ class GraphicsShaderPipeline final : public Resource<GraphicsShaderPipeline>
     GraphicsShaderPipeline(const std::string& pipeline_path, const GraphicsPipelineSettings& pipeline_settings);
     ~GraphicsShaderPipeline() override;
 
-    bool IsWireframe() const { return wireframe; }
+    [[nodiscard]] bool IsWireframe() const { return wireframe; }
 
     GraphicsShaderPipelineID shader_pipeline;
 

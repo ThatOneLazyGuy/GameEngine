@@ -13,16 +13,6 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 
-#include <fstream>
-
-// TODO: Update to not use std::TypeInfo::hash_code since this isn't guaranteed to be the same across devices or even across invocations of the program.
-template <ResourceType ResourceType>
-void WriteMetaDataFile(const std::string& asset_path)
-{
-    const uint8* type_hash_data = reinterpret_cast<const uint8*>(&ResourceType::type_hash);
-    Files::WriteBinary(asset_path + ".meta", std::span{type_hash_data, type_hash_data + sizeof(usize)});
-}
-
 inline void ImportObject(const std::string& path)
 {
     constexpr int import_flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices;
@@ -77,8 +67,7 @@ inline void ImportObject(const std::string& path)
             continue;
         }
 
-        Editor::asset_registry->RegisterPath(mesh_path);
-        WriteMetaDataFile<Mesh>(mesh_path);
+        Editor::asset_registry->RegisterPath<Mesh>(mesh_path);
 
         file << vertices;
         file << indices;
@@ -94,8 +83,7 @@ inline void ImportObject(const std::string& path)
             material.GetTexture(aiTextureType_DIFFUSE, i, &string);
 
             const std::string full_texture_path = base_path + string.C_Str();
-            const UUID material_uuid = Editor::asset_registry->RegisterPath(full_texture_path);
-            WriteMetaDataFile<Texture>(full_texture_path);
+            const UUID material_uuid = Editor::asset_registry->RegisterPath<Texture>(full_texture_path);
 
             file << material_uuid;
         }
@@ -120,11 +108,9 @@ inline void ImportGraphicsPipeline(const std::string& path)
         return;
     }
 
-    Editor::asset_registry->RegisterPath(shader_path);
-    WriteMetaDataFile<GraphicsShaderPipeline>(shader_path);
+    Editor::asset_registry->RegisterPath<GraphicsShaderPipeline>(shader_path);
 
-    const UUID vertex_uuid = Editor::asset_registry->RegisterPath(vertex_data.shader_path);
-    WriteMetaDataFile<Shader>(vertex_data.shader_path);
+    const UUID vertex_uuid = Editor::asset_registry->RegisterPath<Shader>(vertex_data.shader_path);
 
     Files::BinaryWriteStream vertex_file{vertex_data.shader_path};
     if (vertex_file.IsOpen())
@@ -137,8 +123,7 @@ inline void ImportGraphicsPipeline(const std::string& path)
         vertex_file << vertex_data.data;
     }
 
-    const UUID fragment_uuid = Editor::asset_registry->RegisterPath(fragment_data.shader_path);
-    WriteMetaDataFile<Shader>(fragment_data.shader_path);
+    const UUID fragment_uuid = Editor::asset_registry->RegisterPath<Shader>(fragment_data.shader_path);
 
     Files::BinaryWriteStream fragment_file{fragment_data.shader_path};
     if (fragment_file.IsOpen())

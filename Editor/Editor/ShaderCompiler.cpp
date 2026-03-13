@@ -181,7 +181,7 @@ namespace
             composite->getEntryPointHash(
                 0, 0, hash.writeRef()
             ); // We use entry point index 0 because the composite was only made with 1 entry point.
-            if (CompareShaderHash(hash_file_path, hash)) break;
+            // if (CompareShaderHash(hash_file_path, hash)) break;
 
             Log::Log("Recompiling shader: {}", shader_path);
 
@@ -201,20 +201,8 @@ namespace
             out_info.shader_path = shader_path;
 
             // Write the shader stage data to the file.
-            if (backend_shader_info.binary)
-            {
-                const auto* shader_data = static_cast<const uint8*>(shader_stage_data->getBufferPointer());
-                //Files::WriteBinary(shader_path, {shader_data, shader_stage_data->getBufferSize()});
-
-                out_info.data = std::vector<uint8>{shader_data, shader_data + shader_stage_data->getBufferSize()};
-            }
-            else
-            {
-                const auto* shader_text = static_cast<const char*>(shader_stage_data->getBufferPointer());
-                //Files::WriteText(shader_path, {shader_text, shader_stage_data->getBufferSize()});
-
-                out_info.data = std::vector<uint8>{shader_text, shader_text + shader_stage_data->getBufferSize()};
-            }
+            const auto* shader_data = static_cast<const uint8*>(shader_stage_data->getBufferPointer());
+            out_info.data = std::vector<uint8>{shader_data, shader_data + shader_stage_data->getBufferSize()};
 
             break;
         }

@@ -80,9 +80,9 @@ namespace
 
         if (ImGui::BeginDragDropTarget())
         {
-            const std::string type_hash_string = std::to_string(Mesh::type_hash);
+            const std::string_view type_id = mesh->GetTypeID();
 
-            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type_hash_string.c_str());
+            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type_id.data());
             if (payload != nullptr)
             {
                 const UUID uuid{static_cast<const uint8*>(payload->Data)};

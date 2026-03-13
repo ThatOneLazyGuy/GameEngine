@@ -10,37 +10,46 @@
 #include "Tools/Logging.hpp"
 #include "Tools/uuid.hpp"
 
+template <usize Size>
+class TemplateString
+{
+  public:
+    constexpr TemplateString(const char (&string)[Size]) { std::copy_n(string, Size, buffer); }
+
+    [[nodiscard]] constexpr const char* GetString() const { return buffer; }
+    constexpr operator std::string_view() const { return buffer; }
+
+    char buffer[Size];
+};
+
 class ResourceBase
 {
   public:
     virtual ~ResourceBase() = default;
 
-    [[nodiscard]] virtual usize GetTypeHash() const = 0;
+    [[nodiscard]] virtual std::string_view GetTypeID() const = 0;
     static constexpr bool IsTextConstructable{false};
 
   private:
     ResourceBase() = default;
 
-    template <typename Derived>
+    // Makes sure no class can construct ResourceBase if it hasn't inherited from Resource<TemplateString ResourceName>
+    template <TemplateString ResourceName>
     friend class Resource;
 };
 
-template <typename>
+template <TemplateString ResourceName>
 class Resource : public ResourceBase
 {
   public:
     ~Resource() override = default;
 
-    static const usize type_hash;
+    [[nodiscard]] static std::string_view GetID() { return ResourceName; }
+    [[nodiscard]] std::string_view GetTypeID() const final { return ResourceName; }
 
   protected:
     Resource() = default;
-
-    [[nodiscard]] usize GetTypeHash() const final { return type_hash; }
 };
-
-template <typename Derived>
-const usize Resource<Derived>::type_hash{typeid(Derived).hash_code()};
 
 namespace ResourceManager
 {
@@ -55,7 +64,7 @@ namespace ResourceManager
 } // namespace ResourceManager
 
 template <typename Type>
-concept ResourceType = std::derived_from<Type, Resource<Type>>;
+concept ResourceType = std::derived_from<Type, ResourceBase>;
 
 // Handle to the resource in the resource manager, template parameter should be the derived resource's type (CRTP).
 template <ResourceType Type>
@@ -75,7 +84,7 @@ class ResourceRef
         }
 
         auto&& [reference_count, resource] = iterator->second;
-        assert(resource->GetTypeHash() == ResourceType::type_hash && "id type doesn't match ResourceRef type.");
+        assert(resource->GetTypeID() == ResourceType::GetID() && "id type doesn't match ResourceRef type.");
 
         ++reference_count;
         pointer = static_cast<ResourceType*>(resource.get());
@@ -167,7 +176,7 @@ class AssetRegistryBase
   public:
     virtual ~AssetRegistryBase() = default;
 
-    [[nodiscard]] virtual usize GetAssetMetadata(const UUID& uuid) const = 0;
+    [[nodiscard]] virtual std::string_view GetAssetTypeID(const UUID& uuid) const = 0;
     [[nodiscard]] virtual bool IsValidAsset(const UUID& uuid) const = 0;
 
     [[nodiscard]] virtual std::ifstream GetAssetTextStream(const UUID& uuid) const = 0;
@@ -220,7 +229,7 @@ namespace ResourceManager
         return ResourceRef<ResourceType>{uuid};
     }
 
-    [[nodiscard]] usize GetResourceTypeHash(const UUID& uuid);
+    [[nodiscard]] std::string_view GetResourceTypeID(const UUID& uuid);
 
     template <typename RegistryType>
     requires std::derived_from<RegistryType, AssetRegistryBase>

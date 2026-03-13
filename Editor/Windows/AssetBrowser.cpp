@@ -15,10 +15,10 @@ namespace
     {
         if (!ImGui::BeginDragDropSource()) return;
 
-        const std::string type_hash_string = std::to_string(ResourceManager::GetResourceTypeHash(uuid));
+        const std::string_view type_hash_string = ResourceManager::GetResourceTypeID(uuid);
         const std::string uuid_bytes = uuid.bytes();
 
-        ImGui::SetDragDropPayload(type_hash_string.c_str(), uuid_bytes.data(), uuid_bytes.size());
+        ImGui::SetDragDropPayload(type_hash_string.data(), uuid_bytes.data(), uuid_bytes.size());
         ImGui::Text("%s", path.data());
 
         ImGui::EndDragDropSource();
