@@ -34,8 +34,6 @@ namespace
         io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Verdana.ttf", 23.0f);
     }
 
-    ECS::Entity backpack_entity;
-
     std::vector<EditorWindowBase*> windows;
 
 } // namespace
@@ -162,6 +160,8 @@ namespace Editor
 
 int main(int, char* args[])
 {
+    Log::Log("Current working directory: {}", std::filesystem::current_path().generic_string());
+
     Editor::asset_registry = ResourceManager::Init<AssetRegistry>();
 
     Renderer::SetupBackend(args[1]);
@@ -170,13 +170,11 @@ int main(int, char* args[])
 
     Renderer::Init();
 
-    Log::Log(std::filesystem::current_path().generic_string());
-
     const auto& file_mapping = Editor::asset_registry->GetAssetFileMapping();
 
     // Import the default shaders if they haven't been imported yet.
-    if (!file_mapping.contains("Assets/Shaders/DefaultShader.shader")) ImportGraphicsPipeline("Assets/Shaders/DefaultShader.slang");
-    if (!file_mapping.contains("Assets/Shaders/PhysicsDebug.shader")) ImportGraphicsPipeline("Assets/Shaders/PhysicsDebug.slang");
+    if (!file_mapping.contains("Assets/Shaders/DefaultShader.shader")) ImporterBase::Import("Assets/Shaders/DefaultShader.slang");
+    if (!file_mapping.contains("Assets/Shaders/PhysicsDebug.shader")) ImporterBase::Import("Assets/Shaders/PhysicsDebug.slang");
 
     ResourceRef graphics_pipeline = ResourceManager::Load<GraphicsShaderPipeline>(file_mapping.at("Assets/Shaders/DefaultShader.shader"));
     const ResourceRef physics_shader = ResourceManager::Load<GraphicsShaderPipeline>(file_mapping.at("Assets/Shaders/PhysicsDebug.shader"));
@@ -235,8 +233,8 @@ AssetRegistry::AssetRegistry()
             continue;
         }
 
-        const auto& iterator = mapping.emplace(uuid, std::pair{path, type_id});
-        reverse_mapping.emplace(iterator.first->second.first, uuid);
+        const auto& iterator = mapping.emplace(uuid, AssetInfo{path, type_id});
+        reverse_mapping.emplace(iterator.first->second.path, uuid);
     }
 }
 
@@ -247,24 +245,20 @@ AssetRegistry::~AssetRegistry()
     {
         stream << uuid;
 
-        stream << info.first;
-
-        stream << info.second;
+        stream << info.path;
+        stream << info.type_id;
     }
 
     reverse_mapping.clear();
     mapping.clear();
 }
 
-std::string_view AssetRegistry::GetAssetTypeID(const UUID& uuid) const
-{
-    return mapping.at(uuid).second;
-}
+std::string_view AssetRegistry::GetAssetTypeID(const UUID& uuid) const { return mapping.at(uuid).type_id; }
 
-std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{mapping.at(uuid).first}; }
+std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{mapping.at(uuid).path}; }
 
-Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) const { return Files::BinaryReadStream{mapping.at(uuid).first}; }
+Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) const { return Files::BinaryReadStream{mapping.at(uuid).path}; }
 
-std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid).first); }
+std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid).path); }
 
-std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid).first); }
+std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid).path); }

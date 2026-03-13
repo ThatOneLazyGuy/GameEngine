@@ -17,15 +17,21 @@ class AssetRegistry : public AssetRegistryBase
         if (path_iterator != reverse_mapping.end()) return path_iterator->second;
 
         const UUID uuid = UUIDGenerator::Generate();
-        const auto& iterator = mapping.emplace(uuid, std::pair{path, Type::GetID()});
-        reverse_mapping.emplace(iterator.first->second.first, uuid);
+        const auto& iterator = mapping.emplace(uuid, AssetInfo{path, Type::GetID().data()});
+        reverse_mapping.emplace(iterator.first->second.path, uuid);
 
         return uuid;
     }
 
-    const std::map<std::string, UUID>& GetAssetFileMapping() const { return reverse_mapping; }
+    [[nodiscard]] const std::map<std::string, UUID>& GetAssetFileMapping() const { return reverse_mapping; }
 
   private:
+    struct AssetInfo
+    {
+        std::string path;
+        std::string type_id;
+    };
+
     [[nodiscard]] std::string_view GetAssetTypeID(const UUID& uuid) const override;
     [[nodiscard]] bool IsValidAsset(const UUID& uuid) const override { return mapping.contains(uuid); }
 
@@ -34,7 +40,7 @@ class AssetRegistry : public AssetRegistryBase
     [[nodiscard]] std::string GetAssetText(const UUID& uuid) const override;
     [[nodiscard]] std::vector<uint8> GetAssetData(const UUID& uuid) const override;
 
-    std::map<UUID, std::pair<std::string, std::string>> mapping;
+    std::map<UUID, AssetInfo> mapping;
     std::map<std::string, UUID> reverse_mapping;
 };
 

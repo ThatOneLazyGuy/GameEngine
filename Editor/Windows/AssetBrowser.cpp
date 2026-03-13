@@ -35,14 +35,19 @@ void AssetBrowser::Display()
 {
     if (ImGui::Button("Import Object +"))
     {
-        const std::string path = FileDialogs::OpenFile(
-            "Import Obj", "./Assets", {"Wavefront Object (*.obj)", "*.obj", "Graphics Shader Pipeline (*.slang)", "*.slang"}
-        );
-        if (!path.empty())
+        const auto& importer_infos = ImporterBase::GetImporterInfos();
+
+        std::vector<std::string> filters;
+        filters.reserve(importer_infos.size() * 2);
+
+        for (const ImporterInfo& info : importer_infos)
         {
-            if (path.substr(path.find_last_of('.')) == ".obj") ImportObject(path);
-            else ImportGraphicsPipeline(path);
+            filters.emplace_back(info.description);
+            filters.emplace_back(info.file_types);
         }
+
+        const std::string path = FileDialogs::OpenFile("Import Asset", "./Assets", filters);
+        if (!path.empty()) ImporterBase::Import(path);
     }
 
     const auto& asset_mapping = Editor::asset_registry->GetAssetFileMapping();
