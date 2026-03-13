@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/ECS.hpp"
-#include "Core/Math.hpp"
+#include "ECS.hpp"
+#include "Math.hpp"
 
 class Transform
 {

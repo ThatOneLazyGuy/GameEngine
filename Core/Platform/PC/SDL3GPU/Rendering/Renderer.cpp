@@ -1,12 +1,11 @@
-#include "Core/Rendering/Renderer.hpp"
+#include "Rendering/Renderer.hpp"
 #include "Renderer.hpp"
 
-#include "Tools/Logging.hpp"
-#include "Core/ECS.hpp"
-#include "Core/Window.hpp"
-#include "Core/Physics/Physics.hpp"
-#include "Core/Physics/DebugRenderer.hpp"
-#include "Core/Rendering/RenderPassInterface.hpp"
+#include "Logging.hpp"
+#include "ECS.hpp"
+#include "Window.hpp"
+#include "Physics/DebugRenderer.hpp"
+#include "Rendering/RenderPassInterface.hpp"
 
 #include <SDL3/SDL_gpu.h>
 

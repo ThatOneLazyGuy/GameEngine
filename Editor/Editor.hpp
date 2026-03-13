@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Core/ECS.hpp>
-#include <Core/ResourceManager.hpp>
+#include <ECS.hpp>
+#include <ResourceManager.hpp>
 #include <Tools/UniqueVector.hpp>
 
 class AssetRegistry : public AssetRegistryBase

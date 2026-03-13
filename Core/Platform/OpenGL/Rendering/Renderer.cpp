@@ -1,10 +1,10 @@
 #include "Renderer.hpp"
 
-#include "Tools/Logging.hpp"
-#include "Core/Math.hpp"
-#include "Core/Window.hpp"
-#include "Core/Physics/Physics.hpp"
-#include "Core/Rendering/RenderPassInterface.hpp"
+#include "Logging.hpp"
+#include "Math.hpp"
+#include "Window.hpp"
+#include "Physics/Physics.hpp"
+#include "Rendering/RenderPassInterface.hpp"
 
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>

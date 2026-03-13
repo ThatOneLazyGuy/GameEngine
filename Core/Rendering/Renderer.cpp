@@ -1,10 +1,10 @@
-#include "Core/Rendering/Renderer.hpp"
+#include "Rendering/Renderer.hpp"
 
 #include "Platform/OpenGL/Rendering/Renderer.hpp"
 #include "Platform/PC/SDL3GPU/Rendering/Renderer.hpp"
 
 #include "RenderPassInterface.hpp"
-#include "Tools/Logging.hpp"
+#include "Logging.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
@@ -12,7 +12,7 @@
 #include <filesystem>
 #include <assimp/scene.h>
 
-#include "Tools/Files.hpp"
+#include "Files.hpp"
 
 namespace
 {

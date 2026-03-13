@@ -3,11 +3,11 @@
 #include "Editor.hpp"
 #include "ImGuiPlatform.hpp"
 
-#include <Core/Math.hpp>
-#include <Core/Input.hpp>
-#include <Core/Time.hpp>
-#include <Core/Components/Transform.hpp>
-#include <Core/Rendering/Renderer.hpp>
+#include <Math.hpp>
+#include <Input.hpp>
+#include <Time.hpp>
+#include <Transform.hpp>
+#include <Rendering/Renderer.hpp>
 
 #include <imgui.h>
 #include <flecs.h>

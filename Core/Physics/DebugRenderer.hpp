@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Rendering/RenderPassInterface.hpp"
+#include "Rendering/RenderPassInterface.hpp"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Renderer/DebugRendererSimple.h>

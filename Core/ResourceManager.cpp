@@ -1,6 +1,6 @@
 #include "ResourceManager.hpp"
 
-#include "Tools/Files.hpp"
+#include "Files.hpp"
 
 namespace ResourceManager
 {

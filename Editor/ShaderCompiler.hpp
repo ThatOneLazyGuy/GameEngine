@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <core/Rendering/Renderer.hpp>
+#include <Rendering/Renderer.hpp>
 
 namespace ShaderCompiler
 {

@@ -4,13 +4,13 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 
-#include "Core/Rendering/Renderer.hpp"
-#include "Core/Window.hpp"
+#include "Rendering/Renderer.hpp"
+#include "Window.hpp"
 
 #include "Implementation/OpenGL/ImGuiPlatform.hpp"
 #include "Implementation/SDL3GPU/ImGuiPlatform.hpp"
 
-#include "Core/Input.hpp"
+#include "Input.hpp"
 
 #include <backends/imgui_impl_sdl3.h>
 #include <imgui.h>

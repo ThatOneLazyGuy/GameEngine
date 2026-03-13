@@ -8,14 +8,14 @@
 #include "Windows/WindowBase.hpp"
 #include "Importers/ImporterBase.hpp"
 
-#include <Core/ECS.hpp>
-#include <Core/Time.hpp>
-#include <Core/Window.hpp>
-#include <Core/Physics/Physics.hpp>
-#include <Core/ResourceManager.hpp>
-#include <Core/Rendering/Renderer.hpp>
-#include <Core/Rendering/RenderPassInterface.hpp>
-#include <Tools/Files.hpp>
+#include <ECS.hpp>
+#include <Time.hpp>
+#include <Window.hpp>
+#include <Physics/Physics.hpp>
+#include <ResourceManager.hpp>
+#include <Rendering/Renderer.hpp>
+#include <Rendering/RenderPassInterface.hpp>
+#include <Files.hpp>
 
 #include <SDL3/SDL_mouse.h>
 

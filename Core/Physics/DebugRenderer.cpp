@@ -1,8 +1,8 @@
 #include "DebugRenderer.hpp"
 
 #include "Physics.hpp"
-#include "Core/Rendering/Renderer.hpp"
-#include "Core/Components/Transform.hpp"
+#include "Rendering/Renderer.hpp"
+#include "Transform.hpp"
 
 #include <numeric>
 

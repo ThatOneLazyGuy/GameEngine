@@ -1,9 +1,9 @@
 #include "Physics.hpp"
 
-#include "Tools/Logging.hpp"
+#include "Logging.hpp"
 #include "DebugRenderer.hpp"
-#include "Core/ECS.hpp"
-#include "Core/Components/Transform.hpp"
+#include "ECS.hpp"
+#include "Transform.hpp"
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/RegisterTypes.h>

@@ -1,8 +1,7 @@
 #pragma once
 
-#include "Core/Math.hpp"
+#include "Types.hpp"
 #include "Tools/uuid.hpp"
-#include "Tools/Types.hpp"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/BodyID.h>

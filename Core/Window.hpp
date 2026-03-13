@@ -1,7 +1,8 @@
 #pragma once
 
+#include "Types.hpp"
+
 #include <functional>
-#include <Tools/Types.hpp>
 
 namespace Window
 {

@@ -2,7 +2,7 @@
 
 #include "Editor.hpp"
 
-#include <core/Rendering/Renderer.hpp>
+#include <Rendering/Renderer.hpp>
 
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>

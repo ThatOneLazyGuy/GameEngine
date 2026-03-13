@@ -1,7 +1,7 @@
 #include "Files.hpp"
 
-#include "Core/Rendering/Renderer.hpp"
-#include "Tools/Logging.hpp"
+#include "Rendering/Renderer.hpp"
+#include "Logging.hpp"
 #include "Tools/UUID.hpp"
 
 #include <vector>

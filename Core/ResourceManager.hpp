@@ -5,9 +5,8 @@
 #include <cassert>
 #include <concepts>
 
-#include "Tools/Files.hpp"
-#include "Tools/Types.hpp"
-#include "Tools/Logging.hpp"
+#include "Logging.hpp"
+#include "Files.hpp"
 #include "Tools/uuid.hpp"
 
 template <usize Size>

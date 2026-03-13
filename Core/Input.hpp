@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Math.hpp"
-#include "Tools/Types.hpp"
 
 namespace Input
 {

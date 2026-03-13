@@ -1,6 +1,6 @@
 #include "Window.hpp"
 
-#include "Tools/Logging.hpp"
+#include "Logging.hpp"
 #include "Input.hpp"
 #include "Rendering/Renderer.hpp"
 

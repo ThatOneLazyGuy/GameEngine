@@ -1,8 +1,8 @@
 #include "ImGuiPlatform.hpp"
 
-#include <Tools/Logging.hpp>
-#include <Core/Rendering/Renderer.hpp>
-#include <Core/Window.hpp>
+#include <Logging.hpp>
+#include <Rendering/Renderer.hpp>
+#include <Window.hpp>
 #include <Platform/PC/SDL3GPU/Rendering/Renderer.hpp>
 
 #include <SDL3/SDL_gpu.h>

@@ -1,7 +1,7 @@
 #include "ImGuiPlatform.hpp"
 
-#include "Core/Rendering/Renderer.hpp"
-#include "Core/Window.hpp"
+#include "Rendering/Renderer.hpp"
+#include "Window.hpp"
 
 #include <SDL3/SDL_video.h>
 #include <backends/imgui_impl_opengl3.h>

@@ -1,6 +1,6 @@
 #include "RenderPassInterface.hpp"
 
-#include "Core/Components/Transform.hpp"
+#include "Transform.hpp"
 
 namespace
 {

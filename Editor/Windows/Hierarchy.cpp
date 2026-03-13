@@ -2,8 +2,8 @@
 
 #include "Editor.hpp"
 
-#include <Core/ECS.hpp>
-#include <Core/Components/Transform.hpp>
+#include <ECS.hpp>
+#include <Transform.hpp>
 
 #include <imgui.h>
 #include <imgui_internal.h>

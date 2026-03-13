@@ -1,7 +1,7 @@
 #include "ECS.hpp"
 
-#include "Components/Transform.hpp"
-#include "Tools/Logging.hpp"
+#include "Transform.hpp"
+#include "Logging.hpp"
 
 #include <flecs.h>
 

@@ -1,8 +1,8 @@
 #include "ShaderCompiler.hpp"
 
-#include <Core/Rendering/Renderer.hpp>
-#include <Tools/Logging.hpp>
-#include <Tools/Files.hpp>
+#include <Rendering/Renderer.hpp>
+#include <Logging.hpp>
+#include <Files.hpp>
 
 #include <slang.h>
 #include <slang-com-ptr.h>

@@ -3,7 +3,7 @@
 #include "Editor.hpp"
 #include "ShaderCompiler.hpp"
 
-#include <core/Rendering/Renderer.hpp>
+#include <Rendering/Renderer.hpp>
 
 #include <string>
 

@@ -1,22 +1,21 @@
 add_library(
         Core
         STATIC
-        "Core/Physics/Physics.cpp"
-        "Core/Physics/DebugRenderer.cpp"
-        "Core/ECS.cpp"
-        "Core/Input.cpp"
-        
-        "Core/Time.cpp"
-        "Core/Window.cpp"
-        "Core/Rendering/Renderer.cpp"
-        "Core/Rendering/RenderPassInterface.cpp"
-        "Core/ResourceManager.cpp"
+        "ECS.cpp"
+        "Files.cpp"
+        "Input.cpp"
+        "Time.cpp"
+        "Window.cpp"
+        "ResourceManager.cpp"
+        "Physics/Physics.cpp"
+        "Physics/DebugRenderer.cpp"
+        "Rendering/Renderer.cpp"
+        "Rendering/RenderPassInterface.cpp"
 
         "Platform/PC/SDL3GPU/Rendering/Renderer.cpp"
         "Platform/OpenGL/Rendering/Renderer.cpp"
         "${EXTERNAL}/glad/src/glad.c"
 
-        "Tools/Files.cpp"
         "Tools/FileDialogs.cpp"
 )
 

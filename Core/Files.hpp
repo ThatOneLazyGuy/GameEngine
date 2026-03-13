@@ -1,14 +1,12 @@
 #pragma once
 
-#include "Tools/Types.hpp"
-#include "Core/Math.hpp"
-
 #include <fstream>
 #include <vector>
 #include <string>
 #include <span>
 #include <map>
 
+#include "Math.hpp"
 
 namespace UUIDv4
 {

@@ -1,7 +1,6 @@
 #include "Input.hpp"
 
-#include "Tools/Logging.hpp"
-#include "Tools/Types.hpp"
+#include "Logging.hpp"
 #include "Window.hpp"
 
 #include <SDL3/SDL_mouse.h>
@@ -45,7 +44,6 @@ namespace Input
         memset(previous_key_states, 0, sizeof(previous_key_states));
         memset(key_states, 0, sizeof(key_states));
     }
-
 
     void SetMousePos(const float x, const float y) { mouse_pos = float2{x, y}; }
     void SetMousePos(const float2& pos) { mouse_pos = pos; }

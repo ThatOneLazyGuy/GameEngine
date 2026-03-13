@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Tools/Types.hpp"
-
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
 #include <format>
 #include <iostream>
 #include <numbers>
+
+#include "Types.hpp"
 
 // Math types don't really need to be in the Math namespace, makes them easier to work with.
 using float2 = Eigen::RowVector2f;

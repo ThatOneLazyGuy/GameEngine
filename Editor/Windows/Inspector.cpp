@@ -2,9 +2,9 @@
 
 #include "Editor.hpp"
 
-#include <Core/Components/Transform.hpp>
-#include <Core/Physics/Physics.hpp>
-#include <core/Rendering/Renderer.hpp>
+#include <Transform.hpp>
+#include <Physics/Physics.hpp>
+#include <Rendering/Renderer.hpp>
 
 #include <imgui.h>
 #include <imgui_stdlib.h>
