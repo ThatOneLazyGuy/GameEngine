@@ -306,13 +306,14 @@ void OpenGLRenderer::DestroyMesh(Mesh& mesh)
     glDeleteBuffers(1, &mesh.indices_buffer.id);
 }
 
-void OpenGLRenderer::CreateShader(Shader& shader, const void* data, usize)
+void OpenGLRenderer::CreateShader(Shader& shader, const void* data, const usize size)
 {
     const GLuint shader_type = (shader.type == Shader::VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER);
 
     shader.shader.id = glCreateShader(shader_type);
-    const char* code = static_cast<const char*>(data);
-    glShaderSource(shader.shader.id, 1, &code, nullptr);
+    const auto code_size = static_cast<sint32>(size);
+    const auto* code = static_cast<const char*>(data);
+    glShaderSource(shader.shader.id, 1, &code, &code_size);
     glCompileShader(shader.shader.id);
 
     const std::string type_name = (shader.type == Shader::VERTEX ? "vertex" : "fragment");
