@@ -37,8 +37,8 @@ void AssetBrowser::Display()
     {
         const auto& importer_infos = ImporterBase::GetImporterInfos();
 
-        std::vector<std::string> filters;
-        filters.reserve(importer_infos.size() * 2);
+        std::vector<std::string> filters{"All Files", "*"};
+        filters.reserve(filters.size() + (importer_infos.size() * 2));
 
         for (const ImporterInfo& info : importer_infos)
         {
@@ -50,10 +50,18 @@ void AssetBrowser::Display()
         if (!path.empty()) Editor::asset_registry->Import(path);
     }
 
-    const auto& asset_mapping = Editor::asset_registry->GetAssetFileMapping();
-    for (const auto& [path, uuid] : asset_mapping)
+    const auto& import_infos = Editor::asset_registry->GetImportInfos();
+    for (const auto& [path, watcher, uuids] : import_infos)
     {
-        ImGui::Selectable(path.data());
-        DragResource(path, uuid);
+        constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth;
+        if (ImGui::TreeNodeEx(path.data(), node_flags))
+        {
+            for (const UUID& uuid : uuids)
+            {
+                const std::string& asset_path = Editor::asset_registry->GetAssetPath(uuid);
+                ImGui::TreeNodeEx(asset_path.c_str(), node_flags | ImGuiTreeNodeFlags_Leaf);
+                DragResource(path, uuid);
+            }
+        }
     }
 }

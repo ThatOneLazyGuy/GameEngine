@@ -9,6 +9,13 @@
 class AssetRegistry : public AssetRegistryBase
 {
   public:
+    struct ImportInfo
+    {
+        std::string path;
+        FileWatcher::Watcher watcher;
+        std::vector<UUID> derived_assets; // UUIDs of the assets that were created when importing this file.
+    };
+
     AssetRegistry();
     ~AssetRegistry() override;
 
@@ -27,7 +34,9 @@ class AssetRegistry : public AssetRegistryBase
 
     void Import(const std::string& path);
 
+    [[nodiscard]] const std::vector<ImportInfo>& GetImportInfos() const { return imported_files; }
     [[nodiscard]] const std::map<std::string, UUID>& GetAssetFileMapping() const { return reverse_mapping; }
+    [[nodiscard]] const std::string& GetAssetPath(const UUID& uuid) const { return mapping.at(uuid).path; }
 
   private:
     struct AssetInfo
@@ -39,12 +48,12 @@ class AssetRegistry : public AssetRegistryBase
     std::map<UUID, AssetInfo> mapping;
     std::map<std::string, UUID> reverse_mapping;
 
-    void RegisterImportedFile(const std::string& path);
-    void UnregisterImportedFile(const std::string& path);
+    std::vector<ImportInfo> imported_files;
+
+    void RegisterImportedFile(const std::string& path, std::vector<UUID>&& assets);
+    std::vector<UUID> UnregisterImportedFile(const std::string& path);
 
     static void ImportedFileChanged(const std::string& path, FileWatcher::Event event);
-
-    std::vector<FileWatcher::Watcher> imported_files;
 
     // Functions inherited from AssetRegistryBase.
     [[nodiscard]] std::string_view GetAssetTypeID(const UUID& uuid) const override;

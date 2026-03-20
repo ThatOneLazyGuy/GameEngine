@@ -38,10 +38,7 @@ namespace FileWatcher
         if (Valid()) delete static_cast<filewatch::FileWatch<std::string>*>(handle);
 
         handle = other.handle;
-        path = std::move(other.path);
-
         other.handle = nullptr;
-        other.path.clear();
     }
 
     Watcher& Watcher::operator=(Watcher&& other) noexcept
@@ -49,10 +46,7 @@ namespace FileWatcher
         if (Valid()) delete static_cast<filewatch::FileWatch<std::string>*>(handle);
 
         handle = other.handle;
-        path = std::move(other.path);
-
         other.handle = nullptr;
-        other.path.clear();
 
         return *this;
     }
@@ -65,7 +59,6 @@ namespace FileWatcher
 
         Watcher watcher{
             new filewatch::FileWatch<std::string>{path, backend_callback},
-            path,
         };
 
         return watcher;

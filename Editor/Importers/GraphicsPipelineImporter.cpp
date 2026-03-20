@@ -7,7 +7,7 @@
 
 #include <string>
 
-bool GraphicsPipelineImporter::ImportAsset(const std::string& path)
+std::vector<UUID> GraphicsPipelineImporter::ImportAsset(const std::string& path)
 {
     ShaderCompiler::ShaderData vertex_data;
     ShaderCompiler::ShaderData fragment_data;
@@ -22,12 +22,14 @@ bool GraphicsPipelineImporter::ImportAsset(const std::string& path)
     if (!file.IsOpen())
     {
         Log::Error("Failed to import graphics pipeline, couldn't open file: {}", path);
-        return false;
+        return {};
     }
 
-    Editor::asset_registry->RegisterPath<GraphicsShaderPipeline>(shader_path);
+    std::vector<UUID> asset_uuids;
+    asset_uuids.push_back(Editor::asset_registry->RegisterPath<GraphicsShaderPipeline>(shader_path));
 
     const UUID vertex_uuid = Editor::asset_registry->RegisterPath<Shader>(vertex_data.shader_path);
+    asset_uuids.push_back(vertex_uuid);
 
     Files::BinaryWriteStream vertex_file{vertex_data.shader_path};
     if (vertex_file.IsOpen())
@@ -41,6 +43,7 @@ bool GraphicsPipelineImporter::ImportAsset(const std::string& path)
     }
 
     const UUID fragment_uuid = Editor::asset_registry->RegisterPath<Shader>(fragment_data.shader_path);
+    asset_uuids.push_back(fragment_uuid);
 
     Files::BinaryWriteStream fragment_file{fragment_data.shader_path};
     if (fragment_file.IsOpen())
@@ -72,5 +75,5 @@ bool GraphicsPipelineImporter::ImportAsset(const std::string& path)
     file << vertex_uuid;
     file << fragment_uuid;
 
-    return true;
+    return asset_uuids;
 }

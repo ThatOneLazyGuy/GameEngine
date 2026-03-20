@@ -211,44 +211,67 @@ int main(int, char* args[])
 
 AssetRegistry::AssetRegistry()
 {
-    Files::BinaryReadStream stream{"ResourceMapping.bin"};
+    Files::BinaryReadStream stream{"AssetMapping.bin"};
     while (stream.GetReadPosition() < stream.Size())
     {
-        UUID uuid;
-        stream >> uuid;
+        std::string imported_path;
+        stream >> imported_path;
 
-        std::string path;
-        stream >> path;
-
-        std::string type_id;
-        stream >> type_id;
-
-        Log::Log("Path: {}, UUID: {}", path, uuid.str());
-
-        if (!std::filesystem::exists(path))
+        if (!std::filesystem::exists(imported_path))
         {
-            Log::Warning("Asset path no longer exists: {}", path);
+            Log::Warning("Import path no longer exists: {}", imported_path);
             continue;
         }
 
-        const auto& iterator = mapping.emplace(uuid, AssetInfo{path, type_id});
-        reverse_mapping.emplace(iterator.first->second.path, uuid);
+        FileWatcher::Watcher watcher = FileWatcher::CreateWatcher(imported_path, &ImportedFileChanged);
+        ImportInfo& info = imported_files.emplace_back(std::move(imported_path), std::move(watcher));
+
+        usize asset_count;
+        stream >> asset_count;
+        for (usize i = 0; i < asset_count; i++)
+        {
+            UUID asset;
+            stream >> asset;
+
+            std::string asset_path;
+            stream >> asset_path;
+
+            if (!std::filesystem::exists(asset_path))
+            {
+                Log::Warning("Asset path no longer exists: {}", asset_path);
+                continue;
+            }
+
+            std::string type_id;
+            stream >> type_id;
+
+            const auto& iterator = mapping.emplace(asset, AssetInfo{asset_path, type_id});
+            reverse_mapping.emplace(iterator.first->second.path, asset);
+
+            info.derived_assets.push_back(asset);
+
+            Log::Log("Path: {}, UUID: {}", asset_path, asset.str());
+        }
     }
 }
 
 AssetRegistry::~AssetRegistry()
 {
-    Files::BinaryWriteStream stream{"ResourceMapping.bin"};
-    for (const auto& [uuid, info] : mapping)
+    Files::BinaryWriteStream stream{"AssetMapping.bin"};
+    for (const auto& [path, watcher, assets] : imported_files)
     {
-        stream << uuid;
+        stream << path;
 
-        stream << info.path;
-        stream << info.type_id;
+        stream << assets.size();
+        for (const UUID& asset : assets)
+        {
+            const auto& [asset_path, type_id] = mapping.at(asset);
+            stream << asset;
+
+            stream << asset_path;
+            stream << type_id;
+        }
     }
-
-    reverse_mapping.clear();
-    mapping.clear();
 }
 
 void AssetRegistry::Import(const std::string& path)
@@ -273,9 +296,8 @@ void AssetRegistry::Import(const std::string& path)
 
     ImporterBase* importer = iterator->creator_function();
 
-    const bool import_success = importer->ImportAsset(path);
-    if (import_success) 
-        RegisterImportedFile(path);
+    std::vector<UUID> imported_assets = importer->ImportAsset(path);
+    if (!imported_assets.empty()) RegisterImportedFile(path, std::move(imported_assets));
 
     delete importer;
 }
@@ -290,26 +312,36 @@ std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::
 
 std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid).path); }
 
-void AssetRegistry::RegisterImportedFile(const std::string& path)
+void AssetRegistry::RegisterImportedFile(const std::string& path, std::vector<UUID>&& assets)
 {
-    FileWatcher::Watcher watcher = FileWatcher::CreateWatcher(path, &ImportedFileChanged);
+    ImportInfo info{
+        .path = path,
+        .watcher = FileWatcher::CreateWatcher(path, &ImportedFileChanged),
+        .derived_assets = std::move(assets),
+    };
 
     // Do a binary search to find the place for the file watcher, this ensures a sorted list.
-    const auto iterator = std::ranges::lower_bound(imported_files, watcher.GetPath(), {}, &FileWatcher::Watcher::GetPath);
-    imported_files.insert(iterator, std::move(watcher));
+    const auto iterator = std::ranges::lower_bound(imported_files, path, {}, &ImportInfo::path);
+    imported_files.insert(iterator, std::move(info));
 }
 
-void AssetRegistry::UnregisterImportedFile(const std::string& path)
+std::vector<UUID> AssetRegistry::UnregisterImportedFile(const std::string& path)
 {
-    const auto iterator = std::ranges::lower_bound(imported_files, path, {}, &FileWatcher::Watcher::GetPath);
-    if (iterator != imported_files.end()) imported_files.erase(iterator);
+    const auto iterator = std::ranges::lower_bound(imported_files, path, {}, &ImportInfo::path);
+    if (iterator == imported_files.end()) return {};
+
+    std::vector<UUID> assets = std::move(iterator->derived_assets);
+    imported_files.erase(iterator);
+
+    return assets;
 }
 
 void AssetRegistry::ImportedFileChanged(const std::string& path, const FileWatcher::Event event)
 {
+    static std::vector<UUID> previous_assets;
+
     switch (event)
     {
-    case FileWatcher::RENAMED_OLD:
     case FileWatcher::REMOVED:
         Editor::asset_registry->UnregisterImportedFile(path);
         break;
@@ -318,8 +350,12 @@ void AssetRegistry::ImportedFileChanged(const std::string& path, const FileWatch
         Editor::asset_registry->Import(path);
         break;
 
+    case FileWatcher::RENAMED_OLD:
+        previous_assets = Editor::asset_registry->UnregisterImportedFile(path);
+        break;
+
     case FileWatcher::RENAMED_NEW:
-        Editor::asset_registry->RegisterImportedFile(path);
+        Editor::asset_registry->RegisterImportedFile(path, std::move(previous_assets));
         break;
 
     default:

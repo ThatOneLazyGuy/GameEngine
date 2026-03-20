@@ -7,5 +7,5 @@ class GraphicsPipelineImporter : public Importer<GraphicsPipelineImporter, "Grap
   public:
     GraphicsPipelineImporter() = default;
 
-    bool ImportAsset(const std::string& path) override;
+    std::vector<UUID> ImportAsset(const std::string& path) override;
 };

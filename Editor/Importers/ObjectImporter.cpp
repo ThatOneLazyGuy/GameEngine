@@ -9,7 +9,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-bool ObjImporter::ImportAsset(const std::string& path)
+std::vector<UUID> ObjImporter::ImportAsset(const std::string& path)
 {
     constexpr int import_flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices;
 
@@ -19,8 +19,10 @@ bool ObjImporter::ImportAsset(const std::string& path)
     if (scene == nullptr)
     {
         Log::Error("Failed to import object, {}: {}", importer.GetErrorString(), path);
-        return false;
+        return {};
     }
+
+    std::vector<UUID> assets;
 
     const usize last_separator = path.find_last_of('/');
     const std::string base_path = path.substr(0, (last_separator == std::string::npos) ? last_separator : last_separator + 1);
@@ -63,7 +65,7 @@ bool ObjImporter::ImportAsset(const std::string& path)
             continue;
         }
 
-        Editor::asset_registry->RegisterPath<Mesh>(mesh_path);
+        assets.push_back(Editor::asset_registry->RegisterPath<Mesh>(mesh_path));
 
         file << vertices;
         file << indices;
@@ -80,10 +82,11 @@ bool ObjImporter::ImportAsset(const std::string& path)
 
             const std::string full_texture_path = base_path + string.C_Str();
             const UUID material_uuid = Editor::asset_registry->RegisterPath<Texture>(full_texture_path);
+            assets.push_back(material_uuid);
 
             file << material_uuid;
         }
     }
 
-    return true;
+    return assets;
 }
