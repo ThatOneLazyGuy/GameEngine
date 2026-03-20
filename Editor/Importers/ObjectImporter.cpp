@@ -9,7 +9,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-void ObjImporter::ImportAsset(const std::string& path)
+bool ObjImporter::ImportAsset(const std::string& path)
 {
     constexpr int import_flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices;
 
@@ -19,7 +19,7 @@ void ObjImporter::ImportAsset(const std::string& path)
     if (scene == nullptr)
     {
         Log::Error("Failed to import object, {}: {}", importer.GetErrorString(), path);
-        return;
+        return false;
     }
 
     const usize last_separator = path.find_last_of('/');
@@ -84,4 +84,6 @@ void ObjImporter::ImportAsset(const std::string& path)
             file << material_uuid;
         }
     }
+
+    return true;
 }

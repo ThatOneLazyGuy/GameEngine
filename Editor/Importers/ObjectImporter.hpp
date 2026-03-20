@@ -7,5 +7,5 @@ class ObjImporter : public Importer<ObjImporter, "Wavefront Object (*.obj)", "*.
   public:
     ObjImporter() = default;
 
-    void ImportAsset(const std::string& path) override;
+    bool ImportAsset(const std::string& path) override;
 };

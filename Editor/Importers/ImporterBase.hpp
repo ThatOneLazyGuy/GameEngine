@@ -22,9 +22,9 @@ class ImporterBase
     virtual ~ImporterBase() = default;
 
     [[nodiscard]] static const std::vector<ImporterInfo>& GetImporterInfos() { return importer_infos; }
-    static void Import(const std::string& path);
 
-    virtual void ImportAsset(const std::string& path) = 0;
+    // The import function that generates the asset files that will be loaded by the engine, should return true on successful import.
+    [[nodiscard]] virtual bool ImportAsset(const std::string& path) = 0;
 
   private:
     template <typename Derived, TemplateString Description, TemplateString FileTypes>

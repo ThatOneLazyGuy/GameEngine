@@ -4,6 +4,7 @@ add_executable(
         "ImGuiExtra.cpp"
         "ImGuiPlatform.cpp"
         "ShaderCompiler.cpp"
+        "FileWatcher.cpp"
         "Implementation/OpenGL/ImGuiPlatform.cpp"
         "Implementation/SDL3GPU/ImGuiPlatform.cpp"
         "Windows/Viewport.cpp"
@@ -34,6 +35,7 @@ target_include_directories(
         "${EXTERNAL}/imgui"
         "${EXTERNAL}/imgui/misc/cpp"
         "${EXTERNAL}/slang/include"
+        "${EXTERNAL}/Filewatch"
 )
 
 # Setup slang by downloading the library, CMake code stolen from: https://github.com/JoseMiguelPizarro/PuduRenderer/blob/master/CMakeLists.txt

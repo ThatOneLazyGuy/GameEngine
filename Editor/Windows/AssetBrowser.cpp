@@ -47,7 +47,7 @@ void AssetBrowser::Display()
         }
 
         const std::string path = FileDialogs::OpenFile("Import Asset", "./Assets", filters);
-        if (!path.empty()) ImporterBase::Import(path);
+        if (!path.empty()) Editor::asset_registry->Import(path);
     }
 
     const auto& asset_mapping = Editor::asset_registry->GetAssetFileMapping();

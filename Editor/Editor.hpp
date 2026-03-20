@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FileWatcher.hpp"
+
 #include <ECS.hpp>
 #include <ResourceManager.hpp>
 #include <Tools/UniqueVector.hpp>
@@ -23,6 +25,8 @@ class AssetRegistry : public AssetRegistryBase
         return uuid;
     }
 
+    void Import(const std::string& path);
+
     [[nodiscard]] const std::map<std::string, UUID>& GetAssetFileMapping() const { return reverse_mapping; }
 
   private:
@@ -32,6 +36,17 @@ class AssetRegistry : public AssetRegistryBase
         std::string type_id;
     };
 
+    std::map<UUID, AssetInfo> mapping;
+    std::map<std::string, UUID> reverse_mapping;
+
+    void RegisterImportedFile(const std::string& path);
+    void UnregisterImportedFile(const std::string& path);
+
+    static void ImportedFileChanged(const std::string& path, FileWatcher::Event event);
+
+    std::vector<FileWatcher::Watcher> imported_files;
+
+    // Functions inherited from AssetRegistryBase.
     [[nodiscard]] std::string_view GetAssetTypeID(const UUID& uuid) const override;
     [[nodiscard]] bool IsValidAsset(const UUID& uuid) const override { return mapping.contains(uuid); }
 
@@ -39,9 +54,6 @@ class AssetRegistry : public AssetRegistryBase
     [[nodiscard]] Files::BinaryReadStream GetAssetDataStream(const UUID& uuid) const override;
     [[nodiscard]] std::string GetAssetText(const UUID& uuid) const override;
     [[nodiscard]] std::vector<uint8> GetAssetData(const UUID& uuid) const override;
-
-    std::map<UUID, AssetInfo> mapping;
-    std::map<std::string, UUID> reverse_mapping;
 };
 
 namespace Editor

@@ -7,7 +7,7 @@
 
 #include <string>
 
-void GraphicsPipelineImporter::ImportAsset(const std::string& path)
+bool GraphicsPipelineImporter::ImportAsset(const std::string& path)
 {
     ShaderCompiler::ShaderData vertex_data;
     ShaderCompiler::ShaderData fragment_data;
@@ -22,7 +22,7 @@ void GraphicsPipelineImporter::ImportAsset(const std::string& path)
     if (!file.IsOpen())
     {
         Log::Error("Failed to import graphics pipeline, couldn't open file: {}", path);
-        return;
+        return false;
     }
 
     Editor::asset_registry->RegisterPath<GraphicsShaderPipeline>(shader_path);
@@ -71,4 +71,6 @@ void GraphicsPipelineImporter::ImportAsset(const std::string& path)
 
     file << vertex_uuid;
     file << fragment_uuid;
+
+    return true;
 }

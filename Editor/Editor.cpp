@@ -26,7 +26,6 @@
 
 namespace
 {
-
     void InitFonts()
     {
         const ImGuiIO& io = ImGui::GetIO();
@@ -35,7 +34,6 @@ namespace
     }
 
     std::vector<EditorWindowBase*> windows;
-
 } // namespace
 
 // NOLINTBEGIN(misc-use-anonymous-namespace)
@@ -173,8 +171,8 @@ int main(int, char* args[])
     const auto& file_mapping = Editor::asset_registry->GetAssetFileMapping();
 
     // Import the default shaders if they haven't been imported yet.
-    if (!file_mapping.contains("Assets/Shaders/DefaultShader.shader")) ImporterBase::Import("Assets/Shaders/DefaultShader.slang");
-    if (!file_mapping.contains("Assets/Shaders/PhysicsDebug.shader")) ImporterBase::Import("Assets/Shaders/PhysicsDebug.slang");
+    if (!file_mapping.contains("Assets/Shaders/DefaultShader.shader")) Editor::asset_registry->Import("Assets/Shaders/DefaultShader.slang");
+    if (!file_mapping.contains("Assets/Shaders/PhysicsDebug.shader")) Editor::asset_registry->Import("Assets/Shaders/PhysicsDebug.slang");
 
     ResourceRef graphics_pipeline = ResourceManager::Load<GraphicsShaderPipeline>(file_mapping.at("Assets/Shaders/DefaultShader.shader"));
     const ResourceRef physics_shader = ResourceManager::Load<GraphicsShaderPipeline>(file_mapping.at("Assets/Shaders/PhysicsDebug.shader"));
@@ -253,6 +251,35 @@ AssetRegistry::~AssetRegistry()
     mapping.clear();
 }
 
+void AssetRegistry::Import(const std::string& path)
+{
+    const std::string extension = path.substr(path.find_last_of('.'));
+    if (extension.empty())
+    {
+        Log::Error("Failed to import file, invalid extension: {}", path);
+        return;
+    }
+
+    const auto& importer_infos = ImporterBase::GetImporterInfos();
+    const auto iterator = std::ranges::find_if(importer_infos, [&extension](const ImporterInfo& element) {
+        return element.file_types.find(extension) != std::string::npos;
+    });
+
+    if (iterator == importer_infos.end())
+    {
+        Log::Error("Failed to import file, no importer for file extension: {}", extension);
+        return;
+    }
+
+    ImporterBase* importer = iterator->creator_function();
+
+    const bool import_success = importer->ImportAsset(path);
+    if (import_success) 
+        RegisterImportedFile(path);
+
+    delete importer;
+}
+
 std::string_view AssetRegistry::GetAssetTypeID(const UUID& uuid) const { return mapping.at(uuid).type_id; }
 
 std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{mapping.at(uuid).path}; }
@@ -262,3 +289,40 @@ Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) cons
 std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid).path); }
 
 std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid).path); }
+
+void AssetRegistry::RegisterImportedFile(const std::string& path)
+{
+    FileWatcher::Watcher watcher = FileWatcher::CreateWatcher(path, &ImportedFileChanged);
+
+    // Do a binary search to find the place for the file watcher, this ensures a sorted list.
+    const auto iterator = std::ranges::lower_bound(imported_files, watcher.GetPath(), {}, &FileWatcher::Watcher::GetPath);
+    imported_files.insert(iterator, std::move(watcher));
+}
+
+void AssetRegistry::UnregisterImportedFile(const std::string& path)
+{
+    const auto iterator = std::ranges::lower_bound(imported_files, path, {}, &FileWatcher::Watcher::GetPath);
+    if (iterator != imported_files.end()) imported_files.erase(iterator);
+}
+
+void AssetRegistry::ImportedFileChanged(const std::string& path, const FileWatcher::Event event)
+{
+    switch (event)
+    {
+    case FileWatcher::RENAMED_OLD:
+    case FileWatcher::REMOVED:
+        Editor::asset_registry->UnregisterImportedFile(path);
+        break;
+
+    case FileWatcher::MODIFIED:
+        Editor::asset_registry->Import(path);
+        break;
+
+    case FileWatcher::RENAMED_NEW:
+        Editor::asset_registry->RegisterImportedFile(path);
+        break;
+
+    default:
+        break;
+    }
+}
