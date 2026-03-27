@@ -51,16 +51,16 @@ void AssetBrowser::Display()
     }
 
     const auto& import_infos = Editor::asset_registry->GetImportInfos();
-    for (const auto& [path, watcher, uuids] : import_infos)
+    for (const auto& import_info : import_infos)
     {
         constexpr ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth;
-        if (ImGui::TreeNodeEx(path.data(), node_flags))
+        if (ImGui::TreeNodeEx(import_info.path.data(), node_flags))
         {
-            for (const UUID& uuid : uuids)
+            for (const UUID& uuid : import_info.derived_assets)
             {
                 const std::string& asset_path = Editor::asset_registry->GetAssetPath(uuid);
                 ImGui::TreeNodeEx(asset_path.c_str(), node_flags | ImGuiTreeNodeFlags_Leaf);
-                DragResource(path, uuid);
+                DragResource(asset_path, uuid);
             }
         }
     }

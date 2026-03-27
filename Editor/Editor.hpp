@@ -9,11 +9,17 @@
 class AssetRegistry : public AssetRegistryBase
 {
   public:
-    struct ImportInfo
+    class ImportInfo
     {
+      public:
+        ImportInfo(std::string path);
+        ImportInfo(std::string path, std::vector<UUID> assets);
+
         std::string path;
-        FileWatcher::Watcher watcher;
         std::vector<UUID> derived_assets; // UUIDs of the assets that were created when importing this file.
+
+      private:
+        FileWatcher::Watcher watcher;
     };
 
     AssetRegistry();
@@ -22,12 +28,11 @@ class AssetRegistry : public AssetRegistryBase
     template <ResourceType Type>
     UUID RegisterPath(const std::string& path)
     {
-        const auto& path_iterator = reverse_mapping.find(path);
-        if (path_iterator != reverse_mapping.end()) return path_iterator->second;
+        UUID uuid = GetAssetUUID(path);
+        if (uuid != NULL_UUID) return uuid;
 
-        const UUID uuid = UUIDGenerator::Generate();
-        const auto& iterator = mapping.emplace(uuid, AssetInfo{path, Type::GetID().data()});
-        reverse_mapping.emplace(iterator.first->second.path, uuid);
+        uuid = UUIDGenerator::Generate();
+        mapping.emplace(uuid, AssetInfo{path, Type::GetID().data()});
 
         return uuid;
     }
@@ -35,8 +40,9 @@ class AssetRegistry : public AssetRegistryBase
     void Import(const std::string& path);
 
     [[nodiscard]] const std::vector<ImportInfo>& GetImportInfos() const { return imported_files; }
-    [[nodiscard]] const std::map<std::string, UUID>& GetAssetFileMapping() const { return reverse_mapping; }
     [[nodiscard]] const std::string& GetAssetPath(const UUID& uuid) const { return mapping.at(uuid).path; }
+    // Less efficient search due to searching the mapping in the opposite direction.
+    [[nodiscard]] const UUID& GetAssetUUID(const std::string& path) const;
 
   private:
     struct AssetInfo
@@ -46,8 +52,6 @@ class AssetRegistry : public AssetRegistryBase
     };
 
     std::map<UUID, AssetInfo> mapping;
-    std::map<std::string, UUID> reverse_mapping;
-
     std::vector<ImportInfo> imported_files;
 
     void RegisterImportedFile(const std::string& path, std::vector<UUID>&& assets);
