@@ -251,14 +251,14 @@ AssetRegistry::AssetRegistry()
             std::string asset_path;
             stream >> asset_path;
 
+            std::string type_id;
+            stream >> type_id;
+
             if (!std::filesystem::exists(asset_path))
             {
                 Log::Warning("Asset path no longer exists: {}", asset_path);
                 continue;
             }
-
-            std::string type_id;
-            stream >> type_id;
 
             asset_mapping.emplace(asset, AssetInfo{asset_path, type_id});
             info.derived_assets.push_back(asset);

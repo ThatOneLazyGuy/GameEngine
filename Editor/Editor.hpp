@@ -27,6 +27,7 @@ class AssetRegistry final : public AssetRegistryBase
     AssetRegistry();
     ~AssetRegistry() override;
 
+    // Update function to handle the observed changes to imported files.
     void Update();
 
     template <ResourceType Type>
