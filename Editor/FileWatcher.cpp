@@ -1,5 +1,6 @@
 #include "FileWatcher.hpp"
 
+#include <filesystem>
 #include <FileWatch.hpp>
 
 namespace
@@ -53,12 +54,13 @@ namespace FileWatcher
 
     Watcher CreateWatcher(const std::string& path, const std::function<void(const std::string&, Event)>& callback)
     {
-        const auto backend_callback = [callback](const std::string& path, const filewatch::Event event) {
+        // The Filewatch library for some reason doesn't actually return the file path in the callback, but only the name, so we pass in the file path manually into the lambda.
+        const auto backend_callback = [callback, path](const std::string&, const filewatch::Event event) {
             callback(path, ConvertEvent(event));
         };
 
         Watcher watcher{
-            new filewatch::FileWatch<std::string>{path, backend_callback},
+            new filewatch::FileWatch<std::string>{std::filesystem::absolute(path).generic_string(), backend_callback},
         };
 
         return watcher;

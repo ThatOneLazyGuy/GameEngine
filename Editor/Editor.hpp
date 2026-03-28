@@ -6,7 +6,9 @@
 #include <ResourceManager.hpp>
 #include <Tools/UniqueVector.hpp>
 
-class AssetRegistry : public AssetRegistryBase
+#include <mutex>
+
+class AssetRegistry final : public AssetRegistryBase
 {
   public:
     class ImportInfo
@@ -25,6 +27,8 @@ class AssetRegistry : public AssetRegistryBase
     AssetRegistry();
     ~AssetRegistry() override;
 
+    void Update();
+
     template <ResourceType Type>
     UUID RegisterPath(const std::string& path)
     {
@@ -32,7 +36,7 @@ class AssetRegistry : public AssetRegistryBase
         if (uuid != NULL_UUID) return uuid;
 
         uuid = UUIDGenerator::Generate();
-        mapping.emplace(uuid, AssetInfo{path, Type::GetID().data()});
+        asset_mapping.emplace(uuid, AssetInfo{path, Type::GetID().data()});
 
         return uuid;
     }
@@ -40,8 +44,8 @@ class AssetRegistry : public AssetRegistryBase
     void Import(const std::string& path);
 
     [[nodiscard]] const std::vector<ImportInfo>& GetImportInfos() const { return imported_files; }
-    [[nodiscard]] const std::string& GetAssetPath(const UUID& uuid) const { return mapping.at(uuid).path; }
-    // Less efficient search due to searching the mapping in the opposite direction.
+    [[nodiscard]] const std::string& GetAssetPath(const UUID& uuid) const { return asset_mapping.at(uuid).path; }
+    // Less efficient search due to searching the asset_mapping in the opposite direction.
     [[nodiscard]] const UUID& GetAssetUUID(const std::string& path) const;
 
   private:
@@ -51,22 +55,26 @@ class AssetRegistry : public AssetRegistryBase
         std::string type_id;
     };
 
-    std::map<UUID, AssetInfo> mapping;
-    std::vector<ImportInfo> imported_files;
+    static void ImportedFileChanged(const std::string& path, FileWatcher::Event event);
 
     void RegisterImportedFile(const std::string& path, std::vector<UUID>&& assets);
     std::vector<UUID> UnregisterImportedFile(const std::string& path);
 
-    static void ImportedFileChanged(const std::string& path, FileWatcher::Event event);
-
-    // Functions inherited from AssetRegistryBase.
+    // Inherited from AssetRegistryBase.
     [[nodiscard]] std::string_view GetAssetTypeID(const UUID& uuid) const override;
-    [[nodiscard]] bool IsValidAsset(const UUID& uuid) const override { return mapping.contains(uuid); }
+    [[nodiscard]] bool IsValidAsset(const UUID& uuid) const override { return asset_mapping.contains(uuid); }
 
     [[nodiscard]] std::ifstream GetAssetTextStream(const UUID& uuid) const override;
     [[nodiscard]] Files::BinaryReadStream GetAssetDataStream(const UUID& uuid) const override;
+
     [[nodiscard]] std::string GetAssetText(const UUID& uuid) const override;
     [[nodiscard]] std::vector<uint8> GetAssetData(const UUID& uuid) const override;
+
+    inline static std::vector<std::pair<std::string, FileWatcher::Event>> changed_paths;
+    inline static std::mutex changed_files_mutex;
+
+    std::map<UUID, AssetInfo> asset_mapping;
+    std::vector<ImportInfo> imported_files;
 };
 
 namespace Editor

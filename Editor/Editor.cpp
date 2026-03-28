@@ -168,7 +168,6 @@ int main(int, char* args[])
 
     Renderer::Init();
 
-
     // Import the default shaders if they haven't been imported yet.
     if (Editor::asset_registry->GetAssetUUID("Assets/Shaders/DefaultShader.shader") == NULL_UUID)
         Editor::asset_registry->Import("Assets/Shaders/DefaultShader.slang");
@@ -192,6 +191,8 @@ int main(int, char* args[])
 
     while (!Window::PollEvents())
     {
+        Editor::asset_registry->Update();
+
         Time::Update();
 
         Physics::Update(Time::GetDeltaTime());
@@ -259,7 +260,7 @@ AssetRegistry::AssetRegistry()
             std::string type_id;
             stream >> type_id;
 
-            mapping.emplace(asset, AssetInfo{asset_path, type_id});
+            asset_mapping.emplace(asset, AssetInfo{asset_path, type_id});
             info.derived_assets.push_back(asset);
 
             Log::Log("Path: {}, UUID: {}", asset_path, asset.str());
@@ -277,13 +278,57 @@ AssetRegistry::~AssetRegistry()
         stream << import_info.derived_assets.size();
         for (const UUID& asset : import_info.derived_assets)
         {
-            const auto& [asset_path, type_id] = mapping.at(asset);
+            const auto& [asset_path, type_id] = asset_mapping.at(asset);
             stream << asset;
 
             stream << asset_path;
             stream << type_id;
         }
     }
+}
+
+void AssetRegistry::Update()
+{
+    std::scoped_lock lock{changed_files_mutex};
+    if (changed_paths.empty()) return;
+
+    // Handle all changed files that were saved by the callback on another thread.
+    static std::vector<UUID> previous_assets;
+    for (const auto& [path, event] : changed_paths)
+    {
+        switch (event)
+        {
+        case FileWatcher::REMOVED:
+        {
+            Editor::asset_registry->UnregisterImportedFile(path);
+            break;
+        }
+
+        case FileWatcher::MODIFIED:
+        {
+            Import(path);
+            break;
+        }
+
+        case FileWatcher::RENAMED_OLD:
+        {
+            previous_assets = Editor::asset_registry->UnregisterImportedFile(path);
+            break;
+        }
+
+        case FileWatcher::RENAMED_NEW:
+        {
+            Editor::asset_registry->RegisterImportedFile(path, std::move(previous_assets));
+            previous_assets.clear();
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+
+    changed_paths.clear();
 }
 
 void AssetRegistry::Import(const std::string& path)
@@ -316,7 +361,7 @@ void AssetRegistry::Import(const std::string& path)
 
 const UUID& AssetRegistry::GetAssetUUID(const std::string& path) const
 {
-    for (const auto& [uuid, info] : mapping)
+    for (const auto& [uuid, info] : asset_mapping)
     {
         if (info.path == path) return uuid;
     }
@@ -324,15 +369,18 @@ const UUID& AssetRegistry::GetAssetUUID(const std::string& path) const
     return NULL_UUID;
 }
 
-std::string_view AssetRegistry::GetAssetTypeID(const UUID& uuid) const { return mapping.at(uuid).type_id; }
+std::string_view AssetRegistry::GetAssetTypeID(const UUID& uuid) const { return asset_mapping.at(uuid).type_id; }
 
-std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{mapping.at(uuid).path}; }
+std::ifstream AssetRegistry::GetAssetTextStream(const UUID& uuid) const { return std::ifstream{asset_mapping.at(uuid).path}; }
 
-Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) const { return Files::BinaryReadStream{mapping.at(uuid).path}; }
+Files::BinaryReadStream AssetRegistry::GetAssetDataStream(const UUID& uuid) const
+{
+    return Files::BinaryReadStream{asset_mapping.at(uuid).path};
+}
 
-std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(mapping.at(uuid).path); }
+std::string AssetRegistry::GetAssetText(const UUID& uuid) const { return Files::ReadText(asset_mapping.at(uuid).path); }
 
-std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(mapping.at(uuid).path); }
+std::vector<uint8> AssetRegistry::GetAssetData(const UUID& uuid) const { return Files::ReadBinary(asset_mapping.at(uuid).path); }
 
 void AssetRegistry::RegisterImportedFile(const std::string& path, std::vector<UUID>&& assets)
 {
@@ -358,27 +406,7 @@ std::vector<UUID> AssetRegistry::UnregisterImportedFile(const std::string& path)
 
 void AssetRegistry::ImportedFileChanged(const std::string& path, const FileWatcher::Event event)
 {
-    static std::vector<UUID> previous_assets;
-
-    switch (event)
-    {
-    case FileWatcher::REMOVED:
-        Editor::asset_registry->UnregisterImportedFile(path);
-        break;
-
-    case FileWatcher::MODIFIED:
-        Editor::asset_registry->Import(path);
-        break;
-
-    case FileWatcher::RENAMED_OLD:
-        previous_assets = Editor::asset_registry->UnregisterImportedFile(path);
-        break;
-
-    case FileWatcher::RENAMED_NEW:
-        Editor::asset_registry->RegisterImportedFile(path, std::move(previous_assets));
-        break;
-
-    default:
-        break;
-    }
+    // Add the changed path to the map to be handled later.
+    std::scoped_lock lock{changed_files_mutex};
+    changed_paths.emplace_back(path, event);
 }
