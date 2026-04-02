@@ -353,7 +353,7 @@ void AssetRegistry::Import(const std::string& path)
 
     ImporterBase* importer = iterator->creator_function();
 
-    std::vector<UUID> imported_assets = importer->ImportAsset(path);
+    std::vector<UUID> imported_assets = importer->ImportAssets(path);
     if (!imported_assets.empty()) RegisterImportedFile(path, std::move(imported_assets));
 
     delete importer;

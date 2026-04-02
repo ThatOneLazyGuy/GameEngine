@@ -7,7 +7,7 @@
 
 #include <string>
 
-std::vector<UUID> GraphicsPipelineImporter::ImportAsset(const std::string& path)
+std::vector<UUID> GraphicsPipelineImporter::ImportAssets(const std::string& path)
 {
     ShaderCompiler::ShaderData vertex_data;
     ShaderCompiler::ShaderData fragment_data;

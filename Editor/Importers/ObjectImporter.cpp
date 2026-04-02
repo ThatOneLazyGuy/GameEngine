@@ -9,7 +9,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-std::vector<UUID> ObjImporter::ImportAsset(const std::string& path)
+std::vector<UUID> ObjImporter::ImportAssets(const std::string& path)
 {
     constexpr int import_flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_PreTransformVertices;
 
