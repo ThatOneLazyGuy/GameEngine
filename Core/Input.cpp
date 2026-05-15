@@ -10,17 +10,15 @@ namespace Input
 {
     namespace
     {
-        constexpr usize key_type_bit_count{std::numeric_limits<KeyType>::digits};
-        constexpr usize key_lower_mask{key_type_bit_count - 1};
-        constexpr usize key_shift_count{6ull}; // How many bits to shift to divide by key_type_bit_count.
+        constexpr usize KEY_TYPE_BIT_COUNT{std::numeric_limits<KeyType>::digits};
+        constexpr usize KEY_SHIFT_COUNT{static_cast<usize>(std::countr_zero(KEY_TYPE_BIT_COUNT))};
 
-        KeyType previous_key_states[KEY_COUNT >> key_shift_count];
-        KeyType key_states[KEY_COUNT >> key_shift_count];
+        KeyType previous_key_states[KEY_COUNT >> KEY_SHIFT_COUNT];
+        KeyType key_states[KEY_COUNT >> KEY_SHIFT_COUNT];
 
-        bool GetState(const KeyType* key_states, const Key key)
-        {
-            return key_states[key >> key_shift_count] & (1ull << (key & key_lower_mask));
-        }
+        constexpr KeyType GetKeyBit(const KeyType key) { return 1 << (key & (KEY_TYPE_BIT_COUNT - 1)); }
+
+        bool GetState(const KeyType states[], const Key key) { return states[key >> KEY_SHIFT_COUNT] & GetKeyBit(key); }
 
         float2 mouse_pos_delta{};
         float2 mouse_pos{};
@@ -28,11 +26,11 @@ namespace Input
 
     void SetKey(const Key key, const bool pressed)
     {
-        KeyType& state = key_states[key >> key_shift_count];
-        previous_key_states[key >> key_shift_count] = state;
+        KeyType& state = key_states[key >> KEY_SHIFT_COUNT];
+        previous_key_states[key >> KEY_SHIFT_COUNT] = state;
 
-        if (pressed) state |= (1ull << (key & key_lower_mask));
-        else state &= ~(1ull << (key & key_lower_mask));
+        if (pressed) state |= GetKeyBit(key);
+        else state &= ~GetKeyBit(key);
     }
 
     bool GetKeyPressed(const Key key) { return GetState(key_states, key) && !GetState(previous_key_states, key); }

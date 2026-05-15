@@ -4,7 +4,7 @@
 
 namespace Input
 {
-    using KeyType = uint64;
+    using KeyType = uint32;
 
     // Scancodes taken from SDL3 scancodes, for documentation look here: https://wiki.libsdl.org/SDL3/SDL_Scancode
     enum Key : KeyType
@@ -284,7 +284,9 @@ namespace Input
 
         RESERVED = 400,
 
-        KEY_COUNT = 512
+        KEY_COUNT = 512,
+
+        KEY_LAST = std::numeric_limits<KeyType>::max()
     };
 
 
