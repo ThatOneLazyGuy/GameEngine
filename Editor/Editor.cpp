@@ -158,8 +158,6 @@ namespace Editor
 
 int main(int, char* args[])
 {
-    Log::Log("Current working directory: {}", std::filesystem::current_path().generic_string());
-
     Editor::asset_registry = ResourceManager::Init<AssetRegistry>();
 
     Renderer::SetupBackend(args[1]);

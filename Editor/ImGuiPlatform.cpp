@@ -116,7 +116,6 @@ namespace ImGui
         case SDL_EVENT_KEY_UP:
             if (!GetIO().WantCaptureKeyboard) block_event = false;
             else Input::ClearKeys();
-            ImGui_ImplSDL3_ProcessEvent(sdl_event);
             break;
 
         case SDL_EVENT_MOUSE_MOTION:
@@ -124,16 +123,16 @@ namespace ImGui
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_WHEEL:
             if (!GetIO().WantCaptureMouse) block_event = false;
-            ImGui_ImplSDL3_ProcessEvent(sdl_event);
             break;
 
         case SDL_EVENT_WINDOW_RESIZED:
         case SDL_EVENT_QUIT:
             block_event = false;
         default:
-            ImGui_ImplSDL3_ProcessEvent(sdl_event);
             break;
         }
+
+        ImGui_ImplSDL3_ProcessEvent(sdl_event);
 
         return block_event;
     }
